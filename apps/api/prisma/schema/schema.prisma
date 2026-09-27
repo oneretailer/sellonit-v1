@@ -4,8 +4,7 @@
 generator client {
   provider            = "prisma-client"
   output              = "../../src/generated/prisma"
-  // Match the API's ESM + NodeNext TypeScript setup so `tsc` compiles the
-  // generated client like any other source file.
+
   moduleFormat        = "esm"
   importFileExtension = "js"
 }
