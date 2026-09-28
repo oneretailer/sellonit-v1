@@ -4,7 +4,10 @@ Express REST API for Sellonit. The contract is [`docs/openapi.yaml`](../../docs/
 follow [`docs/Contract_Engineering_Rules.md`](../../docs/Contract_Engineering_Rules.md) and the
 [contract README](../../docs/README.md).
 
-`src/main.ts` starts an empty Express server. Nothing else is implemented.
+`src/main.ts` still starts an empty Express server. `modules/orders/lifecycle.ts`
+contains pure v1.0.3 transition guards with unit tests, using generated contract
+states. They are not HTTP handlers and do not perform external financial effects.
+See the [alignment audit](../../docs/v1.0.3-alignment.md) for remaining work.
 
 ## Layout
 
@@ -18,7 +21,7 @@ src/
   config/                (empty)
   http/middleware/       (empty)
   infrastructure/        (empty)
-  modules/<domain>/      (empty) one folder per domain area of the contract
+  modules/<domain>/      scaffolded; orders/ has pure lifecycle guards and tests
 test/integration/        (empty) *.int.test.ts files run with `npm run test:integration`
 ```
 

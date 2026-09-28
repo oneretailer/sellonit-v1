@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Sellonit API
-  version: 1.0.0
+  version: 1.0.3
   description: |
     Canonical API contract for Sellonit.
 
@@ -16,11 +16,20 @@ info:
       - supplier catalogue and physical inventory
       - retailer store listings
       - customer carts and orders
-      - payments
+      - payments, escrow and settlements
       - fulfillment
       - demand aggregation
       - bulk supply requests
       - shipments and 3PL orchestration
+
+    Finalized MVP scope v1.0.3 (pre-release contract correction):
+      PAYMENT -> ESCROW -> FULFILLMENT -> SHIPMENT -> SETTLEMENT -> ORDER COMPLETED.
+      Order COMPLETED is a final commercial state requiring a non-empty, complete
+      set of associated settlements, ALL SETTLED, and their escrow RELEASED.
+      Delivered shipments, completed fulfillment or held escrow alone never complete an order.
+      Central discovery is directory-only; checkout always belongs to one retailer
+      or enterprise store. Enterprise extends supplier capabilities with a B2C store.
+      Customer is an identity, not a business membership type.
 
     Contract rules:
       - SupplierProduct is the master physical product record.
@@ -510,7 +519,9 @@ paths:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
         - $ref: '#/components/parameters/Search'
-        - $ref: '#/components/parameters/Status'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/ProductStatus'}
         - $ref: '#/components/parameters/BusinessQuery'
       responses:
         '200':
@@ -699,7 +710,9 @@ paths:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
         - $ref: '#/components/parameters/Search'
-        - $ref: '#/components/parameters/Status'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/ListingStatus'}
       responses:
         '200':
           description: Retailer listings
@@ -985,7 +998,8 @@ paths:
   /checkout:
     post:
       tags: [Orders]
-      summary: Validate cart and create pending order
+      summary: Validate a single store cart and create a NEW order
+      description: No central unified checkout. Revalidate authoritative prices and stock; inventory is reserved atomically only on trusted payment confirmation.
       security: []
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1016,7 +1030,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Status'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/OrderState'}
         - $ref: '#/components/parameters/StoreIdQuery'
         - $ref: '#/components/parameters/DateFrom'
         - $ref: '#/components/parameters/DateTo'
@@ -1055,6 +1071,7 @@ paths:
     post:
       tags: [Orders]
       summary: Cancel order when cancellation policy allows
+      description: NEW or PAID only, before fulfillment leaves PENDING_BATCH. Refund held escrow and undo reservations idempotently through backend orchestration; reject later cancellation with 409.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1112,16 +1129,33 @@ paths:
     post:
       tags: [Payments]
       summary: Receive payment provider webhook
+      description: |
+        Provider-specific raw JSON, verified by the configured provider adapter against
+        the unmodified request body before normalization. No browser confirmation.
+        Require the selected adapter's signature header; absence or invalid signature
+        is 401. Verify reference, amount, NGN currency and order association server-side.
+        Deduplicate provider + event/reference durably; valid duplicate deliveries return
+        200 without repeating reservation, escrow, settlement, fulfillment or notifications.
+        Confirmation and inventory reservation must commit atomically. Insufficient stock
+        records a reconciliation conflict without marking the order PAID.
+        Never acknowledge unpersisted financial work as successfully processed.
       security: []
       parameters:
         - $ref: '#/components/parameters/PaymentSignature'
+        - $ref: '#/components/parameters/FlutterwaveSignature'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PaymentWebhookEvent'
+              type: object
+              additionalProperties: true
+              description: Native provider payload; adapter validates before normalization.
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '200':
           description: Webhook accepted
           content:
@@ -1136,7 +1170,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Status'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/FulfillmentState'}
         - $ref: '#/components/parameters/SupplierBusinessId'
       responses:
         '200':
@@ -1162,6 +1198,7 @@ paths:
     patch:
       tags: [Fulfillment]
       summary: Update fulfillment operational state
+      description: Authorized operations staff only, scoped to owning business. Enforce PENDING_BATCH -> IN_BULK_REQUEST -> AT_3PL_HUB -> COMPLETED; never complete the order from this update.
       requestBody:
         required: true
         content:
@@ -1183,7 +1220,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Status'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/DemandBatchStatus'}
         - $ref: '#/components/parameters/SupplierBusinessId'
       responses:
         '200':
@@ -1232,7 +1271,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Status'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/BulkSupplyStatus'}
         - $ref: '#/components/parameters/SupplierBusinessId'
       responses:
         '200':
@@ -1279,7 +1320,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Status'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/ShipmentState'}
         - $ref: '#/components/parameters/OrderIdQuery'
       responses:
         '200':
@@ -1500,10 +1543,6 @@ components:
       name: search
       in: query
       schema: {type: string, maxLength: 200}
-    Status:
-      name: status
-      in: query
-      schema: {type: string}
     BusinessQuery:
       name: businessId
       in: query
@@ -1551,9 +1590,14 @@ components:
       description: Unique key for safe retry of a mutating request. Reuse the same key only for the same logical operation.
       schema: {type: string, minLength: 16, maxLength: 128}
     PaymentSignature:
-      name: X-Payment-Signature
+      name: x-paystack-signature
       in: header
-      required: true
+      description: Required for Paystack; adapter verifies HMAC-SHA512 over raw bytes.
+      schema: {type: string}
+    FlutterwaveSignature:
+      name: flutterwave-signature
+      in: header
+      description: Required for the configured Flutterwave HMAC-SHA256 webhook integration; adapter verifies raw bytes using its secret. Legacy verif-hash integrations require a separately configured adapter, never automatic fallback.
       schema: {type: string}
     WebhookSignature:
       name: X-Webhook-Signature
@@ -1568,7 +1612,7 @@ components:
       enum: [OWNER, ADMIN, STAFF, SUPPLIER, RETAILER]
     BusinessType:
       type: string
-      enum: [ENTREPRENEUR, SUPPLIER, ENTERPRISE, RETAILER]
+      enum: [SUPPLIER, ENTERPRISE, RETAILER]
     UserStatus:
       type: string
       enum: [PENDING_VERIFICATION, ACTIVE, SUSPENDED, DEACTIVATED]
@@ -1585,23 +1629,40 @@ components:
       type: string
       enum: [FLEXIBLE, FIXED_MSRP, MAP]
     OrderStatus:
+      $ref: '#/components/schemas/OrderState'
+    OrderState:
       type: string
-      enum: [PENDING_PAYMENT, PAID, PROCESSING, FULFILLING, PARTIALLY_FULFILLED, SHIPPED, DELIVERED, COMPLETED, CANCELLED, FAILED]
+      enum: [NEW, PAID, COMPLETED, CANCELLED]
     PaymentStatus:
+      $ref: '#/components/schemas/PaymentState'
+    PaymentState:
       type: string
-      enum: [PENDING, PROCESSING, SUCCESS, FAILED, REVERSED, REFUNDED]
+      enum: [PENDING, CONFIRMED, FAILED]
     FulfillmentStatus:
+      $ref: '#/components/schemas/FulfillmentState'
+    FulfillmentState:
       type: string
-      enum: [PENDING, BATCHING, AWAITING_SUPPLY, SUPPLY_RECEIVED, ALLOCATED, PACKED, SHIPPED, COMPLETED, FAILED, CANCELLED]
+      enum: [PENDING_BATCH, IN_BULK_REQUEST, AT_3PL_HUB, COMPLETED]
     ShipmentStatus:
+      $ref: '#/components/schemas/ShipmentState'
+    ShipmentState:
       type: string
-      enum: [PENDING, LABEL_CREATED, AT_3PL_HUB, SORTING, DISPATCHED, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, DELIVERY_FAILED, IN_HUB_HOLDING, RETURNING, RETURNED, CANCELLED]
+      enum: [PENDING, IN_TRANSIT, DELIVERED, FAILED]
     DemandBatchStatus:
       type: string
       enum: [OPEN, THRESHOLD_REACHED, TIME_EXPIRED, LOCKED, RELEASED, COMPLETED, CANCELLED]
     BulkSupplyStatus:
       type: string
       enum: [DRAFT, SENT, ACKNOWLEDGED, PREPARING, IN_TRANSIT, RECEIVED, PARTIALLY_RECEIVED, COMPLETED, CANCELLED]
+    EscrowState:
+      type: string
+      enum: [HELD, RELEASED, REFUNDED]
+    SettlementState:
+      type: string
+      enum: [LOCKED, PENDING, SETTLED]
+    PaymentMethod:
+      type: string
+      enum: [BANK_TRANSFER, USSD]
     Currency:
       type: string
       enum: [NGN]
@@ -1829,6 +1890,7 @@ components:
         subtotal: {$ref: '#/components/schemas/Money'}
 
     Order:
+      description: NEW becomes PAID only on verified provider confirmation. PAID becomes COMPLETED only after ALL required settlements are SETTLED and escrow RELEASED. Financial arrays must be complete, not a filtered or paginated subset.
       type: object
       required: [id, storeId, status, items, subtotal, total, createdAt]
       properties:
@@ -1847,6 +1909,43 @@ components:
         paymentId: {type: [string, 'null'], format: uuid}
         createdAt: {type: string, format: date-time}
         paidAt: {type: [string, 'null'], format: date-time}
+        escrows:
+          type: array
+          readOnly: true
+          items: {$ref: '#/components/schemas/Escrow'}
+        settlements:
+          type: array
+          readOnly: true
+          items: {$ref: '#/components/schemas/Settlement'}
+
+    Escrow:
+      description: Backend-owned funds for a settlement. Created HELD on payment confirmation; RELEASED only after that settlement is SETTLED; REFUNDED on permitted pre-fulfillment cancellation. Never client-writable.
+      type: object
+      required: [id, orderId, paymentId, settlementId, status, amount]
+      properties:
+        id: {type: string, format: uuid}
+        orderId: {type: string, format: uuid}
+        paymentId: {type: string, format: uuid}
+        settlementId: {type: string, format: uuid}
+        status: {$ref: '#/components/schemas/EscrowState'}
+        amount: {$ref: '#/components/schemas/Money'}
+
+    Settlement:
+      description: Backend-owned reconciliation per fulfillment. LOCKED while escrow is HELD, then PENDING only when its non-empty complete shipment set is DELIVERED. SETTLED requires trusted financial reconciliation, never customer input. One order may require multiple settlements.
+      type: object
+      required: [id, orderId, fulfillmentId, supplierBusinessId, escrowId, shipmentIds, status, amount]
+      properties:
+        id: {type: string, format: uuid}
+        orderId: {type: string, format: uuid}
+        fulfillmentId: {type: string, format: uuid}
+        supplierBusinessId: {type: string, format: uuid}
+        escrowId: {type: string, format: uuid}
+        shipmentIds:
+          type: array
+          uniqueItems: true
+          items: {type: string, format: uuid}
+        status: {$ref: '#/components/schemas/SettlementState'}
+        amount: {$ref: '#/components/schemas/Money'}
 
     Payment:
       type: object
@@ -1854,7 +1953,8 @@ components:
       properties:
         id: {type: string, format: uuid}
         orderId: {type: string, format: uuid}
-        provider: {type: string, example: paystack}
+        method: {$ref: '#/components/schemas/PaymentMethod'}
+        provider: {type: string, description: Adapter identifier; MVP providers may include paystack and flutterwave., example: paystack}
         providerReference: {type: string}
         status: {$ref: '#/components/schemas/PaymentStatus'}
         amount: {$ref: '#/components/schemas/Money'}
@@ -1862,6 +1962,7 @@ components:
         createdAt: {type: string, format: date-time}
 
     Inventory:
+      description: Shared physical stock keyed by SupplierProduct, never by retailer listing. availableCount = inventoryCount - reservedCount. Verified payment atomically reserves all order lines (conditional update or row locks); insufficient stock rolls back the entire allocation with INSUFFICIENT_INVENTORY. Unique payment/order allocation keys prevent retries reserving twice. Fulfillment allocatedQuantity draws from this reservation, never a second stock pool.
       type: object
       required: [supplierProductId, inventoryCount, reservedCount, availableCount]
       properties:
@@ -1903,11 +2004,13 @@ components:
         allocatedQuantity: {type: integer, minimum: 0}
 
     DemandBatch:
+      description: Demand grouped by SupplierProduct; release every 2–3 days or early when total pending supplier demand reaches 50 units. Supplier prepares individually pre-labeled customer packages for external 3PL cross-dock.
       type: object
-      required: [id, supplierBusinessId, status, totalUnits]
+      required: [id, supplierBusinessId, supplierProductId, status, totalUnits]
       properties:
         id: {type: string, format: uuid}
         supplierBusinessId: {type: string, format: uuid}
+        supplierProductId: {type: string, format: uuid}
         status: {$ref: '#/components/schemas/DemandBatchStatus'}
         totalUnits: {type: integer, minimum: 0}
         thresholdUnits: {type: integer, minimum: 1, default: 50}
@@ -1943,7 +2046,8 @@ components:
 
     Shipment:
       type: object
-      required: [id, orderId, status, destination]
+      description: Pre-labeled customer package via external 3PL cross-dock and last-mile carrier. FAILED packages return to supplier; no in-hub holding.
+      required: [id, orderId, fulfillmentId, status, destination]
       properties:
         id: {type: string, format: uuid}
         orderId: {type: string, format: uuid}
@@ -1954,7 +2058,6 @@ components:
         providerShipmentId: {type: [string, 'null']}
         destination: {$ref: '#/components/schemas/Address'}
         hubId: {type: [string, 'null'], format: uuid}
-        holdingUntil: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
 
@@ -2209,18 +2312,20 @@ components:
 
     InitializePaymentRequest:
       type: object
-      required: [orderId, callbackUrl]
+      required: [orderId, callbackUrl, method]
       properties:
         orderId: {type: string, format: uuid}
         callbackUrl: {type: string, format: uri}
+        method: {$ref: '#/components/schemas/PaymentMethod'}
 
     PaymentWebhookEvent:
+      description: Internal normalized event after provider verification; not the native webhook wire payload.
       type: object
       required: [event, reference, status, amount]
       properties:
         event: {type: string}
         reference: {type: string}
-        status: {type: string}
+        status: {$ref: '#/components/schemas/PaymentState'}
         amount: {$ref: '#/components/schemas/Money'}
         raw:
           type: object
@@ -2475,6 +2580,7 @@ components:
         message: {type: string}
 
     ErrorResponse:
+      description: Stable error envelope. Domain codes include INSUFFICIENT_INVENTORY, INVALID_PRICING_RULE, UNAUTHORIZED_BUSINESS_ACCESS, INVALID_STATE_TRANSITION, PAYMENT_CONFIRMATION_CONFLICT, SETTLEMENT_NOT_ELIGIBLE and ORDER_NOT_ELIGIBLE_FOR_COMPLETION. Use 403 for denied tenant access and 409 for domain conflicts. Valid duplicate webhooks return WebhookAck (200), not a second financial effect.
       type: object
       required: [error]
       properties:

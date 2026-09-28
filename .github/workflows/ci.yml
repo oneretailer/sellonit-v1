@@ -31,6 +31,12 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Validate OpenAPI
+        run: npm run validate:api
+
+      - name: Check generated API types
+        run: npm run check:api-types
+
       - name: Format
         run: npm run format:check
 
