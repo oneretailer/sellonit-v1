@@ -5,6 +5,7 @@ on:
     paths:
       - "docs/openapi.yaml"
       - "packages/shared/**"
+      - "scripts/check-api-types.mjs"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/api-contract.yml"
@@ -13,6 +14,7 @@ on:
     paths:
       - "docs/openapi.yaml"
       - "packages/shared/**"
+      - "scripts/check-api-types.mjs"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/api-contract.yml"
@@ -34,10 +36,7 @@ jobs:
         run: npm ci
 
       - name: Validate OpenAPI
-        run: npx @redocly/cli lint docs/openapi.yaml
-
-      - name: Generate API types
-        run: npx openapi-typescript docs/openapi.yaml -o packages/shared/src/api.d.ts
+        run: npm run validate:api
 
       - name: Verify generated API types are committed
-        run: git diff --exit-code -- packages/shared/src/api.d.ts
+        run: npm run check:api-types

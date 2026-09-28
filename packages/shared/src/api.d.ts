@@ -1014,7 +1014,7 @@ export interface paths {
                     page?: components["parameters"]["Page"];
                     pageSize?: components["parameters"]["PageSize"];
                     search?: components["parameters"]["Search"];
-                    status?: components["parameters"]["Status"];
+                    status?: components["schemas"]["ProductStatus"];
                     businessId?: components["parameters"]["BusinessQuery"];
                 };
                 header?: never;
@@ -1437,7 +1437,7 @@ export interface paths {
                     page?: components["parameters"]["Page"];
                     pageSize?: components["parameters"]["PageSize"];
                     search?: components["parameters"]["Search"];
-                    status?: components["parameters"]["Status"];
+                    status?: components["schemas"]["ListingStatus"];
                 };
                 header?: never;
                 path: {
@@ -2112,7 +2112,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validate cart and create pending order */
+        /**
+         * Validate a single store cart and create a NEW order
+         * @description No central unified checkout. Revalidate authoritative prices and stock; inventory is reserved atomically only on trusted payment confirmation.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2168,7 +2171,7 @@ export interface paths {
                 query?: {
                     page?: components["parameters"]["Page"];
                     pageSize?: components["parameters"]["PageSize"];
-                    status?: components["parameters"]["Status"];
+                    status?: components["schemas"]["OrderState"];
                     storeId?: components["parameters"]["StoreIdQuery"];
                     dateFrom?: components["parameters"]["DateFrom"];
                     dateTo?: components["parameters"]["DateTo"];
@@ -2272,7 +2275,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cancel order when cancellation policy allows */
+        /**
+         * Cancel order when cancellation policy allows
+         * @description NEW or PAID only, before fulfillment leaves PENDING_BATCH. Refund held escrow and undo reservations idempotently through backend orchestration; reject later cancellation with 409.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2401,19 +2407,35 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Receive payment provider webhook */
+        /**
+         * Receive payment provider webhook
+         * @description Provider-specific raw JSON, verified by the configured provider adapter against
+         *     the unmodified request body before normalization. No browser confirmation.
+         *     Require the selected adapter's signature header; absence or invalid signature
+         *     is 401. Verify reference, amount, NGN currency and order association server-side.
+         *     Deduplicate provider + event/reference durably; valid duplicate deliveries return
+         *     200 without repeating reservation, escrow, settlement, fulfillment or notifications.
+         *     Confirmation and inventory reservation must commit atomically. Insufficient stock
+         *     records a reconciliation conflict without marking the order PAID.
+         *     Never acknowledge unpersisted financial work as successfully processed.
+         */
         post: {
             parameters: {
                 query?: never;
-                header: {
-                    "X-Payment-Signature": components["parameters"]["PaymentSignature"];
+                header?: {
+                    /** @description Required for Paystack; adapter verifies HMAC-SHA512 over raw bytes. */
+                    "x-paystack-signature"?: components["parameters"]["PaymentSignature"];
+                    /** @description Required for the configured Flutterwave HMAC-SHA256 webhook integration; adapter verifies raw bytes using its secret. Legacy verif-hash integrations require a separately configured adapter, never automatic fallback. */
+                    "flutterwave-signature"?: components["parameters"]["FlutterwaveSignature"];
                 };
                 path?: never;
                 cookie?: never;
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["PaymentWebhookEvent"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             responses: {
@@ -2426,6 +2448,8 @@ export interface paths {
                         "application/json": components["schemas"]["WebhookAck"];
                     };
                 };
+                401: components["responses"]["Unauthorized"];
+                409: components["responses"]["Conflict"];
             };
         };
         delete?: never;
@@ -2447,7 +2471,7 @@ export interface paths {
                 query?: {
                     page?: components["parameters"]["Page"];
                     pageSize?: components["parameters"]["PageSize"];
-                    status?: components["parameters"]["Status"];
+                    status?: components["schemas"]["FulfillmentState"];
                     supplierBusinessId?: components["parameters"]["SupplierBusinessId"];
                 };
                 header?: never;
@@ -2512,7 +2536,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update fulfillment operational state */
+        /**
+         * Update fulfillment operational state
+         * @description Authorized operations staff only, scoped to owning business. Enforce PENDING_BATCH -> IN_BULK_REQUEST -> AT_3PL_HUB -> COMPLETED; never complete the order from this update.
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -2554,7 +2581,7 @@ export interface paths {
                 query?: {
                     page?: components["parameters"]["Page"];
                     pageSize?: components["parameters"]["PageSize"];
-                    status?: components["parameters"]["Status"];
+                    status?: components["schemas"]["DemandBatchStatus"];
                     supplierBusinessId?: components["parameters"]["SupplierBusinessId"];
                 };
                 header?: never;
@@ -2664,7 +2691,7 @@ export interface paths {
                 query?: {
                     page?: components["parameters"]["Page"];
                     pageSize?: components["parameters"]["PageSize"];
-                    status?: components["parameters"]["Status"];
+                    status?: components["schemas"]["BulkSupplyStatus"];
                     supplierBusinessId?: components["parameters"]["SupplierBusinessId"];
                 };
                 header?: never;
@@ -2771,7 +2798,7 @@ export interface paths {
                 query?: {
                     page?: components["parameters"]["Page"];
                     pageSize?: components["parameters"]["PageSize"];
-                    status?: components["parameters"]["Status"];
+                    status?: components["schemas"]["ShipmentState"];
                     orderId?: components["parameters"]["OrderIdQuery"];
                 };
                 header?: never;
@@ -3092,7 +3119,7 @@ export interface components {
         /** @enum {string} */
         UserRole: "OWNER" | "ADMIN" | "STAFF" | "SUPPLIER" | "RETAILER";
         /** @enum {string} */
-        BusinessType: "ENTREPRENEUR" | "SUPPLIER" | "ENTERPRISE" | "RETAILER";
+        BusinessType: "SUPPLIER" | "ENTERPRISE" | "RETAILER";
         /** @enum {string} */
         UserStatus: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
         /** @enum {string} */
@@ -3103,18 +3130,28 @@ export interface components {
         ListingStatus: "DRAFT" | "PUBLISHED" | "UNPUBLISHED" | "ARCHIVED";
         /** @enum {string} */
         PricingRuleType: "FLEXIBLE" | "FIXED_MSRP" | "MAP";
+        OrderStatus: components["schemas"]["OrderState"];
         /** @enum {string} */
-        OrderStatus: "PENDING_PAYMENT" | "PAID" | "PROCESSING" | "FULFILLING" | "PARTIALLY_FULFILLED" | "SHIPPED" | "DELIVERED" | "COMPLETED" | "CANCELLED" | "FAILED";
+        OrderState: "NEW" | "PAID" | "COMPLETED" | "CANCELLED";
+        PaymentStatus: components["schemas"]["PaymentState"];
         /** @enum {string} */
-        PaymentStatus: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "REVERSED" | "REFUNDED";
+        PaymentState: "PENDING" | "CONFIRMED" | "FAILED";
+        FulfillmentStatus: components["schemas"]["FulfillmentState"];
         /** @enum {string} */
-        FulfillmentStatus: "PENDING" | "BATCHING" | "AWAITING_SUPPLY" | "SUPPLY_RECEIVED" | "ALLOCATED" | "PACKED" | "SHIPPED" | "COMPLETED" | "FAILED" | "CANCELLED";
+        FulfillmentState: "PENDING_BATCH" | "IN_BULK_REQUEST" | "AT_3PL_HUB" | "COMPLETED";
+        ShipmentStatus: components["schemas"]["ShipmentState"];
         /** @enum {string} */
-        ShipmentStatus: "PENDING" | "LABEL_CREATED" | "AT_3PL_HUB" | "SORTING" | "DISPATCHED" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "DELIVERED" | "DELIVERY_FAILED" | "IN_HUB_HOLDING" | "RETURNING" | "RETURNED" | "CANCELLED";
+        ShipmentState: "PENDING" | "IN_TRANSIT" | "DELIVERED" | "FAILED";
         /** @enum {string} */
         DemandBatchStatus: "OPEN" | "THRESHOLD_REACHED" | "TIME_EXPIRED" | "LOCKED" | "RELEASED" | "COMPLETED" | "CANCELLED";
         /** @enum {string} */
         BulkSupplyStatus: "DRAFT" | "SENT" | "ACKNOWLEDGED" | "PREPARING" | "IN_TRANSIT" | "RECEIVED" | "PARTIALLY_RECEIVED" | "COMPLETED" | "CANCELLED";
+        /** @enum {string} */
+        EscrowState: "HELD" | "RELEASED" | "REFUNDED";
+        /** @enum {string} */
+        SettlementState: "LOCKED" | "PENDING" | "SETTLED";
+        /** @enum {string} */
+        PaymentMethod: "BANK_TRANSFER" | "USSD";
         /** @enum {string} */
         Currency: "NGN";
         Money: {
@@ -3327,6 +3364,7 @@ export interface components {
             retailerMarginAtPurchase?: components["schemas"]["Money"];
             subtotal: components["schemas"]["Money"];
         };
+        /** @description NEW becomes PAID only on verified provider confirmation. PAID becomes COMPLETED only after ALL required settlements are SETTLED and escrow RELEASED. Financial arrays must be complete, not a filtered or paginated subset. */
         Order: {
             /** Format: uuid */
             id: string;
@@ -3347,13 +3385,48 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             paidAt?: string | null;
+            readonly escrows?: components["schemas"]["Escrow"][];
+            readonly settlements?: components["schemas"]["Settlement"][];
+        };
+        /** @description Backend-owned funds for a settlement. Created HELD on payment confirmation; RELEASED only after that settlement is SETTLED; REFUNDED on permitted pre-fulfillment cancellation. Never client-writable. */
+        Escrow: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            /** Format: uuid */
+            paymentId: string;
+            /** Format: uuid */
+            settlementId: string;
+            status: components["schemas"]["EscrowState"];
+            amount: components["schemas"]["Money"];
+        };
+        /** @description Backend-owned reconciliation per fulfillment. LOCKED while escrow is HELD, then PENDING only when its non-empty complete shipment set is DELIVERED. SETTLED requires trusted financial reconciliation, never customer input. One order may require multiple settlements. */
+        Settlement: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            /** Format: uuid */
+            fulfillmentId: string;
+            /** Format: uuid */
+            supplierBusinessId: string;
+            /** Format: uuid */
+            escrowId: string;
+            shipmentIds: string[];
+            status: components["schemas"]["SettlementState"];
+            amount: components["schemas"]["Money"];
         };
         Payment: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             orderId: string;
-            /** @example paystack */
+            method?: components["schemas"]["PaymentMethod"];
+            /**
+             * @description Adapter identifier; MVP providers may include paystack and flutterwave.
+             * @example paystack
+             */
             provider?: string;
             providerReference?: string;
             status: components["schemas"]["PaymentStatus"];
@@ -3363,6 +3436,7 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        /** @description Shared physical stock keyed by SupplierProduct, never by retailer listing. availableCount = inventoryCount - reservedCount. Verified payment atomically reserves all order lines (conditional update or row locks); insufficient stock rolls back the entire allocation with INSUFFICIENT_INVENTORY. Unique payment/order allocation keys prevent retries reserving twice. Fulfillment allocatedQuantity draws from this reservation, never a second stock pool. */
         Inventory: {
             /** Format: uuid */
             supplierProductId: string;
@@ -3402,11 +3476,14 @@ export interface components {
             quantity: number;
             allocatedQuantity?: number;
         };
+        /** @description Demand grouped by SupplierProduct; release every 2–3 days or early when total pending supplier demand reaches 50 units. Supplier prepares individually pre-labeled customer packages for external 3PL cross-dock. */
         DemandBatch: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             supplierBusinessId: string;
+            /** Format: uuid */
+            supplierProductId: string;
             status: components["schemas"]["DemandBatchStatus"];
             totalUnits: number;
             /** @default 50 */
@@ -3444,13 +3521,14 @@ export interface components {
             requestedQuantity: number;
             receivedQuantity?: number;
         };
+        /** @description Pre-labeled customer package via external 3PL cross-dock and last-mile carrier. FAILED packages return to supplier; no in-hub holding. */
         Shipment: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             orderId: string;
             /** Format: uuid */
-            fulfillmentId?: string;
+            fulfillmentId: string;
             status: components["schemas"]["ShipmentStatus"];
             trackingNumber?: string | null;
             provider?: string | null;
@@ -3458,8 +3536,6 @@ export interface components {
             destination: components["schemas"]["Address"];
             /** Format: uuid */
             hubId?: string | null;
-            /** Format: date-time */
-            holdingUntil?: string | null;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -3658,11 +3734,13 @@ export interface components {
             orderId: string;
             /** Format: uri */
             callbackUrl: string;
+            method: components["schemas"]["PaymentMethod"];
         };
+        /** @description Internal normalized event after provider verification; not the native webhook wire payload. */
         PaymentWebhookEvent: {
             event: string;
             reference: string;
-            status: string;
+            status: components["schemas"]["PaymentState"];
             amount: components["schemas"]["Money"];
             raw?: {
                 [key: string]: unknown;
@@ -3809,6 +3887,7 @@ export interface components {
             code?: string;
             message?: string;
         };
+        /** @description Stable error envelope. Domain codes include INSUFFICIENT_INVENTORY, INVALID_PRICING_RULE, UNAUTHORIZED_BUSINESS_ACCESS, INVALID_STATE_TRANSITION, PAYMENT_CONFIRMATION_CONFLICT, SETTLEMENT_NOT_ELIGIBLE and ORDER_NOT_ELIGIBLE_FOR_COMPLETION. Use 403 for denied tenant access and 409 for domain conflicts. Valid duplicate webhooks return WebhookAck (200), not a second financial effect. */
         ErrorResponse: {
             error: {
                 code: string;
@@ -3950,7 +4029,6 @@ export interface components {
         Page: number;
         PageSize: number;
         Search: string;
-        Status: string;
         BusinessQuery: string;
         StoreIdQuery: string;
         SupplierBusinessId: string;
@@ -3963,7 +4041,10 @@ export interface components {
         UnreadOnly: boolean;
         /** @description Unique key for safe retry of a mutating request. Reuse the same key only for the same logical operation. */
         IdempotencyKey: string;
+        /** @description Required for Paystack; adapter verifies HMAC-SHA512 over raw bytes. */
         PaymentSignature: string;
+        /** @description Required for the configured Flutterwave HMAC-SHA256 webhook integration; adapter verifies raw bytes using its secret. Legacy verif-hash integrations require a separately configured adapter, never automatic fallback. */
+        FlutterwaveSignature: string;
         WebhookSignature: string;
     };
     requestBodies: never;

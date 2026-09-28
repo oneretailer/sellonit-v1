@@ -2,9 +2,11 @@
 
 Virtual-inventory commerce and supply-chain platform.
 
-> **Status: empty skeleton.** The tooling, workspaces, Docker setup and CI/CD
-> are in place. No application or business logic has been written — the API,
-> worker and web entry points are minimal starting points.
+> **Status: skeleton with contract and lifecycle guards.** Tooling, workspaces,
+> Docker setup and CI/CD are in place. The v1.0.3 contract and pure commercial
+> lifecycle guards are tested, but API routes, database models, authentication,
+> provider integrations and worker jobs are not implemented. See
+> [the alignment audit](docs/v1.0.3-alignment.md).
 
 ## Repository layout
 
@@ -13,7 +15,7 @@ apps/
   api/        Express REST API + Prisma (PostgreSQL)
     prisma/     Prisma schema (multi-file, no models yet) and migrations
     src/        main.ts entry point; config/, http/middleware/, infrastructure/,
-                modules/<domain>/ folders are empty and ready to fill
+                modules/<domain>/ folders are scaffolded; orders/ contains lifecycle guards
     test/       integration/ tests go here
   worker/     BullMQ background worker (separate process); src/jobs/ is empty
   web/        Next.js frontend (App Router); src/app, src/lib, src/config
@@ -72,8 +74,8 @@ To run everything in containers instead: `docker compose --profile apps up --bui
 | `npm run db:generate` / `db:migrate` / `db:deploy` | Prisma client / dev migration / apply migrations                           |
 | `npm run infra:up` / `infra:down`                  | Start / stop the compose stack                                             |
 
-Test scripts use `--passWithNoTests` because the repository has no tests yet;
-any test you add that fails still fails the run.
+Test scripts retain `--passWithNoTests` for the still-empty workspaces;
+the API lifecycle unit tests run normally and failures fail CI.
 
 ## API contract workflow
 

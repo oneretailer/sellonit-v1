@@ -1,8 +1,11 @@
 # API contract review — `docs/openapi.yaml`
 
-Findings from bootstrapping the repository against the supplied contract.
-Per the contract engineering rules, the contract was **not** changed to resolve
-any of the open items below; each needs a product/API-owner decision.
+Historical findings from bootstrapping. The v1.0.3 alignment now supersedes
+items 3 (payment payload/signature contract only), 4 (grouping and no holding),
+10 (typed status filters) and 14 (documented domain error codes). Runtime
+implementation remains absent. See [the current audit](v1.0.3-alignment.md).
+The remaining findings below are retained as a historical backlog, not a claim
+that the corrected contract still supports holding or the old payment header.
 
 ## Changes already applied (approved)
 
@@ -17,7 +20,7 @@ tightened, and the generated types are unchanged.
 
 `redocly lint` now reports **0 errors, 179 warnings** — breakdown in item 17.
 
-## Open items (contract unchanged)
+## Historical findings (see superseded items above)
 
 ### Security and access
 
