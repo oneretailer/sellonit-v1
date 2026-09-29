@@ -1,12 +1,15 @@
 import type { Request, Response } from 'express';
 type HealthStatus = 'ok' | 'unavailable';
-type ApiStatus = 'service unavailable' |'api is ready'  
+type ApiStatus = 'service unavailable' | 'api is ready';
 
 interface HealthResponse {
   status: HealthStatus | ApiStatus;
 }
 
-export const liveCheck = async (_req: Request, res: Response): Promise<Response<HealthResponse>> => {
+export const liveCheck = async (
+  _req: Request,
+  res: Response,
+): Promise<Response<HealthResponse>> => {
   try {
     // Example:
     // await database.query('SELECT 1');
