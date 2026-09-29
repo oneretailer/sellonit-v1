@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+
 type HealthStatus = 'ok' | 'unavailable';
 type ApiStatus = 'service unavailable' | 'api is ready';
 
@@ -6,29 +7,18 @@ interface HealthResponse {
   status: HealthStatus | ApiStatus;
 }
 
-export const liveCheck = async (
+export const liveCheck = (
   _req: Request,
-  res: Response,
-): Promise<Response<HealthResponse>> => {
-  try {
-    // Example:
-    // await database.query('SELECT 1');
-    // await redis.ping();
-
-    return res.status(200).json({ status: 'ok' });
-  } catch {
-    return res.status(503).json({ status: 'unavailable' });
-  }
+  res: Response<HealthResponse>,
+): Response<HealthResponse> => {
+  return res.status(200).json({ status: 'ok' });
 };
 
-export const readinessCheck = async (
+export const readinessCheck = (
   _req: Request,
-  res: Response,
-): Promise<Response<HealthResponse>> => {
-  try {
-    //check if api dependencies are ready
-    return res.status(200).json({ status: 'api is ready' });
-  } catch {
-    return res.status(503).json({ status: 'service unavailable' });
-  }
+  res: Response<HealthResponse>,
+): Response<HealthResponse> => {
+  // TODO: check dependencies (db, redis) once they exist.
+  // Make this async again when you add awaited calls.
+  return res.status(200).json({ status: 'api is ready' });
 };
