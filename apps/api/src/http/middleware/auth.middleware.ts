@@ -2,16 +2,32 @@ import type { NextFunction, Request, Response } from 'express';
 import { AuthError } from '../../modules/auth/auth.js';
 import { accessTokenCookieName, verifyAccessToken } from '../../modules/auth/auth.service.js';
 
-declare global {
-  namespace Express {
-    interface Request {
-      userId?: string;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    userId?: string;
   }
 }
 
+function cookieValue(cookieHeader: string | undefined, name: string): string | undefined {
+  if (!cookieHeader) return undefined;
+
+  for (const cookie of cookieHeader.split(';')) {
+    const separator = cookie.indexOf('=');
+    if (separator === -1 || cookie.slice(0, separator).trim() !== name) continue;
+
+    const value = cookie.slice(separator + 1).trim();
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const cookieToken = req.cookies?.[accessTokenCookieName];
+  const cookieToken = cookieValue(req.header('cookie'), accessTokenCookieName);
   const authorization = req.header('authorization');
   const match = authorization?.match(/^Bearer\s+([^\s]+)$/i);
   const token = cookieToken ?? match?.[1];
