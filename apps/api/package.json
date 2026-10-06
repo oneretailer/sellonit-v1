@@ -5,10 +5,10 @@
   "description": "Sellonit REST API (Express). Implements docs/openapi.yaml.",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --clear-screen=false --env-file-if-exists=../../.env src/main.ts",
+    "dev": "tsx watch --clear-screen=false --env-file=../../.env src/main.ts",
     "prebuild": "npm run db:generate",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
+    "start": "node --env-file=../../.env dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:integration": "vitest run --config vitest.integration.config.ts --passWithNoTests",
@@ -23,12 +23,18 @@
     "@sellonit/config": "*",
     "@sellonit/queue": "*",
     "@sellonit/shared": "*",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.81.5",
+    "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
-    "ioredis": "^5.11.1"
+    "ioredis": "^5.11.1",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "prisma": "^7.10.0",
     "tsx": "^4.23.15"
   }
