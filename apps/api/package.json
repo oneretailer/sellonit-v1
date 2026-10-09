@@ -28,7 +28,9 @@
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "ioredis": "^5.11.1",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "resend": "^6.1.0",
+    "twilio": "^5.10.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -36,6 +38,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "prisma": "^7.10.0",
+    "colorette": "^2.0.20",
     "tsx": "^4.23.15"
   }
 }
