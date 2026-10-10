@@ -10,14 +10,21 @@ function slugify(value: string): string {
     .replace(/^-|-$/g, '');
 }
 
+function stringField(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
 export async function createBusinessHandler(req: Request, res: Response): Promise<void> {
-  if (!req.userId || typeof req.body?.name !== 'string' || req.body.name.trim().length < 2) {
+  const body = req.body as unknown;
+  const requestName =
+    body && typeof body === 'object' ? (body as Record<string, unknown>).name : undefined;
+  if (!req.userId || !stringField(requestName) || requestName.trim().length < 2) {
     res
       .status(400)
       .json({ error: { code: 'VALIDATION_ERROR', message: 'A business name is required' } });
     return;
   }
-  const name = req.body.name.trim();
+  const name = requestName.trim();
   const slug = `${slugify(name)}-${crypto.randomUUID().slice(0, 8)}`;
   const business = await prisma.business.create({
     data: {

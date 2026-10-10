@@ -69,6 +69,11 @@ function loginInput(body: unknown): LoginInput | null {
   return { email: input.email, password: input.password };
 }
 
+function bodyField(req: Request, key: string): unknown {
+  if (!req.body || typeof req.body !== 'object') return undefined;
+  return (req.body as Record<string, unknown>)[key];
+}
+
 export async function registerHandler(req: Request, res: Response): Promise<void> {
   const input = registerInput(req.body);
   if (!input) {
@@ -127,7 +132,7 @@ export async function meHandler(
 
 export async function verifyEmailHandler(req: Request, res: Response): Promise<void> {
   try {
-    const requestToken = req.params.token ?? req.query.token ?? req.body?.token;
+    const requestToken = req.params.token ?? req.query.token ?? bodyField(req, 'token');
     if (!stringField(requestToken)) {
       throw new AuthError('VALIDATION_ERROR', 'Token is required', 400);
     }
@@ -140,10 +145,11 @@ export async function verifyEmailHandler(req: Request, res: Response): Promise<v
 
 export async function verifyPhoneHandler(req: Request, res: Response): Promise<void> {
   try {
-    if (!stringField(req.body?.token)) {
+    const requestToken = bodyField(req, 'token');
+    if (!stringField(requestToken)) {
       throw new AuthError('VALIDATION_ERROR', 'Token is required', 400);
     }
-    await verifyToken('PHONE', req.body.token);
+    await verifyToken('PHONE', requestToken);
     res.json({ data: { verified: true } });
   } catch (error) {
     sendError(req, res, error);

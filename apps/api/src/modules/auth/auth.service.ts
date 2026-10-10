@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Resend } from 'resend';
 import twilio from 'twilio';
 import { prisma } from '../../infrastructure/db.js';
-import { AuthError, type LoginInput, type PublicUser, type RegisterInput } from './auth.js';
+import { AuthError, type LoginInput, type RegisterInput } from './auth.js';
 import { emailVerificationTemplate } from './templates/email-verification.template.js';
 
 const accessTokenLifetime = 30 * 24 * 60 * 60;
