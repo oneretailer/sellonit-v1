@@ -32,11 +32,7 @@ export function normalizeNigerianPhone(value: string): string | null {
   return null;
 }
 
-async function sendEmail(
-  to: string,
-  firstName: string,
-  verificationToken: string,
-): Promise<void> {
+async function sendEmail(to: string, firstName: string, verificationToken: string): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   if (!key || key.includes('placeholder')) return;
   const template = emailVerificationTemplate({
