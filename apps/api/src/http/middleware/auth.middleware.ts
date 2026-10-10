@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AuthError } from '../../modules/auth/auth.js';
-import { accessTokenCookieName, verifyAccessToken } from '../../modules/auth/auth.service.js';
+import { accessTokenCookieName, getSessionUserId } from '../../modules/auth/auth.service.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -26,7 +26,7 @@ function cookieValue(cookieHeader: string | undefined, name: string): string | u
   return undefined;
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const cookieToken = cookieValue(req.header('cookie'), accessTokenCookieName);
   const authorization = req.header('authorization');
   const match = authorization?.match(/^Bearer\s+([^\s]+)$/i);
@@ -44,7 +44,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   }
 
   try {
-    req.userId = verifyAccessToken(token);
+    req.userId = await getSessionUserId(token);
     next();
   } catch (error) {
     const authError =

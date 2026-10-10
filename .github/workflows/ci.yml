@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        image: public.ecr.aws/docker/library/postgres:17-alpine
         env:
           # Throwaway credentials for an ephemeral CI container; not a secret.
           POSTGRES_USER: sellonit
@@ -71,7 +71,7 @@ jobs:
           --health-timeout 3s
           --health-retries 10
       redis:
-        image: redis:7.4-alpine
+        image: public.ecr.aws/docker/library/redis:7.4-alpine
         ports:
           - 6379:6379
         options: >-

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { AuthError, type LoginInput, type RegisterInput } from './auth.js';
-import { accessTokenCookieName, getUser, login, register } from './auth.service.js';
+import { accessTokenCookieName, getUser, login, register, verifyToken } from './auth.service.js';
 
 type ApiErrorResponse = {
   error: { code: string; message: string; requestId: string };
@@ -69,6 +69,11 @@ function loginInput(body: unknown): LoginInput | null {
   return { email: input.email, password: input.password };
 }
 
+function bodyField(req: Request, key: string): unknown {
+  if (!req.body || typeof req.body !== 'object') return undefined;
+  return (req.body as Record<string, unknown>)[key];
+}
+
 export async function registerHandler(req: Request, res: Response): Promise<void> {
   const input = registerInput(req.body);
   if (!input) {
@@ -76,7 +81,13 @@ export async function registerHandler(req: Request, res: Response): Promise<void
     return;
   }
   try {
-    res.status(201).json({ data: await register(input) });
+    const result = await register(input);
+    res.status(201).json({
+      data: result.user,
+      ...(result.emailVerificationToken
+        ? { emailVerificationToken: result.emailVerificationToken }
+        : {}),
+    });
   } catch (error) {
     sendError(req, res, error);
   }
@@ -93,7 +104,7 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
     res.cookie(accessTokenCookieName, accessToken, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       maxAge: expiresIn * 1000,
       path: '/',
     });
@@ -111,8 +122,35 @@ export async function meHandler(
     sendError(req, res, new AuthError('UNAUTHORIZED', 'Authentication required', 401));
     return;
   }
+
   try {
     res.status(200).json({ data: await getUser(req.userId) });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function verifyEmailHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const requestToken = req.params.token ?? req.query.token ?? bodyField(req, 'token');
+    if (!stringField(requestToken)) {
+      throw new AuthError('VALIDATION_ERROR', 'Token is required', 400);
+    }
+    await verifyToken('EMAIL', requestToken);
+    res.json({ data: { verified: true } });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function verifyPhoneHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const requestToken = bodyField(req, 'token');
+    if (!stringField(requestToken)) {
+      throw new AuthError('VALIDATION_ERROR', 'Token is required', 400);
+    }
+    await verifyToken('PHONE', requestToken);
+    res.json({ data: { verified: true } });
   } catch (error) {
     sendError(req, res, error);
   }
