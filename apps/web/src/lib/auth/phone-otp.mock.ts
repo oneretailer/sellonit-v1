@@ -1,8 +1,9 @@
 /**
- * ⚠️ MOCK — DEVELOPMENT ONLY ⚠️
+ * ⚠️ MOCK — DEVELOPMENT ONLY ⚠️ — DISABLED
  *
  * Stands in for phone-verification endpoints that do not exist in apps/api yet.
- * It is selected by `phone-otp.ts` only when NODE_ENV is not `production`.
+ * DISABLED: `phone-otp.ts` no longer selects it (`PHONE_OTP_MOCK_ENABLED = false`).
+ * The registration flow uses the real POST /auth/verify-phone. Kept, not deleted.
  * It never calls the network, and nothing here is a real security control.
  * Delete this file when the real endpoints are wired.
  *

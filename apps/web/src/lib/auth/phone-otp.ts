@@ -1,18 +1,13 @@
 /**
- * Phone verification for the registration flow.
+ * Phone verification helper, kept for reference and DISABLED.
  *
- * The UI talks to `phoneOtp` only. Two implementations sit behind it:
+ * The registration flow now calls POST /auth/verify-phone directly (see
+ * lib/auth/api.ts). The UI does not import `phoneOtp`.
  *
- * - Production: `unavailableService`. The API has no endpoint yet for
- *   sending, resending or checking a phone code for a phone number that has
- *   not been registered (see the integration gaps in the handoff notes), so it
- *   reports `unavailable` instead of pretending to succeed.
- * - Development: `mockPhoneOtpService` (./phone-otp.mock.ts). It is a MOCK and
- *   exists only so the screens can be built and tested before the endpoints
- *   exist. It is never used in `next build` / `next start`.
- *
- * When the real endpoints land, add a service that calls them, map their
- * failures through `toPhoneOtpError`, and replace the selection below.
+ * `phoneOtp` is `unavailableService` in every build. The dev mock
+ * (./phone-otp.mock.ts) is no longer selected, not even in development. To
+ * re-enable it, change `PHONE_OTP_MOCK_ENABLED` below. The mock file is kept
+ * and not deleted.
  */
 import { ApiError, NetworkError } from '@/lib/api-client';
 import { mockPhoneOtpService } from './phone-otp.mock';
@@ -20,6 +15,9 @@ import { PhoneOtpError, type PhoneOtpErrorKind, type PhoneOtpService } from './p
 
 export { PHONE_OTP_MESSAGES, PhoneOtpError } from './phone-otp.types';
 export type { PhoneOtpErrorKind, PhoneOtpService } from './phone-otp.types';
+
+/** DISABLED. Set to true only to use the dev mock again. */
+const PHONE_OTP_MOCK_ENABLED = false;
 
 /**
  * Maps a failure from the API client to a UI error kind.
@@ -73,6 +71,7 @@ const unavailableService: PhoneOtpService = {
   verifyCode: () => Promise.reject(new PhoneOtpError('unavailable')),
 };
 
-/** The service the UI uses. Mock only outside production builds. */
-export const phoneOtp: PhoneOtpService =
-  process.env.NODE_ENV === 'production' ? unavailableService : mockPhoneOtpService;
+/** Not used by the UI. Disabled, so it always reports `unavailable`. */
+export const phoneOtp: PhoneOtpService = PHONE_OTP_MOCK_ENABLED
+  ? mockPhoneOtpService
+  : unavailableService;

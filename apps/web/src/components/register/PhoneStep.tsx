@@ -1,69 +1,110 @@
 'use client';
 
-import Link from 'next/link';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { StepHeader } from '@/components/auth/StepHeader';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
+import { AuthSwitchPrompt } from '@/components/reuseable/AuthSwitchPrompt';
 import { PhoneField } from '@/components/reuseable/PhoneField';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
-import {
-  PHONE_OTP_MESSAGES,
-  phoneOtp,
-  toPhoneOtpError,
-  type PhoneOtpErrorKind,
-} from '@/lib/auth/phone-otp';
+import { register } from '@/lib/auth/api';
+import { registerErrorMessage } from '@/lib/auth/errors';
 import { isNigerianPhoneDigits, normalizePhoneInput, toLocalPhone } from '@/lib/auth/validation';
 import { useRegisterFlow } from './RegisterFlowContext';
+import type { RegisterFlowState } from './registerFlowReducer';
 
 const HELPER_ID = 'phone-helper';
 const ERROR_ID = 'phone-error';
 
 /**
- * Step 1 of registration: the phone number. It validates only the phone field,
- * requests the verification code, and then moves to the verify step.
+ * Step 4 of registration: the optional phone number. This is the step that
+ * creates the account: POST /auth/register is sent from here, with every
+ * detail collected so far. A phone number makes the API send an SMS code, so
+ * the next step is the code screen. "Skip for now" creates the account
+ * without a phone number.
  */
 export function PhoneStep() {
-  const { state, savePhone, goToNextStep } = useRegisterFlow();
+  const { state, savePhone, markRegistered, goToNextStep } = useRegisterFlow();
   // Initialised from the store, so going back here keeps the number typed earlier.
   const [digits, setDigits] = useState(state.phone ?? '');
-  const [error, setError] = useState<PhoneOtpErrorKind | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void submitPhone();
-  }
+  const { firstName, lastName, email, password } = state;
+  const ready = firstName !== null && lastName !== null && email !== null && password !== null;
+  const alreadyRegistered = state.registered !== null;
 
-  async function submitPhone() {
-    if (submitting) {
-      return;
+  // The account already exists (e.g. the user came back to this step after
+  // registering). Do not offer to create it again: continue to the next step.
+  useEffect(() => {
+    if (alreadyRegistered) {
+      goToNextStep('phone');
     }
-    if (!isNigerianPhoneDigits(digits)) {
-      setError('invalid_phone');
-      inputRef.current?.focus();
+  }, [alreadyRegistered, goToNextStep]);
+
+  async function createAccount(phone: string | null) {
+    if (submitting || !ready) {
       return;
     }
     setError(null);
     setSubmitting(true);
+    savePhone(phone);
     try {
-      await phoneOtp.sendCode(toLocalPhone(digits));
-      savePhone(digits);
-      goToNextStep('phone');
+      const response = await register({
+        email,
+        password,
+        firstName,
+        lastName,
+        ...(phone ? { phone: toLocalPhone(phone) } : {}),
+      });
+      const account = {
+        email,
+        phone,
+        // DEV-ONLY-REMOVE: present only in non-production builds. See DevEmailVerificationPanel.
+        ...(response.emailVerificationToken
+          ? { devEmailVerificationToken: response.emailVerificationToken }
+          : {}),
+      };
+      markRegistered(account);
+      // Pass the new state explicitly: it is not yet in this render's state.
+      const nextState: RegisterFlowState = {
+        ...state,
+        phone,
+        password: null,
+        registered: account,
+        phoneVerified: false,
+      };
+      goToNextStep('phone', nextState);
     } catch (err) {
       setSubmitting(false);
-      setError(toPhoneOtpError(err).kind);
+      setError(registerErrorMessage(err));
     }
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isNigerianPhoneDigits(digits)) {
+      setError(
+        digits.length === 0
+          ? 'Enter your phone number, or choose Skip for now.'
+          : 'Enter a valid Nigerian phone number.',
+      );
+      inputRef.current?.focus();
+      return;
+    }
+    void createAccount(digits);
+  }
+
+  if (alreadyRegistered) {
+    return null;
   }
 
   return (
     <AuthCard>
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold text-ink">Create your account</h1>
-        <p className="text-sm text-subtle">
-          Use your phone number to create an account on sellonit
-        </p>
-      </div>
+      <StepHeader title="Add your phone number">
+        We will use this phone number to verify your account and send you important account updates.
+      </StepHeader>
 
       <form className="flex w-full flex-col gap-6" onSubmit={handleSubmit} noValidate>
         <div className="flex w-full flex-col gap-3 text-left">
@@ -80,38 +121,29 @@ export function PhoneStep() {
             maxLength={14}
             disabled={submitting}
           />
-          {error ? (
-            <InlineError id={ERROR_ID}>
-              {PHONE_OTP_MESSAGES[error]}
-              {error === 'phone_exists' ? (
-                <>
-                  {' '}
-                  <Link href="/auth/login" className="font-semibold text-subtle underline">
-                    Log in
-                  </Link>{' '}
-                  to continue.
-                </>
-              ) : null}
-            </InlineError>
-          ) : (
-            <p id={HELPER_ID} className="text-sm text-gray-500">
-              We will use this phone number to verify your account and send you important account
-              update
-            </p>
-          )}
+          {error ? <InlineError id={ERROR_ID}>{error}</InlineError> : null}
         </div>
 
-        <PrimaryButton type="submit" loading={submitting}>
-          Continue
-        </PrimaryButton>
+        <div className="flex w-full flex-col gap-4">
+          <PrimaryButton type="submit" loading={submitting}>
+            Create account
+          </PrimaryButton>
+          <button
+            type="button"
+            onClick={() => void createAccount(null)}
+            disabled={submitting}
+            className="text-sm font-semibold text-subtle underline underline-offset-2 disabled:opacity-60"
+          >
+            Skip for now
+          </button>
+        </div>
       </form>
 
-      <p className="text-sm text-subtle">
-        Already have an account?{' '}
-        <Link href="/auth/login" className="font-semibold text-subtle underline underline-offset-2">
-          Log in
-        </Link>
-      </p>
+      <AuthSwitchPrompt
+        question="Already have an account?"
+        label="Log in"
+        href="/auth/login/email"
+      />
     </AuthCard>
   );
 }

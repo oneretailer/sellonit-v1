@@ -110,7 +110,7 @@ describe('authErrorMessage', () => {
       ),
     ).toBe('An account with this email already exists. You can log in instead.');
     expect(authErrorMessage(new ApiError(400, 'INVALID_VERIFICATION_TOKEN', 'x'))).toBe(
-      'That code is not correct. Check the text message and try again.',
+      'That verification code or link is invalid or has expired.',
     );
     expect(authErrorMessage(new ApiError(401, 'INVALID_CREDENTIALS', 'x'))).toBe(
       'Email or password is incorrect.',

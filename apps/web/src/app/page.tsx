@@ -14,7 +14,7 @@ export default function WelcomePage() {
           </p>
         </div>
         <div className="flex w-full flex-col items-center gap-5">
-          <PrimaryLinkButton href="/auth/register/phone">Get Started</PrimaryLinkButton>
+          <PrimaryLinkButton href="/auth/register/name">Get Started</PrimaryLinkButton>
           <Link
             href="/auth/login"
             className="text-sm font-medium text-subtle underline-offset-2 hover:text-ink hover:underline"

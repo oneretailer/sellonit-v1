@@ -9,7 +9,7 @@ import { RegisterFlowProvider } from '@/components/register/RegisterFlowProvider
 export default function RegisterLayout({ children }: { children: ReactNode }) {
   return (
     <RegisterFlowProvider>
-      <AuthPage rightLink={{ label: 'Create account', href: '/auth/register/phone' }}>
+      <AuthPage rightLink={{ label: 'Create account', href: '/auth/register/name' }}>
         {children}
       </AuthPage>
     </RegisterFlowProvider>

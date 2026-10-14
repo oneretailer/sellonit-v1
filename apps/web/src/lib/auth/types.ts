@@ -65,6 +65,18 @@ export type VerifyPhoneResponse = {
   };
 };
 
+/** POST /auth/verify-email — request body. `token` is the 64-character hex token from the email link. */
+export type VerifyEmailRequest = {
+  token: string;
+};
+
+/** POST /auth/verify-email — 200 response. */
+export type VerifyEmailResponse = {
+  data: {
+    verified: boolean;
+  };
+};
+
 /** GET /auth/me — 200 response. */
 export type MeResponse = {
   data: AuthUser;

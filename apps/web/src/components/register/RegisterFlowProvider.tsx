@@ -3,8 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useReducer, type ReactNode } from 'react';
 import { RegisterFlowContext, type RegisterFlowContextValue } from './RegisterFlowContext';
-import { initialRegisterFlowState, registerFlowReducer } from './registerFlowReducer';
-import { REGISTER_STEPS, type RegisterStepId } from './registerSteps';
+import {
+  initialRegisterFlowState,
+  registerFlowReducer,
+  type RegisteredAccount,
+  type RegisterFlowState,
+} from './registerFlowReducer';
+import { nextRegisterStep, REGISTER_STEPS, type RegisterStepId } from './registerSteps';
 
 /**
  * Step controller for registration. It holds the data collected across steps
@@ -16,8 +21,24 @@ export function RegisterFlowProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(registerFlowReducer, initialRegisterFlowState);
 
-  const savePhone = useCallback((phone: string) => {
+  const saveName = useCallback((firstName: string, lastName: string) => {
+    dispatch({ type: 'nameSaved', firstName, lastName });
+  }, []);
+
+  const saveEmail = useCallback((email: string) => {
+    dispatch({ type: 'emailSaved', email });
+  }, []);
+
+  const savePassword = useCallback((password: string) => {
+    dispatch({ type: 'passwordSaved', password });
+  }, []);
+
+  const savePhone = useCallback((phone: string | null) => {
     dispatch({ type: 'phoneSaved', phone });
+  }, []);
+
+  const markRegistered = useCallback((account: RegisteredAccount) => {
+    dispatch({ type: 'registered', account });
   }, []);
 
   const markPhoneVerified = useCallback(() => {
@@ -34,36 +55,39 @@ export function RegisterFlowProvider({ children }: { children: ReactNode }) {
     [router],
   );
 
-  const indexOf = useCallback(
-    (id: RegisterStepId) => REGISTER_STEPS.findIndex((candidate) => candidate.id === id),
-    [],
-  );
-
-  const hasNextStep = useCallback(
-    (id: RegisterStepId) => indexOf(id) < REGISTER_STEPS.length - 1,
-    [indexOf],
-  );
-
   const goToNextStep = useCallback(
-    (id: RegisterStepId) => {
-      const next = REGISTER_STEPS[indexOf(id) + 1];
+    (id: RegisterStepId, nextState: RegisterFlowState = state) => {
+      const next = nextRegisterStep(id, nextState);
       if (next) {
         router.push(next.path);
       }
     },
-    [indexOf, router],
+    [router, state],
   );
 
   const value = useMemo<RegisterFlowContextValue>(
     () => ({
       state,
+      saveName,
+      saveEmail,
+      savePassword,
       savePhone,
+      markRegistered,
       markPhoneVerified,
       goToStep,
       goToNextStep,
-      hasNextStep,
     }),
-    [state, savePhone, markPhoneVerified, goToStep, goToNextStep, hasNextStep],
+    [
+      state,
+      saveName,
+      saveEmail,
+      savePassword,
+      savePhone,
+      markRegistered,
+      markPhoneVerified,
+      goToStep,
+      goToNextStep,
+    ],
   );
 
   return <RegisterFlowContext.Provider value={value}>{children}</RegisterFlowContext.Provider>;
