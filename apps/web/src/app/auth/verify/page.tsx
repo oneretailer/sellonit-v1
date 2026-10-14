@@ -7,16 +7,10 @@ export const metadata: Metadata = {
   description: 'Enter the 6-digit code we sent to your phone.',
 };
 
-type VerifyPageProps = {
-  searchParams: Promise<{ phone?: string | string[] }>;
-};
-
-export default async function VerifyPage({ searchParams }: VerifyPageProps) {
-  const params = await searchParams;
-  const phone = typeof params.phone === 'string' ? params.phone : null;
+export default function VerifyPage() {
   return (
     <AuthShell nav={{ label: 'Log in', href: '/auth/login' }}>
-      <VerifyPhoneForm phone={phone} />
+      <VerifyPhoneForm />
     </AuthShell>
   );
 }

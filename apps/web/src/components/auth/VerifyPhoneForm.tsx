@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { RegistrationGuard, useRegistration } from './RegistrationFlow';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { Field } from './Field';
@@ -8,32 +9,29 @@ import { verifyPhone } from '@/lib/auth/api';
 import { authErrorMessage } from '@/lib/auth/errors';
 import { formatPhoneDisplay, isVerificationCode, onlyDigits } from '@/lib/auth/validation';
 
-type VerifyPhoneFormProps = {
-  /** Phone number the user registered with (local `0XXXXXXXXXX` form). */
-  phone: string | null;
-};
-
-const PHONE_PATTERN = /^(0\d{10}|\+234\d{10})$/;
-
-export function VerifyPhoneForm({ phone }: VerifyPhoneFormProps) {
+export function VerifyPhoneForm() {
+  const { state, dispatch, next } = useRegistration();
+  const phone = state.registration?.data.phone ?? null;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [verified, setVerified] = useState(false);
 
-  const validPhone = phone !== null && PHONE_PATTERN.test(phone);
+  const validPhone = phone !== null && /^(0\d{10}|\+234\d{10})$/.test(phone);
 
   if (!validPhone) {
     return (
-      <div>
-        <h1 className="card-title">Verify your phone number</h1>
-        <p className="card-subtitle">
-          Enter your phone number first and we&apos;ll send you a 6-digit verification code.
-        </p>
-        <Link className="btn btn-primary" href="/auth/register">
-          Enter your phone number
-        </Link>
-      </div>
+      <RegistrationGuard allowed={false}>
+        <div>
+          <h1 className="card-title">Verify your phone number</h1>
+          <p className="card-subtitle">
+            Enter your phone number first and we&apos;ll send you a 6-digit verification code.
+          </p>
+          <Link className="btn btn-primary" href="/auth/register">
+            Enter your phone number
+          </Link>
+        </div>
+      </RegistrationGuard>
     );
   }
 
@@ -55,6 +53,7 @@ export function VerifyPhoneForm({ phone }: VerifyPhoneFormProps) {
       const result = await verifyPhone(code);
       setSubmitting(false);
       if (result.data.verified) {
+        dispatch({ type: 'phoneVerified' });
         setVerified(true);
       } else {
         setError('That code is not correct. Check the text message and try again.');
@@ -87,22 +86,22 @@ export function VerifyPhoneForm({ phone }: VerifyPhoneFormProps) {
           Your number is verified. Check your email inbox and click the verification link to finish
           setting up your account, then log in to continue.
         </p>
-        <Link className="btn btn-primary" href="/auth/login">
-          Log in
-        </Link>
+        <button className="btn btn-primary" onClick={() => next('/auth/verify')}>
+          Continue to email verification
+        </button>
         <Link className="link" href="/auth/register">
-          Use a different number
+          Start a new registration
         </Link>
       </div>
     );
   }
 
   return (
-    <div>
+    <RegistrationGuard allowed={Boolean(state.registration && phone)}>
       <h1 className="card-title">Verify your phone number</h1>
       <p className="card-subtitle">
-        We sent a 6-digit code to <strong>{formatPhoneDisplay(phone)}</strong>. Enter it below to
-        verify your number.
+        Your account was created. Check for a 6-digit code sent to{' '}
+        <strong>{formatPhoneDisplay(phone)}</strong>. Enter it below to verify your number.
       </p>
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         <Field
@@ -141,6 +140,9 @@ export function VerifyPhoneForm({ phone }: VerifyPhoneFormProps) {
           Didn&apos;t get a code? It expires 10 minutes after it&apos;s sent.
         </p>
       </form>
-    </div>
+      <button className="link" onClick={() => next('/auth/verify')}>
+        Skip for now — phone verification is optional
+      </button>
+    </RegistrationGuard>
   );
 }

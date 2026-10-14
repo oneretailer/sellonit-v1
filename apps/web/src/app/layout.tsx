@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
+import { RegistrationFlow } from '@/components/auth/RegistrationFlow';
 
 export const metadata: Metadata = {
   title: {
@@ -13,7 +14,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <RegistrationFlow>{children}</RegistrationFlow>
+      </body>
     </html>
   );
 }

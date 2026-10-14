@@ -3,46 +3,26 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRegistration } from './RegistrationFlow';
 import { Field } from './Field';
-import { register } from '@/lib/auth/api';
-import { ApiError } from '@/lib/api-client';
-import { authErrorMessage } from '@/lib/auth/errors';
-import {
-  formatPhoneDisplay,
-  isEmail,
-  isName,
-  isNigerianPhoneDigits,
-  isPassword,
-  onlyDigits,
-  toLocalPhone,
-} from '@/lib/auth/validation';
+import { isEmail, isName, isPassword } from '@/lib/auth/validation';
 
 type FieldErrors = {
-  phone?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
   password?: string;
 };
 
-const FIELD_ORDER: Array<keyof FieldErrors> = [
-  'phone',
-  'firstName',
-  'lastName',
-  'email',
-  'password',
-];
+const FIELD_ORDER: Array<keyof FieldErrors> = ['firstName', 'lastName', 'email', 'password'];
 
 export function CreateAccountForm() {
-  const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const { dispatch, next: advance } = useRegistration();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   function clearFieldError(field: keyof FieldErrors) {
@@ -53,9 +33,6 @@ export function CreateAccountForm() {
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
-    if (!isNigerianPhoneDigits(phone)) {
-      next.phone = 'Enter your 10-digit phone number, e.g. 803 123 4567.';
-    }
     if (!isName(firstName)) {
       next.firstName = 'Enter your first name.';
     }
@@ -76,11 +53,10 @@ export function CreateAccountForm() {
     void submitForm();
   }
 
-  async function submitForm() {
+  function submitForm() {
     if (submitting) {
       return;
     }
-    setServerError(null);
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length > 0) {
@@ -91,64 +67,25 @@ export function CreateAccountForm() {
       return;
     }
     setSubmitting(true);
-    try {
-      await register({
+    dispatch({
+      type: 'details',
+      details: {
         email: email.trim(),
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: toLocalPhone(phone),
-      });
-      // Advance only because the backend confirmed the account was created
-      // and the SMS code was sent. The phone number is preserved for the
-      // verification screen.
-      router.replace(`/auth/verify?phone=${encodeURIComponent(toLocalPhone(phone))}`);
-    } catch (error) {
-      setSubmitting(false);
-      if (error instanceof ApiError && error.code === 'INVALID_PHONE') {
-        setErrors((prev) => ({ ...prev, phone: 'Enter a valid Nigerian phone number.' }));
-      } else {
-        setServerError(authErrorMessage(error));
-      }
-    }
+      },
+    });
+    advance('/auth/register');
   }
-
-  const phoneDisplay = isNigerianPhoneDigits(phone)
-    ? formatPhoneDisplay(toLocalPhone(phone))
-    : null;
 
   return (
     <div>
       <h1 className="card-title">Create your account</h1>
       <p className="card-subtitle">
-        Sell on Sellonit with your phone number. We&apos;ll text you a 6-digit code to verify it.
+        Enter your account details. Next, you can optionally add a phone number.
       </p>
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        {serverError ? (
-          <p className="alert alert-error" role="alert">
-            {serverError}
-          </p>
-        ) : null}
-        <Field
-          id="phone"
-          label="Phone number"
-          prefix="+234"
-          value={phone}
-          onChange={(value) => {
-            setPhone(onlyDigits(value, 10));
-            clearFieldError('phone');
-          }}
-          error={errors.phone}
-          helper={
-            phoneDisplay
-              ? `We’ll send a 6-digit code to ${phoneDisplay}.`
-              : 'We’ll send a 6-digit code to this number.'
-          }
-          inputMode="numeric"
-          autoComplete="tel"
-          placeholder="803 123 4567"
-          maxLength={10}
-        />
         <div className="field-row">
           <Field
             id="firstName"
@@ -214,7 +151,7 @@ export function CreateAccountForm() {
           {submitting ? (
             <>
               <span className="spinner" aria-hidden="true" />
-              Creating your account…
+              Continuing…
             </>
           ) : (
             'Continue'

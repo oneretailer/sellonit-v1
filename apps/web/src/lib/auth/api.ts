@@ -40,3 +40,10 @@ export function verifyPhone(code: string): Promise<VerifyPhoneResponse> {
 export function getMe(): Promise<MeResponse> {
   return apiFetch<MeResponse>('/auth/me', { method: 'GET' });
 }
+
+export function verifyEmail(token: string): Promise<VerifyPhoneResponse> {
+  return apiFetch<VerifyPhoneResponse>('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}

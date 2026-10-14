@@ -22,7 +22,7 @@ export function authErrorMessage(error: unknown): string {
       case 'INVALID_PHONE':
         return 'Enter a valid Nigerian phone number.';
       case 'INVALID_VERIFICATION_TOKEN':
-        return 'That code is not correct. Check the text message and try again.';
+        return 'That verification code or link is invalid, expired, or already used. Check it and try again.';
       case 'INVALID_CREDENTIALS':
         return 'Email or password is incorrect.';
       case 'EMAIL_NOT_VERIFIED':
@@ -33,6 +33,8 @@ export function authErrorMessage(error: unknown): string {
         return 'Please check the details you entered and try again.';
       case 'UNAUTHORIZED':
         return 'Your session has expired. Log in again to continue.';
+      case 'INTERNAL_ERROR':
+        return 'Something went wrong on our side. Please try again in a moment.';
       case 'USER_NOT_FOUND':
         return 'We could not find that account. Log in to continue.';
       default:
