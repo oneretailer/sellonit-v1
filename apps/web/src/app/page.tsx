@@ -1,20 +1,28 @@
+import { PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
+import { AuthCard } from '@/components/reuseable/AuthCard';
+import { AuthPage } from '@/components/reuseable/AuthPage';
 import Link from 'next/link';
 
-export default function HomePage() {
+export default function WelcomePage() {
   return (
-    <div className="auth-page">
-      <header className="auth-header">
-        <span className="wordmark">Sellonit</span>
-        <Link href="/auth/register" className="auth-nav">
-          Create account
-        </Link>
-      </header>
-      <main className="home-main">
-        <h1 className="home-title">Sellonit</h1>
-        <Link href="/auth/register" className="btn btn-primary home-cta">
-          Create your account
-        </Link>
-      </main>
-    </div>
+    <AuthPage rightLink={{ label: 'Learn more', href: '/learn-more', variant: 'pill' }}>
+      <AuthCard className="min-h-[480px] justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <h1 className="text-2xl font-bold text-ink">Build your business on sellonit</h1>
+          <p className="max-w-sm text-sm text-subtle">
+            Create your account and set up the business you want to run on your platform
+          </p>
+        </div>
+        <div className="flex w-full flex-col items-center gap-5">
+          <PrimaryLinkButton href="/auth/register/phone">Get Started</PrimaryLinkButton>
+          <Link
+            href="/auth/login"
+            className="text-sm font-medium text-subtle underline-offset-2 hover:text-ink hover:underline"
+          >
+            Log in
+          </Link>
+        </div>
+      </AuthCard>
+    </AuthPage>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
 import { getMe } from '@/lib/auth/api';
 import { ApiError } from '@/lib/api-client';
 import { formatPhoneDisplay } from '@/lib/auth/validation';
@@ -48,71 +48,92 @@ export function AccountPanel() {
 
   if (state.status === 'loading') {
     return (
-      <div className="loading-panel">
-        <span className="spinner" aria-hidden="true" />
-        <p className="field-helper">Checking your session…</p>
+      <div className="flex flex-col items-center gap-3 py-6">
+        <span
+          className="size-4 animate-spin rounded-full border-2 border-ink/25 border-t-ink"
+          aria-hidden="true"
+        />
+        <p className="text-sm text-gray-500">Checking your session…</p>
       </div>
     );
   }
 
   if (state.status === 'signedOut') {
     return (
-      <div>
-        <h1 className="card-title">You&apos;re not signed in</h1>
-        <p className="card-subtitle">Log in to see your Sellonit account.</p>
-        <Link className="btn btn-primary" href="/auth/login">
-          Log in
-        </Link>
+      <div className="flex flex-col items-center gap-6 text-center">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-2xl font-bold text-ink">You&apos;re not signed in</h1>
+          <p className="text-sm text-subtle">Log in to see your Sellonit account.</p>
+        </div>
+        <PrimaryLinkButton href="/auth/login">Log in</PrimaryLinkButton>
       </div>
     );
   }
 
   if (state.status === 'error') {
     return (
-      <div>
-        <h1 className="card-title">We couldn&apos;t load your account</h1>
-        <p className="card-subtitle">Something went wrong. Check your connection and try again.</p>
-        <Link className="btn btn-primary" href="/auth/login">
-          Log in
-        </Link>
+      <div className="flex flex-col items-center gap-6 text-center">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-2xl font-bold text-ink">We couldn&apos;t load your account</h1>
+          <p className="text-sm text-subtle">
+            Something went wrong. Check your connection and try again.
+          </p>
+        </div>
+        <PrimaryLinkButton href="/auth/login">Log in</PrimaryLinkButton>
       </div>
     );
   }
 
   const { user } = state;
   return (
-    <div>
-      <h1 className="card-title">You&apos;re signed in</h1>
-      <p className="card-subtitle">Hi {user.firstName}, this is your Sellonit account.</p>
-      <ul className="account-list">
-        <li className="account-row">
-          <span className="account-key">Email</span>
-          <span className="account-value">{user.email}</span>
-        </li>
-        <li className="account-row">
-          <span className="account-key">Phone</span>
-          <span className="account-value">
-            {user.phone ? formatPhoneDisplay(user.phone) : 'Not provided'}
-          </span>
-        </li>
-        <li className="account-row">
-          <span className="account-key">Email verification</span>
-          <span className={user.emailVerifiedAt ? 'badge badge-verified' : 'badge badge-pending'}>
-            {user.emailVerifiedAt ? 'Verified' : 'Pending'}
-          </span>
-        </li>
-        <li className="account-row">
-          <span className="account-key">Phone verification</span>
-          <span className={user.phoneVerifiedAt ? 'badge badge-verified' : 'badge badge-pending'}>
-            {user.phoneVerifiedAt ? 'Verified' : 'Pending'}
-          </span>
-        </li>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 text-center">
+        <h1 className="text-2xl font-bold text-ink">You&apos;re signed in</h1>
+        <p className="text-sm text-subtle">Hi {user.firstName}, this is your Sellonit account.</p>
+      </div>
+      <ul className="flex flex-col gap-3 border-t border-line pt-5">
+        <AccountRow label="Email" value={user.email} />
+        <AccountRow
+          label="Phone"
+          value={user.phone ? formatPhoneDisplay(user.phone) : 'Not provided'}
+        />
+        <AccountRow label="Email verification" verified={Boolean(user.emailVerifiedAt)} />
+        <AccountRow label="Phone verification" verified={Boolean(user.phoneVerifiedAt)} />
       </ul>
       {!user.emailVerifiedAt ? (
-        <p className="field-helper">
+        <p className="text-sm text-gray-500">
           Check your inbox for the verification link — you&apos;ll need it before you can log in.
         </p>
       ) : null}
     </div>
+  );
+}
+
+function AccountRow({
+  label,
+  value,
+  verified,
+}: {
+  label: string;
+  value?: string;
+  verified?: boolean;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-subtle">{label}</span>
+      {verified === undefined ? (
+        <span className="text-right font-semibold break-words">{value}</span>
+      ) : (
+        <span
+          className={
+            verified
+              ? 'rounded-full bg-success/10 px-3 py-0.5 text-xs font-semibold text-success'
+              : 'rounded-full bg-canvas px-3 py-0.5 text-xs font-semibold text-subtle'
+          }
+        >
+          {verified ? 'Verified' : 'Pending'}
+        </span>
+      )}
+    </li>
   );
 }

@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Field } from './Field';
+import { useState, type FormEvent } from 'react';
+import { InlineError } from '@/components/reuseable/InlineError';
+import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
+import { TextField } from '@/components/reuseable/TextField';
 import { login } from '@/lib/auth/api';
 import { authErrorMessage } from '@/lib/auth/errors';
 import { isEmail } from '@/lib/auth/validation';
 
+/**
+ * Email and password login. This is the existing single-form flow; it is not
+ * part of the registration step controller, and it has not been redesigned yet.
+ */
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -33,11 +38,7 @@ export function LoginForm() {
     setEmailError(nextEmailError);
     setPasswordError(nextPasswordError);
     if (nextEmailError || nextPasswordError) {
-      if (nextEmailError) {
-        document.getElementById('email')?.focus();
-      } else {
-        document.getElementById('password')?.focus();
-      }
+      document.getElementById(nextEmailError ? 'email' : 'password')?.focus();
       return;
     }
     setSubmitting(true);
@@ -52,16 +53,16 @@ export function LoginForm() {
   }
 
   return (
-    <div>
-      <h1 className="card-title">Log in</h1>
-      <p className="card-subtitle">Welcome back. Enter your email and password to continue.</p>
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        {serverError ? (
-          <p className="alert alert-error" role="alert">
-            {serverError}
-          </p>
-        ) : null}
-        <Field
+    <>
+      <div className="flex flex-col gap-3 text-center">
+        <h1 className="text-2xl font-bold text-ink">Log in</h1>
+        <p className="text-sm text-subtle">
+          Welcome back. Enter your email and password to continue.
+        </p>
+      </div>
+      <form className="flex w-full flex-col gap-6" onSubmit={handleSubmit} noValidate>
+        {serverError ? <InlineError>{serverError}</InlineError> : null}
+        <TextField
           id="email"
           label="Email"
           type="email"
@@ -76,7 +77,7 @@ export function LoginForm() {
           autoComplete="email"
           placeholder="you@example.com"
         />
-        <Field
+        <TextField
           id="password"
           label="Password"
           type="password"
@@ -91,28 +92,19 @@ export function LoginForm() {
           autoComplete="current-password"
           placeholder="Your password"
         />
-        <button
-          className="btn btn-primary"
-          type="submit"
-          disabled={submitting}
-          aria-busy={submitting}
-        >
-          {submitting ? (
-            <>
-              <span className="spinner" aria-hidden="true" />
-              Logging in…
-            </>
-          ) : (
-            'Log in'
-          )}
-        </button>
+        <PrimaryButton type="submit" loading={submitting}>
+          Log in
+        </PrimaryButton>
       </form>
-      <p className="card-footer">
+      <p className="text-center text-sm text-subtle">
         New to Sellonit?{' '}
-        <Link className="link" href="/auth/register">
+        <Link
+          className="font-semibold text-subtle underline underline-offset-2"
+          href="/auth/register/phone"
+        >
           Create your account
         </Link>
       </p>
-    </div>
+    </>
   );
 }

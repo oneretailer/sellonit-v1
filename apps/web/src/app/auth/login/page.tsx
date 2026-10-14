@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import { AuthShell } from '@/components/auth/AuthShell';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { AuthCard } from '@/components/reuseable/AuthCard';
+import { AuthPage } from '@/components/reuseable/AuthPage';
 
 export const metadata: Metadata = {
   title: 'Log in',
@@ -9,8 +10,10 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <AuthShell nav={{ label: 'Create account', href: '/auth/register' }}>
-      <LoginForm />
-    </AuthShell>
+    <AuthPage rightLink={{ label: 'Create account', href: '/auth/register/phone' }}>
+      <AuthCard className="items-stretch text-left">
+        <LoginForm />
+      </AuthCard>
+    </AuthPage>
   );
 }
