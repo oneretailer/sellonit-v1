@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { LoginStepView } from '@/components/login/LoginStepView';
 import { isLoginStepId, LOGIN_STEPS } from '@/components/login/loginSteps';
+import { isEmail } from '@/lib/auth/validation';
 
 export const dynamicParams = false;
 
@@ -11,6 +12,7 @@ export function generateStaticParams() {
 
 type LoginStepPageProps = {
   params: Promise<{ step: string }>;
+  searchParams: Promise<{ email?: string | string[] }>;
 };
 
 export async function generateMetadata({ params }: LoginStepPageProps): Promise<Metadata> {
@@ -19,10 +21,14 @@ export async function generateMetadata({ params }: LoginStepPageProps): Promise<
   return { title: definition?.title ?? 'Log in' };
 }
 
-export default async function LoginStepPage({ params }: LoginStepPageProps) {
+export default async function LoginStepPage({ params, searchParams }: LoginStepPageProps) {
   const { step } = await params;
   if (!isLoginStepId(step)) {
     notFound();
   }
-  return <LoginStepView stepId={step} />;
+  // Only a well-formed email is accepted from the query string. Never a password.
+  const { email } = await searchParams;
+  const value = Array.isArray(email) ? email[0] : email;
+  const initialEmail = value && isEmail(value) ? value : undefined;
+  return <LoginStepView stepId={step} initialEmail={initialEmail} />;
 }

@@ -9,8 +9,14 @@ import { PhoneField } from '@/components/reuseable/PhoneField';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { register } from '@/lib/auth/api';
 import { registerErrorMessage } from '@/lib/auth/errors';
+import {
+  EMAIL_EXISTS_NOTICE,
+  loginEmailPath,
+  registerFailureAction,
+} from '@/lib/auth/existingAccount';
 import { isNigerianPhoneDigits, normalizePhoneInput, toLocalPhone } from '@/lib/auth/validation';
 import { useRegisterFlow } from './RegisterFlowContext';
+import { useDelayedLoginRedirect } from './useDelayedLoginRedirect';
 import type { RegisterFlowState } from './registerFlowReducer';
 
 const HELPER_ID = 'phone-helper';
@@ -25,6 +31,7 @@ const ERROR_ID = 'phone-error';
  */
 export function PhoneStep() {
   const { state, savePhone, markRegistered, goToNextStep } = useRegisterFlow();
+  const redirectToLogin = useDelayedLoginRedirect();
   // Initialised from the store, so going back here keeps the number typed earlier.
   const [digits, setDigits] = useState(state.phone ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +84,13 @@ export function PhoneStep() {
       };
       goToNextStep('phone', nextState);
     } catch (err) {
+      // 409 EMAIL_ALREADY_EXISTS: the email is registered. The fallback when the
+      // email-exists check is disabled. Keep the spinner until the redirect.
+      if (registerFailureAction(err).kind === 'account-exists') {
+        setError(EMAIL_EXISTS_NOTICE);
+        redirectToLogin(loginEmailPath(email));
+        return;
+      }
       setSubmitting(false);
       setError(registerErrorMessage(err));
     }

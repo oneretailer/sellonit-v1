@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { StepHeader } from '@/components/auth/StepHeader';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
@@ -70,14 +71,23 @@ export function LoginPasswordStep() {
         </PrimaryButton>
       </form>
 
-      <button
-        type="button"
-        onClick={() => goToStep('email')}
-        disabled={submitting}
-        className="text-sm font-semibold text-subtle underline underline-offset-2 disabled:opacity-60"
-      >
-        Use a different email
-      </button>
+      <div className="flex w-full flex-col gap-4">
+        {/* TODO(backend): forgot-password. The page is a "coming soon" placeholder with no API call. See app/auth/forgot-password. */}
+        <Link
+          href="/auth/forgot-password"
+          className="text-sm font-semibold text-subtle underline underline-offset-2"
+        >
+          Forgot password?
+        </Link>
+        <button
+          type="button"
+          onClick={() => goToStep('email')}
+          disabled={submitting}
+          className="text-sm font-semibold text-subtle underline underline-offset-2 disabled:opacity-60"
+        >
+          Use a different email
+        </button>
+      </div>
     </AuthCard>
   );
 }

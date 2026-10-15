@@ -92,3 +92,22 @@ export function normalizePhoneInput(raw: string): string {
 export function formatLocalPhoneSpaced(digits: string): string {
   return `0${digits.slice(0, 2)} ${digits.slice(2)}`;
 }
+
+export type PasswordStepErrors = { password?: string; confirm?: string };
+
+/**
+ * Checks the password step. The rules match the backend (8 to 128 characters).
+ * The confirmation is compared exactly. It is never stored in the flow state.
+ */
+export function validatePasswordStep(password: string, confirm: string): PasswordStepErrors {
+  const errors: PasswordStepErrors = {};
+  if (!isPassword(password)) {
+    errors.password = `Use between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters for your password.`;
+  }
+  if (confirm.length === 0) {
+    errors.confirm = 'Re-enter your password to confirm it.';
+  } else if (confirm !== password) {
+    errors.confirm = 'Passwords do not match.';
+  }
+  return errors;
+}

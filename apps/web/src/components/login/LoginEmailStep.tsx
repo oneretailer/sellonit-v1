@@ -8,11 +8,12 @@ import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { TextField } from '@/components/reuseable/TextField';
 import { isEmail } from '@/lib/auth/validation';
 import { useLoginFlow } from './LoginFlowProvider';
+import type { LoginStepProps } from './loginSteps';
 
 /** Login step 1: email address. */
-export function LoginEmailStep() {
+export function LoginEmailStep({ initialEmail }: LoginStepProps) {
   const { state, saveEmail, goToStep } = useLoginFlow();
-  const [email, setEmail] = useState(state.email ?? '');
+  const [email, setEmail] = useState(state.email ?? initialEmail ?? '');
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {

@@ -6,7 +6,13 @@ import { useLoginFlow } from './LoginFlowProvider';
 import { LOGIN_STEPS, type LoginStepId } from './loginSteps';
 
 /** Renders one login step after checking it may be entered. Otherwise redirects to the email step. */
-export function LoginStepView({ stepId }: { stepId: LoginStepId }) {
+export function LoginStepView({
+  stepId,
+  initialEmail,
+}: {
+  stepId: LoginStepId;
+  initialEmail?: string;
+}) {
   const router = useRouter();
   const { state } = useLoginFlow();
   const step = LOGIN_STEPS.find((candidate) => candidate.id === stepId);
@@ -24,5 +30,5 @@ export function LoginStepView({ stepId }: { stepId: LoginStepId }) {
   }
 
   const { Component } = step;
-  return <Component />;
+  return <Component initialEmail={initialEmail} />;
 }

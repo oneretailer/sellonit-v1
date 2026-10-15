@@ -6,24 +6,38 @@ import { AuthCard } from '@/components/reuseable/AuthCard';
 import { AuthSwitchPrompt } from '@/components/reuseable/AuthSwitchPrompt';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { TextField } from '@/components/reuseable/TextField';
-import { isPassword, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from '@/lib/auth/validation';
+import {
+  MIN_PASSWORD_LENGTH,
+  validatePasswordStep,
+  type PasswordStepErrors,
+} from '@/lib/auth/validation';
 import { useRegisterFlow } from './RegisterFlowContext';
 
 /**
- * Step 3 of registration: password. It is held in memory only and is dropped
- * when the account is created.
+ * Step 3 of registration: password and its confirmation.
+ *
+ * Only the password is stored in the flow state. The confirmation lives in this
+ * component and is dropped when the step unmounts. The mismatch message shows on
+ * blur or submit, not on every keystroke.
  */
 export function PasswordStep() {
   const { state, savePassword, goToNextStep } = useRegisterFlow();
+  // Initialised from the store, so going back here keeps the password typed earlier.
   const [password, setPassword] = useState(state.password ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState('');
+  const [errors, setErrors] = useState<PasswordStepErrors>({});
+
+  function handleConfirmBlur() {
+    if (confirm.length > 0 && confirm !== password) {
+      setErrors((current) => ({ ...current, confirm: 'Passwords do not match.' }));
+    }
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!isPassword(password)) {
-      setError(
-        `Use between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters for your password.`,
-      );
+    const next = validatePasswordStep(password, confirm);
+    setErrors(next);
+    if (next.password || next.confirm) {
       return;
     }
     savePassword(password);
@@ -37,18 +51,33 @@ export function PasswordStep() {
       </StepHeader>
 
       <form className="flex w-full flex-col gap-6" onSubmit={handleSubmit} noValidate>
-        <TextField
-          id="password"
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(value) => {
-            setPassword(value);
-            setError(null);
-          }}
-          error={error}
-        />
+        <div className="flex w-full flex-col gap-4">
+          <TextField
+            id="password"
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(value) => {
+              setPassword(value);
+              setErrors((current) => ({ ...current, password: undefined }));
+            }}
+            error={errors.password}
+          />
+          <TextField
+            id="confirmPassword"
+            label="Confirm password"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(value) => {
+              setConfirm(value);
+              setErrors((current) => ({ ...current, confirm: undefined }));
+            }}
+            onBlur={handleConfirmBlur}
+            error={errors.confirm}
+          />
+        </div>
 
         <PrimaryButton type="submit">Continue</PrimaryButton>
       </form>

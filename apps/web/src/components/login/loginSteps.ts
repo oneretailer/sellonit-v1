@@ -8,12 +8,17 @@ export type LoginFlowState = {
   email: string | null;
 };
 
+export type LoginStepProps = {
+  /** Email from the query string (e.g. after the "account already exists" redirect). */
+  initialEmail?: string;
+};
+
 export type LoginStepDefinition<Id extends string = string> = {
   id: Id;
   path: Route;
   title: string;
   canEnter: (state: LoginFlowState) => boolean;
-  Component: ComponentType;
+  Component: ComponentType<LoginStepProps>;
 };
 
 /**
