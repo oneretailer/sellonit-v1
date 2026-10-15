@@ -77,3 +77,15 @@ export function emailLinkErrorMessage(error: unknown): string {
   }
   return authErrorMessage(error);
 }
+
+/**
+ * Whether a failed verification may succeed if the same request is sent again.
+ * Network failures and server errors are transient (the token is only consumed
+ * on success, so retrying is safe); an invalid or expired token is not.
+ */
+export function isRetryableAuthError(error: unknown): boolean {
+  if (error instanceof NetworkError) {
+    return true;
+  }
+  return error instanceof ApiError && error.status >= 500;
+}

@@ -19,9 +19,88 @@ export function isPassword(value: string): boolean {
   return value.length >= MIN_PASSWORD_LENGTH && value.length <= MAX_PASSWORD_LENGTH;
 }
 
+/**
+ * A valid name is one or more letter-only parts separated by spaces, hyphens
+ * or apostrophes (Anne-Marie, O'Connor, Mary Jane). `\p{L}` matches any
+ * Unicode letter, so accented and non-Latin names work; numbers, symbols and
+ * markup characters (`<`, `>`, quotes, backticks) never match, which also
+ * keeps XSS payloads out of the field. Runs of separators are tolerated
+ * (`Anne - Marie`); the value is tested after trimming.
+ */
+const NAME_PATTERN = /^[\p{L}]+(?:[ '-]+[\p{L}]+)*$/u;
+
+/** Characters that may appear in a name: Unicode letters plus these separators. */
+const NAME_ALLOWED_CHARS_PATTERN = /[^\p{L} '-]/gu;
+
+/** Separator/whitespace runs inside a name, collapsed to a single character. */
+const NAME_SEPARATOR_RUN_PATTERN = /[ '-]{2,}/gu;
+const NAME_WHITESPACE_RUN_PATTERN = /\s+/gu;
+
+/** Message shown when the user types a character a name cannot contain. */
+export const NAME_INVALID_CHARACTERS_MESSAGE =
+  'Names can only contain letters, spaces, hyphens, and apostrophes.';
+
 export function isName(value: string): boolean {
   const trimmed = value.trim();
-  return trimmed.length >= 1 && trimmed.length <= NAME_MAX_LENGTH;
+  return trimmed.length >= 1 && trimmed.length <= NAME_MAX_LENGTH && NAME_PATTERN.test(trimmed);
+}
+
+export type SanitizedName = {
+  /** The input with invalid characters removed and each name part capitalized. */
+  value: string;
+  /** True when at least one character was stripped (numbers, symbols, markup, ...). */
+  removedInvalidCharacters: boolean;
+};
+
+/**
+ * Cleans and formats raw name input as the user types:
+ *
+ *   1. strips every character that is not a letter, space, hyphen or apostrophe
+ *      (so numbers, symbols and XSS payloads cannot stay in the field),
+ *   2. collapses whitespace and separator runs to a single character,
+ *   3. capitalizes the first letter of every name part (`mary-jane o'connor`
+ *      → `Mary-Jane O'Connor`), leaving the rest of each part as typed,
+ *   4. caps the value at {@link NAME_MAX_LENGTH} characters.
+ */
+export function sanitizeNameInput(raw: string): SanitizedName {
+  const stripped = raw.replace(NAME_ALLOWED_CHARS_PATTERN, '');
+  const collapsed = stripped
+    .replace(NAME_WHITESPACE_RUN_PATTERN, ' ')
+    .replace(NAME_SEPARATOR_RUN_PATTERN, (run) => run[0] ?? '');
+  const capitalized = collapsed.replace(
+    /(^|[\s'-])(\p{L})/gu,
+    (_match, separator: string, letter: string) => separator + letter.toUpperCase(),
+  );
+  return {
+    value: capitalized.slice(0, NAME_MAX_LENGTH),
+    removedInvalidCharacters: stripped.length !== raw.length,
+  };
+}
+
+export type NameStepErrors = { firstName?: string; lastName?: string };
+
+/**
+ * Checks the name step and returns a user-friendly message per field. The
+ * messages say exactly what to change: empty, characters a name cannot
+ * contain, or over the length limit.
+ */
+export function validateNameStep(firstName: string, lastName: string): NameStepErrors {
+  const errors: NameStepErrors = {};
+  for (const [key, value] of [
+    ['firstName', firstName],
+    ['lastName', lastName],
+  ] as const) {
+    const label = key === 'firstName' ? 'first name' : 'last name';
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      errors[key] = `Enter your ${label}.`;
+    } else if (!NAME_PATTERN.test(trimmed)) {
+      errors[key] = NAME_INVALID_CHARACTERS_MESSAGE;
+    } else if (trimmed.length > NAME_MAX_LENGTH) {
+      errors[key] = `Keep your ${label} to ${NAME_MAX_LENGTH} characters or fewer.`;
+    }
+  }
+  return errors;
 }
 
 /**

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError, NetworkError } from '@/lib/api-client';
-import { emailLinkErrorMessage, phoneCodeErrorMessage, registerErrorMessage } from './errors';
+import {
+  emailLinkErrorMessage,
+  isRetryableAuthError,
+  phoneCodeErrorMessage,
+  registerErrorMessage,
+} from './errors';
 
 describe('registerErrorMessage', () => {
   it('maps duplicate email, invalid phone and validation failures', () => {
@@ -45,5 +50,19 @@ describe('emailLinkErrorMessage', () => {
     expect(emailLinkErrorMessage(new ApiError(400, 'INVALID_VERIFICATION_TOKEN', 'x'))).toBe(
       'This verification link is invalid or has expired. Request a new one by registering again.',
     );
+  });
+});
+
+describe('isRetryableAuthError', () => {
+  it('allows retrying network failures and server errors', () => {
+    expect(isRetryableAuthError(new NetworkError())).toBe(true);
+    expect(isRetryableAuthError(new ApiError(500, 'INTERNAL_ERROR', 'x'))).toBe(true);
+    expect(isRetryableAuthError(new ApiError(503, null, 'x'))).toBe(true);
+  });
+
+  it('does not retry invalid tokens or client errors', () => {
+    expect(isRetryableAuthError(new ApiError(400, 'INVALID_VERIFICATION_TOKEN', 'x'))).toBe(false);
+    expect(isRetryableAuthError(new ApiError(400, 'VALIDATION_ERROR', 'x'))).toBe(false);
+    expect(isRetryableAuthError(new Error('boom'))).toBe(false);
   });
 });
