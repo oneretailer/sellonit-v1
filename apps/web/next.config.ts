@@ -27,6 +27,47 @@ const allowedDevOrigins = (process.env.WEB_ALLOWED_DEV_ORIGINS ?? '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const isDev = process.env.NODE_ENV !== 'production';
+
+/**
+ * Content Security Policy.
+ *
+ * - The browser only talks to same-origin `/api/v1/*` (proxied by `rewrites`
+ *   below), so `connect-src 'self'` covers the API. The internal API URL is
+ *   deliberately NOT listed: it is server-side only and would leak an internal
+ *   hostname into every response.
+ * - `'unsafe-inline'` in `script-src` is required by the App Router, which
+ *   emits inline bootstrap scripts for hydration. Removing it needs per-request
+ *   nonces via middleware; that is a follow-up, not part of this config.
+ * - `'unsafe-eval'` and websockets are added in development only, for React's
+ *   debug build and the HMR socket.
+ * - Fonts are self-hosted by `next/font`, so no Google Fonts origins are needed.
+ */
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  `connect-src 'self'${isDev ? ' ws: wss:' : ''}`,
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+const securityHeaders = [
+  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+];
+
 const nextConfig: NextConfig = {
   allowedDevOrigins,
   output: 'standalone',
@@ -36,6 +77,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   typedRoutes: true,
+  headers() {
+    // Applied to every route, including static assets.
+    return Promise.resolve([{ source: '/:path*', headers: securityHeaders }]);
+  },
   rewrites() {
     // Browser code calls same-origin `/api/v1/...`; Next proxies to the API.
     // This avoids CORS in local/dev setups and never exposes internal hostnames.

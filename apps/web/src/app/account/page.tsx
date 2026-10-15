@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import { AuthShell } from '@/components/auth/AuthShell';
 import { AccountPanel } from '@/components/auth/AccountPanel';
+import { AuthCard } from '@/components/reuseable/AuthCard';
+import { AuthPage } from '@/components/reuseable/AuthPage';
 
 export const metadata: Metadata = {
   title: 'Your account',
@@ -9,8 +10,10 @@ export const metadata: Metadata = {
 
 export default function AccountPage() {
   return (
-    <AuthShell>
-      <AccountPanel />
-    </AuthShell>
+    <AuthPage>
+      <AuthCard className="items-stretch text-left">
+        <AccountPanel />
+      </AuthCard>
+    </AuthPage>
   );
 }

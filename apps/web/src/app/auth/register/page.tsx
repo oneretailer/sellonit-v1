@@ -1,16 +1,7 @@
-import type { Metadata } from 'next';
-import { AuthShell } from '@/components/auth/AuthShell';
-import { CreateAccountForm } from '@/components/auth/CreateAccountForm';
+import { redirect } from 'next/navigation';
+import { REGISTER_STEPS } from '@/components/register/registerSteps';
 
-export const metadata: Metadata = {
-  title: 'Create your account',
-  description: 'Create your Sellonit account with your phone number.',
-};
-
-export default function RegisterPage() {
-  return (
-    <AuthShell nav={{ label: 'Log in', href: '/auth/login' }}>
-      <CreateAccountForm />
-    </AuthShell>
-  );
+/** `/auth/register` has no content of its own; it opens the first step. */
+export default function RegisterIndexPage() {
+  redirect(REGISTER_STEPS[0].path);
 }

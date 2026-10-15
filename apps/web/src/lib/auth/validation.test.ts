@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { ApiError, NetworkError } from '@/lib/api-client';
 import { authErrorMessage } from './errors';
 import {
+  formatLocalPhoneSpaced,
   formatPhoneDisplay,
   isEmail,
   isName,
   isNigerianPhoneDigits,
   isPassword,
   isVerificationCode,
+  normalizePhoneInput,
   onlyDigits,
   toLocalPhone,
 } from './validation';
@@ -108,7 +110,7 @@ describe('authErrorMessage', () => {
       ),
     ).toBe('An account with this email already exists. You can log in instead.');
     expect(authErrorMessage(new ApiError(400, 'INVALID_VERIFICATION_TOKEN', 'x'))).toBe(
-      'That code is not correct. Check the text message and try again.',
+      'That verification code or link is invalid or has expired.',
     );
     expect(authErrorMessage(new ApiError(401, 'INVALID_CREDENTIALS', 'x'))).toBe(
       'Email or password is incorrect.',
@@ -135,5 +137,27 @@ describe('authErrorMessage', () => {
       'Something went wrong. Please try again.',
     );
     expect(authErrorMessage('boom')).toBe('Something went wrong. Please try again.');
+  });
+});
+
+describe('normalizePhoneInput', () => {
+  it('keeps the 10 national digits and drops formatting', () => {
+    expect(normalizePhoneInput('8072994315')).toBe('8072994315');
+    expect(normalizePhoneInput('807 299 4315')).toBe('8072994315');
+  });
+
+  it('drops a pasted leading 0 or country code', () => {
+    expect(normalizePhoneInput('08072994315')).toBe('8072994315');
+    expect(normalizePhoneInput('+2348072994315')).toBe('8072994315');
+  });
+
+  it('caps the length at 10 digits', () => {
+    expect(normalizePhoneInput('80729943159999')).toBe('8072994315');
+  });
+});
+
+describe('formatLocalPhoneSpaced', () => {
+  it('formats national digits as the verification copy shows them', () => {
+    expect(formatLocalPhoneSpaced('8072994315')).toBe('080 72994315');
   });
 });

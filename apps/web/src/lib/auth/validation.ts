@@ -68,3 +68,46 @@ export function isVerificationCode(value: string): boolean {
 export function onlyDigits(value: string, maxLength = 6): string {
   return value.replace(/\D/g, '').slice(0, maxLength);
 }
+
+/**
+ * Normalises raw input from the phone field to the 10 national digits
+ * (`8031234567`). Pasting or typing a leading `0` (`08031234567`) or the
+ * country code (`2348031234567`) is accepted and the prefix is dropped.
+ */
+export function normalizePhoneInput(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length > 10 && digits.startsWith('234')) {
+    digits = digits.slice(3);
+  } else if (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 10);
+}
+
+/**
+ * Display form used in the verification copy, matching the design example:
+ * `8072994315` → `080 72994315` (leading 0, then a space after the first three
+ * characters of the local number).
+ */
+export function formatLocalPhoneSpaced(digits: string): string {
+  return `0${digits.slice(0, 2)} ${digits.slice(2)}`;
+}
+
+export type PasswordStepErrors = { password?: string; confirm?: string };
+
+/**
+ * Checks the password step. The rules match the backend (8 to 128 characters).
+ * The confirmation is compared exactly. It is never stored in the flow state.
+ */
+export function validatePasswordStep(password: string, confirm: string): PasswordStepErrors {
+  const errors: PasswordStepErrors = {};
+  if (!isPassword(password)) {
+    errors.password = `Use between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters for your password.`;
+  }
+  if (confirm.length === 0) {
+    errors.confirm = 'Re-enter your password to confirm it.';
+  } else if (confirm !== password) {
+    errors.confirm = 'Passwords do not match.';
+  }
+  return errors;
+}
