@@ -19,8 +19,6 @@ import {
   type RegisterFormValues,
 } from '@/lib/validation/auth';
 import type {
-  LoginRequest,
-  LoginResponse,
   MeResponse,
   RegisterUserRequest,
   RegisterUserResponse,
@@ -105,13 +103,6 @@ export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
     return mockVerifyEmail(token);
   }
   return verifyEmailRequest(token);
-}
-
-export function login(input: LoginRequest): Promise<LoginResponse> {
-  return apiFetch<LoginResponse>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
 }
 
 export function getMe(): Promise<MeResponse> {
