@@ -1,11 +1,10 @@
 /**
  * Frontend types for the Sellonit auth API.
  *
- * Shapes mirror the *implemented* backend contract (apps/api, read-only) and
- * reuse the generated OpenAPI types from @sellonit/shared where they match.
- * A few operations are not yet in docs/openapi.yaml (verify-phone and the
- * register/login response wrappers), so they are typed here directly from the
- * implementation — no fields are invented.
+ * Shapes mirror the backend contract in docs/auth-registration-contract.md
+ * and reuse the generated OpenAPI types from @sellonit/shared where they match.
+ * `VerifyEmailResponse` and the login response wrapper are typed here directly
+ * from the implementation — no fields are invented.
  */
 import type { components } from '@sellonit/shared';
 
@@ -23,24 +22,22 @@ export type AuthUser = {
   updatedAt: string;
 };
 
-/** POST /auth/register — request body (matches `RegisterRequest`). */
-export type RegisterRequest = {
+/** POST /api/v1/auth/register — request body (contract: `fullName`, `email`, `password`). */
+export type RegisterUserRequest = {
+  /** Full name as typed (2-80 chars). The API derives firstName/lastName from it. */
+  fullName: string;
+  /** Normalised (trimmed, lowercased) before sending. */
   email: string;
+  /** Sent exactly as typed — never trimmed. */
   password: string;
-  firstName: string;
-  lastName: string;
-  /** Nigerian phone in the local form `0XXXXXXXXXX`; the API normalises it to `+234...`. */
-  phone?: string;
 };
 
-/** POST /auth/register — 201 response. */
-export type RegisterResponse = {
+/** POST /api/v1/auth/register — 201 response. */
+export type RegisterUserResponse = {
   data: AuthUser;
-  /** Present in development/test builds only; used to verify the email. */
-  emailVerificationToken?: string;
 };
 
-/** POST /auth/login — request body (matches `LoginRequest`). */
+/** POST /api/v1/auth/login — request body (matches `LoginRequest`). */
 export type LoginRequest = {
   email: string;
   password: string;
@@ -53,19 +50,20 @@ export type LoginResponse = {
   expiresIn: number;
 };
 
-/** POST /auth/verify-phone — request body. `token` is the 6-digit SMS code. */
-export type VerifyPhoneRequest = {
-  token: string;
+/** POST /api/v1/auth/resend-verification — request body. */
+export type ResendVerificationRequest = {
+  /** Normalised (trimmed, lowercased) before sending. */
+  email: string;
 };
 
-/** POST /auth/verify-phone — 200 response. */
-export type VerifyPhoneResponse = {
+/** POST /api/v1/auth/resend-verification — 202 response (sent regardless of account existence). */
+export type ResendVerificationResponse = {
   data: {
-    verified: boolean;
+    sent: boolean;
   };
 };
 
-/** POST /auth/verify-email — request body. `token` is the 64-character hex token from the email link. */
+/** POST /api/v1/auth/verify-email — request body. `token` is the 64-character hex token from the email link. */
 export type VerifyEmailRequest = {
   token: string;
 };

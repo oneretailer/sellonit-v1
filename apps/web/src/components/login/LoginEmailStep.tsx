@@ -52,7 +52,7 @@ export function LoginEmailStep({ initialEmail }: LoginStepProps) {
       <AuthSwitchPrompt
         question="New to Sellonit?"
         label="Create your account"
-        href="/auth/register/name"
+        href="/auth/register"
       />
     </AuthCard>
   );

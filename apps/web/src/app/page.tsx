@@ -27,7 +27,7 @@ export default function WelcomePage() {
         {/* buttons */}
         <div className="flex w-full flex-col px-3 items-center gap-3 lg:gap-4">
           <Link
-            href="/auth/register/name"
+            href="/auth/register"
             className="
               flex h-14 w-full items-center justify-center rounded-full
               bg-[#FF8B00] px-6 py-3 text-xl font-semibold leading-7 text-ink

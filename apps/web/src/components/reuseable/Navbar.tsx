@@ -5,7 +5,12 @@ import { cn } from '@/lib/cn';
 
 export type NavbarLink = {
   label: string;
-  href: Route;
+  /**
+   * Omit for plain header text (no navigation) — e.g. the "Account details"
+   * label on Create account. Backwards compatible: every existing usage
+   * passes an href and renders as before.
+   */
+  href?: Route;
   /** `pill` renders a small white chip; `text` renders a plain gray link. */
   variant?: 'pill' | 'text';
 };
@@ -30,17 +35,20 @@ export function Navbar({ rightLink }: NavbarProps) {
             className="h-8 w-auto sm:h-9"
           />
         </Link>
-        {rightLink ? (
+        {rightLink?.href ? (
           <Link
             href={rightLink.href}
             className={cn(
               'text-[24px] font-medium hidden lg:flex text-subtle transition-colors hover:text-ink',
-              rightLink.variant === 'pill' &&
-                'rounded-[12px] bg-surface px-5 py-2 hover:bg-canvas',
+              rightLink.variant === 'pill' && 'rounded-[12px] bg-surface px-5 py-2 hover:bg-canvas',
             )}
           >
             {rightLink.label}
           </Link>
+        ) : rightLink ? (
+          <span className="text-[24px] font-medium hidden lg:flex text-subtle">
+            {rightLink.label}
+          </span>
         ) : null}
       </nav>
     </header>

@@ -6,7 +6,7 @@ import { AuthPage } from '@/components/reuseable/AuthPage';
 export default function LoginLayout({ children }: { children: ReactNode }) {
   return (
     <LoginFlowProvider>
-      <AuthPage rightLink={{ label: 'Create account', href: '/auth/register/name' }}>
+      <AuthPage rightLink={{ label: 'Create account', href: '/auth/register' }}>
         {children}
       </AuthPage>
     </LoginFlowProvider>

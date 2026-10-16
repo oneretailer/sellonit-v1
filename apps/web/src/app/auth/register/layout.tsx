@@ -1,17 +1,11 @@
 import type { ReactNode } from 'react';
 import { AuthPage } from '@/components/reuseable/AuthPage';
-import { RegisterFlowProvider } from '@/components/register/RegisterFlowProvider';
 
 /**
- * Shared layout for the registration steps. The provider keeps the data
- * collected across steps mounted, and every step shows the same navbar.
+ * Shared shell for Create account (and the legacy step URLs that redirect
+ * into it). Figma "account details" frame: logo top-left, plain "Account
+ * details" text top-right (not a link, hence no href).
  */
 export default function RegisterLayout({ children }: { children: ReactNode }) {
-  return (
-    <RegisterFlowProvider>
-      <AuthPage rightLink={{ label: 'Create account', href: '/auth/register/name' }}>
-        {children}
-      </AuthPage>
-    </RegisterFlowProvider>
-  );
+  return <AuthPage rightLink={{ label: 'Account details', variant: 'text' }}>{children}</AuthPage>;
 }
