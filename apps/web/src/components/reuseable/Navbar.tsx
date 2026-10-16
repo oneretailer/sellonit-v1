@@ -34,9 +34,9 @@ export function Navbar({ rightLink }: NavbarProps) {
           <Link
             href={rightLink.href}
             className={cn(
-              'text-sm font-medium text-subtle transition-colors hover:text-ink',
+              'text-[24px] font-medium hidden lg:flex text-subtle transition-colors hover:text-ink',
               rightLink.variant === 'pill' &&
-                'rounded-full bg-surface px-5 py-2 shadow-card hover:bg-canvas',
+                'rounded-[12px] bg-surface px-5 py-2 hover:bg-canvas',
             )}
           >
             {rightLink.label}
