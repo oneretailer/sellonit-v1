@@ -4,9 +4,7 @@ import { CheckEmailStep } from './CheckEmailStep';
 import { EmailStep } from './EmailStep';
 import { NameStep } from './NameStep';
 import { PasswordStep } from './PasswordStep';
-import { PhoneStep } from './PhoneStep';
 import type { RegisterFlowState } from './registerFlowReducer';
-import { VerifyPhoneStep } from './VerifyPhoneStep';
 
 export type RegisterStepDefinition<Id extends string = string> = {
   id: Id;
@@ -24,8 +22,7 @@ export type RegisterStepDefinition<Id extends string = string> = {
 /**
  * The registration steps, in the order the backend supports:
  *
- *   name → email → password → phone (optional; POST /auth/register runs here)
- *     → verify-phone (only if a phone number was given)
+ *   name → email → password (POST /auth/register runs here)
  *     → check-email (verify the email link, then log in)
  *
  * Adding a step: write its component in its own file, then add one entry here.
@@ -38,7 +35,7 @@ export const REGISTER_STEPS = [
     path: '/auth/register/name',
     title: 'Create your account',
     canEnter: () => true,
-    isSkipped: () => false,
+    isSkipped: (_state) => false,
     Component: NameStep,
   },
   {
@@ -46,7 +43,7 @@ export const REGISTER_STEPS = [
     path: '/auth/register/email',
     title: 'Your email address',
     canEnter: (state) => state.firstName !== null && state.lastName !== null,
-    isSkipped: () => false,
+    isSkipped: (_state) => false,
     Component: EmailStep,
   },
   {
@@ -54,34 +51,15 @@ export const REGISTER_STEPS = [
     path: '/auth/register/password',
     title: 'Create a password',
     canEnter: (state) => state.email !== null,
-    isSkipped: () => false,
+    isSkipped: (_state) => false,
     Component: PasswordStep,
-  },
-  {
-    id: 'phone',
-    path: '/auth/register/phone',
-    title: 'Phone number',
-    // Also enterable once the account exists: the password is cleared on success,
-    // and this step must not redirect away while it hands off to the next step.
-    canEnter: (state) => state.password !== null || state.registered !== null,
-    isSkipped: () => false,
-    Component: PhoneStep,
-  },
-  {
-    id: 'verify-phone',
-    path: '/auth/register/verify-phone',
-    title: 'Verify your phone number',
-    // The account must exist, and a code is only sent when a phone number was given.
-    canEnter: (state) => state.registered !== null && state.phone !== null,
-    isSkipped: (state) => state.phone === null,
-    Component: VerifyPhoneStep,
   },
   {
     id: 'check-email',
     path: '/auth/register/check-email',
     title: 'Check your email',
     canEnter: (state) => state.registered !== null,
-    isSkipped: () => false,
+    isSkipped: (_state) => false,
     Component: CheckEmailStep,
   },
 ] as const satisfies readonly RegisterStepDefinition[];

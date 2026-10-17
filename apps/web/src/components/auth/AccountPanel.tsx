@@ -1,10 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { InlineError } from '@/components/reuseable/InlineError';
+import { PhoneField } from '@/components/reuseable/PhoneField';
 import { PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
-import { getMe } from '@/lib/auth/api';
+import { getMe, updatePhone } from '@/lib/auth/api';
 import { ApiError } from '@/lib/api-client';
-import { formatPhoneDisplay } from '@/lib/auth/validation';
+import {
+  formatPhoneDisplay,
+  isNigerianPhoneDigits,
+  normalizePhoneInput,
+  toLocalPhone,
+} from '@/lib/auth/validation';
 import type { AuthUser } from '@/lib/auth/types';
 
 type PanelState =
@@ -20,6 +27,9 @@ type PanelState =
  */
 export function AccountPanel() {
   const [state, setState] = useState<PanelState>({ status: 'loading' });
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [savingPhone, setSavingPhone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,6 +38,7 @@ export function AccountPanel() {
         const result = await getMe();
         if (!cancelled) {
           setState({ status: 'user', user: result.data });
+          setPhoneDigits(result.data.phone ? normalizePhoneInput(result.data.phone) : '');
         }
       } catch (error) {
         if (cancelled) {
@@ -85,6 +96,23 @@ export function AccountPanel() {
   }
 
   const { user } = state;
+  function handlePhoneSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isNigerianPhoneDigits(phoneDigits)) {
+      setPhoneError('Enter a valid Nigerian phone number.');
+      return;
+    }
+    setSavingPhone(true);
+    setPhoneError(null);
+    void updatePhone(toLocalPhone(phoneDigits))
+      .then((result) => setState({ status: 'user', user: result.data }))
+      .catch((error: unknown) => {
+        setPhoneError(
+          error instanceof ApiError ? error.message : 'We could not save your phone number.',
+        );
+      })
+      .finally(() => setSavingPhone(false));
+  }
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 text-center">
@@ -100,6 +128,30 @@ export function AccountPanel() {
         <AccountRow label="Email verification" verified={Boolean(user.emailVerifiedAt)} />
         <AccountRow label="Phone verification" verified={Boolean(user.phoneVerifiedAt)} />
       </ul>
+      <form
+        className="flex flex-col gap-3 border-t border-line pt-5"
+        onSubmit={handlePhoneSubmit}
+        noValidate
+      >
+        <PhoneField
+          id="account-phone"
+          value={phoneDigits}
+          onChange={(value) => {
+            setPhoneDigits(normalizePhoneInput(value));
+            setPhoneError(null);
+          }}
+          error={phoneError !== null}
+          disabled={savingPhone}
+        />
+        {phoneError ? <InlineError id="account-phone-error">{phoneError}</InlineError> : null}
+        <button
+          type="submit"
+          disabled={savingPhone}
+          className="self-start rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {savingPhone ? 'Saving…' : user.phone ? 'Update phone' : 'Add phone'}
+        </button>
+      </form>
       {!user.emailVerifiedAt ? (
         <p className="text-sm text-gray-500">
           Check your inbox for the verification link — you&apos;ll need it before you can log in.
