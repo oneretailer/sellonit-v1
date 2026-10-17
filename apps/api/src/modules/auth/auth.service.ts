@@ -8,6 +8,8 @@ import { emailVerificationTemplate } from './templates/email-verification.templa
 
 const accessTokenLifetime = 30 * 24 * 60 * 60;
 export const accessTokenCookieName = 'sellonit_access_token';
+// Keep login timing consistent when the submitted email does not exist.
+const dummyPasswordHash = '$2b$12$nQyAVFYP61EJpA51Hcf1oObfpXwQdkF.xCtlkHCfo6yZ4HVMdsEp2';
 const publicUserSelect = {
   id: true,
   email: true,
@@ -132,7 +134,8 @@ export async function sendPhoneVerification(email: string): Promise<void> {
     select: { id: true, phone: true, phoneVerifiedAt: true },
   });
   if (!user) throw new AuthError('USER_NOT_FOUND', 'No account was found for this email', 404);
-  if (!user.phone) throw new AuthError('PHONE_NOT_SET', 'No phone number is associated with this account', 400);
+  if (!user.phone)
+    throw new AuthError('PHONE_NOT_SET', 'No phone number is associated with this account', 400);
   if (user.phoneVerifiedAt)
     throw new AuthError('PHONE_ALREADY_VERIFIED', 'This phone number is already verified', 409);
 
@@ -169,7 +172,11 @@ export async function login(input: LoginInput) {
     where: { email: normalizeEmail(input.email) },
     select: { ...publicUserSelect, passwordHash: true },
   });
-  if (!user || !(await bcrypt.compare(input.password, user.passwordHash)))
+  const passwordMatches = await bcrypt.compare(
+    input.password,
+    user?.passwordHash ?? dummyPasswordHash,
+  );
+  if (!user || !passwordMatches)
     throw new AuthError('INVALID_CREDENTIALS', 'Email or password is incorrect', 401);
   if (user.status !== 'ACTIVE')
     throw new AuthError('ACCOUNT_UNAVAILABLE', 'This account is not active', 403);
