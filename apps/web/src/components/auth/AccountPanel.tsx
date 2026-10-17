@@ -6,7 +6,12 @@ import { PhoneField } from '@/components/reuseable/PhoneField';
 import { PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
 import { getMe, updatePhone } from '@/lib/auth/api';
 import { ApiError } from '@/lib/api-client';
-import { formatPhoneDisplay, isNigerianPhoneDigits, normalizePhoneInput, toLocalPhone } from '@/lib/auth/validation';
+import {
+  formatPhoneDisplay,
+  isNigerianPhoneDigits,
+  normalizePhoneInput,
+  toLocalPhone,
+} from '@/lib/auth/validation';
 import type { AuthUser } from '@/lib/auth/types';
 
 type PanelState =
@@ -102,7 +107,9 @@ export function AccountPanel() {
     void updatePhone(toLocalPhone(phoneDigits))
       .then((result) => setState({ status: 'user', user: result.data }))
       .catch((error: unknown) => {
-        setPhoneError(error instanceof ApiError ? error.message : 'We could not save your phone number.');
+        setPhoneError(
+          error instanceof ApiError ? error.message : 'We could not save your phone number.',
+        );
       })
       .finally(() => setSavingPhone(false));
   }
@@ -121,7 +128,11 @@ export function AccountPanel() {
         <AccountRow label="Email verification" verified={Boolean(user.emailVerifiedAt)} />
         <AccountRow label="Phone verification" verified={Boolean(user.phoneVerifiedAt)} />
       </ul>
-      <form className="flex flex-col gap-3 border-t border-line pt-5" onSubmit={handlePhoneSubmit} noValidate>
+      <form
+        className="flex flex-col gap-3 border-t border-line pt-5"
+        onSubmit={handlePhoneSubmit}
+        noValidate
+      >
         <PhoneField
           id="account-phone"
           value={phoneDigits}
