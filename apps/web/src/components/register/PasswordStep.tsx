@@ -5,6 +5,9 @@ import { StepHeader } from '@/components/auth/StepHeader';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { AuthSwitchPrompt } from '@/components/reuseable/AuthSwitchPrompt';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
+import { register } from '@/lib/auth/api';
+import { registerErrorMessage } from '@/lib/auth/errors';
+import { EMAIL_EXISTS_NOTICE, registerFailureAction } from '@/lib/auth/existingAccount';
 import { TextField } from '@/components/reuseable/TextField';
 import {
   MIN_PASSWORD_LENGTH,
@@ -21,11 +24,12 @@ import { useRegisterFlow } from './RegisterFlowContext';
  * blur or submit, not on every keystroke.
  */
 export function PasswordStep() {
-  const { state, savePassword, goToNextStep } = useRegisterFlow();
+  const { state, savePassword, markRegistered, goToNextStep } = useRegisterFlow();
   // Initialised from the store, so going back here keeps the password typed earlier.
   const [password, setPassword] = useState(state.password ?? '');
   const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<PasswordStepErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
   function handleConfirmBlur() {
     if (confirm.length > 0 && confirm !== password) {
@@ -40,8 +44,42 @@ export function PasswordStep() {
     if (next.password || next.confirm) {
       return;
     }
-    savePassword(password);
-    goToNextStep('password');
+    if (!state.firstName || !state.lastName || !state.email || submitting) {
+      return;
+    }
+    const { firstName, lastName, email } = state;
+    setSubmitting(true);
+    void register({
+      email,
+      password,
+      firstName,
+      lastName,
+    })
+      .then((response) => {
+        const account = {
+          email,
+          phone: null,
+          ...(response.emailVerificationToken
+            ? { devEmailVerificationToken: response.emailVerificationToken }
+            : {}),
+        };
+        savePassword(password);
+        markRegistered(account);
+        goToNextStep('password', {
+          ...state,
+          password: null,
+          phone: null,
+          registered: account,
+        });
+      })
+      .catch((error: unknown) => {
+        if (registerFailureAction(error).kind === 'account-exists') {
+          setErrors({ password: EMAIL_EXISTS_NOTICE });
+        } else {
+          setErrors({ password: registerErrorMessage(error) });
+        }
+        setSubmitting(false);
+      });
   }
 
   return (
@@ -79,7 +117,9 @@ export function PasswordStep() {
           />
         </div>
 
-        <PrimaryButton type="submit">Continue</PrimaryButton>
+        <PrimaryButton type="submit" loading={submitting}>
+          Create account
+        </PrimaryButton>
       </form>
 
       <AuthSwitchPrompt

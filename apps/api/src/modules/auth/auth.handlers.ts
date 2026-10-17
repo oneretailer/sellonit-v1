@@ -1,6 +1,14 @@
 import type { Request, Response } from 'express';
-import { AuthError, type LoginInput, type RegisterInput } from './auth.js';
-import { accessTokenCookieName, getUser, login, register, verifyToken } from './auth.service.js';
+import { AuthError, type LoginInput, type RegisterInput, type UpdatePhoneInput } from './auth.js';
+import {
+  accessTokenCookieName,
+  getUser,
+  login,
+  register,
+  updatePhone,
+  sendPhoneVerification,
+  verifyToken,
+} from './auth.service.js';
 
 type ApiErrorResponse = {
   error: { code: string; message: string; requestId: string };
@@ -45,15 +53,19 @@ function registerInput(body: unknown): RegisterInput | null {
   if (input.password.length < 8 || input.password.length > 128) return null;
   if (input.firstName.trim().length < 1 || input.firstName.trim().length > 80) return null;
   if (input.lastName.trim().length < 1 || input.lastName.trim().length > 80) return null;
-  if (input.phone !== undefined && (!stringField(input.phone) || input.phone.length > 30))
-    return null;
   return {
     email: input.email,
     password: input.password,
     firstName: input.firstName,
     lastName: input.lastName,
-    phone: input.phone,
   };
+}
+
+function updatePhoneInput(body: unknown): UpdatePhoneInput | null {
+  if (!body || typeof body !== 'object') return null;
+  const input = body as Record<string, unknown>;
+  if (!stringField(input.phone) || input.phone.length > 30) return null;
+  return { phone: input.phone };
 }
 
 function loginInput(body: unknown): LoginInput | null {
@@ -130,6 +142,23 @@ export async function meHandler(
   }
 }
 
+export async function updatePhoneHandler(req: Request, res: Response): Promise<void> {
+  if (!req.userId) {
+    sendError(req, res, new AuthError('UNAUTHORIZED', 'Authentication required', 401));
+    return;
+  }
+  const input = updatePhoneInput(req.body);
+  if (!input) {
+    sendError(req, res, new AuthError('VALIDATION_ERROR', 'A valid phone number is required', 400));
+    return;
+  }
+  try {
+    res.status(200).json({ data: await updatePhone(req.userId, input.phone) });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
 export async function verifyEmailHandler(req: Request, res: Response): Promise<void> {
   try {
     const requestToken = req.params.token ?? req.query.token ?? bodyField(req, 'token');
@@ -151,6 +180,19 @@ export async function verifyPhoneHandler(req: Request, res: Response): Promise<v
     }
     await verifyToken('PHONE', requestToken);
     res.json({ data: { verified: true } });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function sendPhoneVerificationHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const email = bodyField(req, 'email');
+    if (!stringField(email) || !emailField(email)) {
+      throw new AuthError('VALIDATION_ERROR', 'A valid email is required', 400);
+    }
+    await sendPhoneVerification(email);
+    res.json({ data: { sent: true } });
   } catch (error) {
     sendError(req, res, error);
   }

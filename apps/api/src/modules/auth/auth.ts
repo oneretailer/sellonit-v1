@@ -15,10 +15,10 @@ export type RegisterInput = {
   password: string;
   firstName: string;
   lastName: string;
-  phone?: string;
 };
 
 export type LoginInput = { email: string; password: string };
+export type UpdatePhoneInput = { phone: string };
 
 export class AuthError extends Error {
   public readonly code: string;
