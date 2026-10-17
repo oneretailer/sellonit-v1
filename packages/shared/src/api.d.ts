@@ -3182,7 +3182,6 @@ export interface components {
             email: string;
             firstName?: string;
             lastName?: string;
-            phone?: string;
             status: components["schemas"]["UserStatus"];
             /** Format: date-time */
             emailVerifiedAt?: string | null;
@@ -3569,7 +3568,6 @@ export interface components {
             password: string;
             firstName: string;
             lastName: string;
-            phone?: string;
         };
         VerifyEmailRequest: {
             token: string;

@@ -52,27 +52,47 @@ async function sendEmail(to: string, firstName: string, verificationToken: strin
 async function sendSms(to: string, code: string): Promise<void> {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const auth = process.env.TWILIO_AUTH_TOKEN;
-  if (!sid || !auth || sid.includes('000000') || auth.includes('placeholder')) return;
-  await twilio(sid, auth).messages.create({
-    to,
-    from: process.env.TWILIO_FROM_NUMBER ?? '',
-    body: `Your Sellonit verification code is ${code}`,
-  });
+  const from = process.env.TWILIO_FROM_NUMBER;
+  if (!sid || !auth || !from || sid.includes('000000') || auth.includes('placeholder')) {
+    throw new AuthError(
+      'SMS_NOT_CONFIGURED',
+      'Phone verification is unavailable because Twilio is not configured correctly',
+      503,
+    );
+  }
+  try {
+    await twilio(sid, auth).messages.create({
+      to,
+      from,
+      body: `Your Sellonit verification code is ${code}`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown Twilio error';
+    const normalizedMessage = message.toLowerCase();
+    if (
+      normalizedMessage.includes('verified recipient') ||
+      normalizedMessage.includes('trial phone number') ||
+      normalizedMessage.includes('trial accounts can only send sms messages to verified numbers')
+    ) {
+      throw new AuthError(
+        'TWILIO_TRIAL_RECIPIENT_NOT_VERIFIED',
+        'Twilio trial accounts can only send SMS to verified recipient numbers. Verify the destination number in the Twilio Console or upgrade the account.',
+        403,
+      );
+    }
+    throw new AuthError('SMS_DELIVERY_FAILED', `Unable to send verification SMS: ${message}`, 502);
+  }
 }
 
 export async function register(input: RegisterInput) {
   const email = normalizeEmail(input.email);
   if (await prisma.user.findUnique({ where: { email } }))
     throw new AuthError('EMAIL_ALREADY_EXISTS', 'An account with this email already exists', 409);
-  const phone = input.phone ? normalizeNigerianPhone(input.phone) : null;
-  if (input.phone && !phone)
-    throw new AuthError('INVALID_PHONE', 'Enter a valid Nigerian phone number', 400);
   const user = await prisma.user.create({
     data: {
       email,
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
-      phone,
       passwordHash: await bcrypt.hash(input.password, 12),
     },
     select: publicUserSelect,
@@ -87,24 +107,49 @@ export async function register(input: RegisterInput) {
     },
   });
   await sendEmail(user.email, user.firstName, emailToken);
-  if (phone) {
-    const phoneToken = String(Math.floor(100000 + Math.random() * 900000));
-    await prisma.verificationToken.create({
-      data: {
-        userId: user.id,
-        type: 'PHONE',
-        tokenHash: hash(phoneToken),
-        expiresAt: new Date(Date.now() + 600000),
-      },
-    });
-    await sendSms(phone, phoneToken);
-  }
   return {
     user,
     ...(process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
       ? { emailVerificationToken: emailToken }
       : {}),
   };
+}
+
+export async function updatePhone(userId: string, value: string) {
+  const phone = normalizeNigerianPhone(value);
+  if (!phone) throw new AuthError('INVALID_PHONE', 'Enter a valid Nigerian phone number', 400);
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { phone, phoneVerifiedAt: null },
+    select: publicUserSelect,
+  });
+  return user;
+}
+
+export async function sendPhoneVerification(email: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { email: normalizeEmail(email) },
+    select: { id: true, phone: true, phoneVerifiedAt: true },
+  });
+  if (!user) throw new AuthError('USER_NOT_FOUND', 'No account was found for this email', 404);
+  if (!user.phone) throw new AuthError('PHONE_NOT_SET', 'No phone number is associated with this account', 400);
+  if (user.phoneVerifiedAt)
+    throw new AuthError('PHONE_ALREADY_VERIFIED', 'This phone number is already verified', 409);
+
+  const phoneToken = String(Math.floor(100000 + Math.random() * 900000));
+  await prisma.verificationToken.updateMany({
+    where: { userId: user.id, type: 'PHONE', consumedAt: null },
+    data: { consumedAt: new Date() },
+  });
+  await prisma.verificationToken.create({
+    data: {
+      userId: user.id,
+      type: 'PHONE',
+      tokenHash: hash(phoneToken),
+      expiresAt: new Date(Date.now() + 600000),
+    },
+  });
+  await sendSms(user.phone, phoneToken);
 }
 
 async function createSession(userId: string): Promise<string> {

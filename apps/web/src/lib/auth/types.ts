@@ -29,8 +29,6 @@ export type RegisterRequest = {
   password: string;
   firstName: string;
   lastName: string;
-  /** Nigerian phone in the local form `0XXXXXXXXXX`; the API normalises it to `+234...`. */
-  phone?: string;
 };
 
 /** POST /auth/register — 201 response. */
@@ -80,4 +78,9 @@ export type VerifyEmailResponse = {
 /** GET /auth/me — 200 response. */
 export type MeResponse = {
   data: AuthUser;
+};
+
+/** PATCH /auth/me — adds or replaces the phone number on an existing account. */
+export type UpdatePhoneRequest = {
+  phone: string;
 };
