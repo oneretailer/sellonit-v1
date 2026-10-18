@@ -190,6 +190,65 @@ export async function login(input: LoginInput) {
   };
 }
 
+export async function verifyEmailAndCreateSession(value: string) {
+  const record = await prisma.verificationToken.findFirst({
+    where: {
+      type: 'EMAIL',
+      tokenHash: hash(value),
+      consumedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    include: {
+      user: {
+        select: publicUserSelect,
+      },
+    },
+  });
+
+  if (!record)
+    throw new AuthError(
+      'INVALID_VERIFICATION_TOKEN',
+      'Verification token is invalid or expired',
+      400,
+    );
+  if (record.user.status !== 'ACTIVE')
+    throw new AuthError('ACCOUNT_UNAVAILABLE', 'This account is not active', 403);
+
+  const accessToken = token();
+  const now = new Date();
+
+  await prisma.$transaction(async (transaction) => {
+    const consumed = await transaction.verificationToken.updateMany({
+      where: { id: record.id, consumedAt: null },
+      data: { consumedAt: now },
+    });
+    if (consumed.count !== 1)
+      throw new AuthError(
+        'INVALID_VERIFICATION_TOKEN',
+        'Verification token is invalid or expired',
+        400,
+      );
+
+    await transaction.user.update({
+      where: { id: record.userId },
+      data: { emailVerifiedAt: now },
+    });
+    await transaction.session.create({
+      data: {
+        userId: record.userId,
+        tokenHash: hash(accessToken),
+        expiresAt: new Date(Date.now() + accessTokenLifetime * 1000),
+      },
+    });
+  });
+
+  return {
+    user: { ...record.user, emailVerifiedAt: now },
+    accessToken,
+    expiresIn: accessTokenLifetime,
+  };
+}
+
 export async function getUser(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: publicUserSelect });
   if (!user) throw new AuthError('USER_NOT_FOUND', 'User not found', 404);

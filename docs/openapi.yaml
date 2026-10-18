@@ -154,6 +154,42 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
+  /auth/verify-email-and-login:
+    post:
+      tags: [Auth]
+      summary: Verify email address and create a session
+      description: |
+        Consumes the single-use email verification token, marks the user's
+        email address as verified, creates an authenticated session, and sets
+        the HTTP-only session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Email verified and session created
+          headers:
+            Set-Cookie:
+              description: HTTP-only session cookie.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          description: Account is not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/login:
     post:
       tags: [Auth]

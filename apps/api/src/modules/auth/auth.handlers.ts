@@ -7,6 +7,7 @@ import {
   register,
   updatePhone,
   sendPhoneVerification,
+  verifyEmailAndCreateSession,
   verifyToken,
 } from './auth.service.js';
 
@@ -116,7 +117,7 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
     res.cookie(accessTokenCookieName, accessToken, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: expiresIn * 1000,
       path: '/',
     });
@@ -154,6 +155,27 @@ export async function updatePhoneHandler(req: Request, res: Response): Promise<v
   }
   try {
     res.status(200).json({ data: await updatePhone(req.userId, input.phone) });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function verifyEmailAndLoginHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const requestToken = req.params.token ?? req.query.token ?? bodyField(req, 'token');
+    if (!stringField(requestToken)) {
+      throw new AuthError('VALIDATION_ERROR', 'Token is required', 400);
+    }
+
+    const { user, accessToken, expiresIn } = await verifyEmailAndCreateSession(requestToken);
+    res.cookie(accessTokenCookieName, accessToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: expiresIn * 1000,
+      path: '/',
+    });
+    res.status(200).json({ user, expiresIn });
   } catch (error) {
     sendError(req, res, error);
   }
