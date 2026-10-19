@@ -10,7 +10,7 @@ Canonical OpenAPI 3.1 contract for the Sellonit MVP scope v1.0.3.
 
 1. `SupplierProduct` is the physical master product.
 2. `RetailerProductListing` references `SupplierProduct`; it is not a duplicate master product.
-3. Supplier inventory is the source of truth.
+3. 
 4. Customer `Order`, internal `Fulfillment`, and physical `Shipment` are separate resources.
 5. One order may contain products from multiple suppliers.
 6. Payment success is established by verified provider webhook, never frontend state.
