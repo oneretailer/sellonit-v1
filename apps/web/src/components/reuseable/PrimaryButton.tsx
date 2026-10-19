@@ -5,11 +5,12 @@ import { cn } from '@/lib/cn';
 
 /** Shared look for every full-width primary pill. */
 const pillBase =
-  'inline-flex min-h-11 h-16 w-full items-center justify-center gap-2 rounded-full px-6 text-xl font-semibold text-white transition-colors';
+  'inline-flex min-h-11 h-16 w-full items-center justify-center gap-2 px-6 text-xl font-semibold text-white transition-colors';
 
 export type PrimaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  /** Shows a spinner and locks the button while a request is in flight. */
+  /** Shows loading state and locks the button while a request is in flight. */
   loading?: boolean;
+  shape?: 'pill' | 'rounded';
 };
 
 /**
@@ -19,6 +20,7 @@ export type PrimaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
  */
 export function PrimaryButton({
   loading = false,
+  shape = 'pill',
   disabled = false,
   type = 'button',
   className,
@@ -33,10 +35,12 @@ export function PrimaryButton({
       aria-busy={loading || undefined}
       className={cn(
         pillBase,
+        shape === 'pill' ? 'rounded-full' : 'rounded-button',
         disabled && !loading
           ? 'cursor-not-allowed bg-primary-disabled text-ink'
-          : 'bg-primary hover:bg-primary-hover',
-        loading && 'cursor-not-allowed bg-[#CC7000]',
+          : loading
+            ? 'cursor-not-allowed bg-[#CC7000]'
+            : 'bg-primary hover:bg-primary-hover',
         className,
       )}
       {...rest}
@@ -55,7 +59,10 @@ export type PrimaryLinkButtonProps = {
 /** The same orange pill, rendered as a link (for navigation such as "Get Started"). */
 export function PrimaryLinkButton({ href, children, className }: PrimaryLinkButtonProps) {
   return (
-    <Link href={href} className={cn(pillBase, 'bg-primary hover:bg-primary-hover', className)}>
+    <Link
+      href={href}
+      className={cn(pillBase, 'rounded-full bg-primary hover:bg-primary-hover', className)}
+    >
       {children}
     </Link>
   );
