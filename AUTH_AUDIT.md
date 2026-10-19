@@ -151,3 +151,12 @@ Invalid/expired/consumed tokens show the backend's invalid-token message and rec
 - Web Vitest: 77 tests pass; web typecheck, frontend ESLint, and production build pass after building shared workspace packages.
 - CSS/source contract tests cover declared card geometry, typography, chooser copy/provider order, account form placeholders, rule color logic, disabled-submit wiring, and card-width bounds at 320/390/768/1024/1440.
 - UNVERIFIED: no browser/Playwright executable is available, so these are source/CSS assertions rather than computed browser styles. No screenshots or real-browser horizontal-overflow checks were possible.
+
+## Root landing sign-up chooser replacement (2026-10-19)
+
+- Replaced the inline marketing card on `/` with the existing `SignupMethodChooser` component; `/auth/register` continues to render that same component. No duplicate chooser/card was introduced and no obsolete component file needed deletion.
+- Preserved the root `AuthPage` shell and its “Learn more” header link, while `/auth/register` retains its route-specific “Sign up” header from the register layout. Root continues to inherit the app-level metadata; no page metadata override was added.
+- Previously, “Get Started” linked to `/auth/register`, which now directly displays the chooser. “Continue with email” proceeds to the existing `/auth/register/account-details` form; footer “Log in” goes to `/auth/login`. Google and Apple remain visible and `aria-disabled` with no API/provider handlers.
+- Inspection found no root auth redirect, guard, analytics, middleware, or proxy behavior to preserve. No backend files, contracts, or auth features/routes were changed or removed. Changed files: `apps/web/src/app/page.tsx`, `apps/web/src/lib/auth/authPresentation.test.ts`, `apps/web/src/components/reuseable/PrimaryButton.tsx` (stale comment wording), and this audit.
+- Added source-contract assertions that both routes use the shared chooser, landing header label remains “Learn more,” and old landing marketing copy is absent. Existing geometry assertions cover the card width at 320, 390, 768, 1024, and 1440 CSS pixels.
+- UNVERIFIED: no browser-based runtime layout/overflow measurement or screenshots were performed; width assertions verify declared/source geometry only. No deletion occurred.

@@ -56,7 +56,7 @@ export type PrimaryLinkButtonProps = {
   className?: string;
 };
 
-/** The same orange pill, rendered as a link (for navigation such as "Get Started"). */
+/** The same orange pill, rendered as a navigational link. */
 export function PrimaryLinkButton({ href, children, className }: PrimaryLinkButtonProps) {
   return (
     <Link

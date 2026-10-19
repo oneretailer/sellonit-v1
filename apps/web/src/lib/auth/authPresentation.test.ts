@@ -9,6 +9,8 @@ const chooser = source('../../components/auth/SignupMethodChooser.tsx');
 const secondaryButton = source('../../components/reuseable/SecondaryButton.tsx');
 const signup = source('../../components/auth/CreateAccountForm.tsx');
 const setup = source('../../app/auth/register/account-details/page.tsx');
+const landing = source('../../app/page.tsx');
+const registerPage = source('../../app/auth/register/page.tsx');
 const layout = source('../../app/auth/register/layout.tsx');
 const validation = source('../../lib/validation/auth.ts');
 
@@ -53,6 +55,17 @@ describe('auth presentation contract', () => {
     expect(signup).toContain('disabled={!valid || isSubmitting}');
     expect(signup).toContain("!active ? 'text-[#6B7280]' : met ? 'text-success' : 'text-danger'");
     expect(validation).toContain("passwordMismatch: 'Password mismatch'");
+  });
+
+  it('renders one shared chooser on the landing and registration routes', () => {
+    expect(landing).toContain('<SignupMethodChooser />');
+    expect(registerPage).toContain('<SignupMethodChooser />');
+    expect(landing).toContain("label: 'Learn more'");
+    expect(landing).not.toContain("label: 'Sign up'");
+    expect(landing).not.toContain('Get Started');
+    expect(landing).not.toContain('Build your business on sellonit');
+    expect(landing).not.toContain('href="/auth/register"');
+    expect(landing).not.toContain('metadata');
   });
 
   it('keeps the card width within each requested viewport', () => {
