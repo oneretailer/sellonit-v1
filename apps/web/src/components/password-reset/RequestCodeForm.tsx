@@ -66,7 +66,7 @@ export function RequestCodeForm() {
   }
 
   return (
-    <AuthCard gapClassName="gap-5 sm:gap-9">
+    <AuthCard gapClassName="gap-6 md:gap-9">
       <StepHeader title="Reset your password" align="center">
         Enter the phone number linked to your sellonit account and we will send you a verification
         code

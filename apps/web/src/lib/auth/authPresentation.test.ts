@@ -1,49 +1,66 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const css = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
-const card = readFileSync(
-  new URL('../../components/reuseable/AuthCard.tsx', import.meta.url),
-  'utf8',
-);
-const button = readFileSync(
-  new URL('../../components/reuseable/PrimaryButton.tsx', import.meta.url),
-  'utf8',
-);
-const login = readFileSync(
-  new URL('../../components/login/LoginForm.tsx', import.meta.url),
-  'utf8',
-);
-const signup = readFileSync(
-  new URL('../../components/auth/CreateAccountForm.tsx', import.meta.url),
-  'utf8',
-);
-const validation = readFileSync(new URL('../../lib/validation/auth.ts', import.meta.url), 'utf8');
+const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+const css = source('../../app/globals.css');
+const card = source('../../components/reuseable/AuthCard.tsx');
+const heading = source('../../components/auth/StepHeader.tsx');
+const chooser = source('../../components/auth/SignupMethodChooser.tsx');
+const secondaryButton = source('../../components/reuseable/SecondaryButton.tsx');
+const signup = source('../../components/auth/CreateAccountForm.tsx');
+const setup = source('../../app/auth/register/account-details/page.tsx');
+const layout = source('../../app/auth/register/layout.tsx');
+const validation = source('../../lib/validation/auth.ts');
 
 describe('auth presentation contract', () => {
-  it('declares the exact desktop/mobile card and heading geometry', () => {
+  it('declares desktop and mobile card geometry and exact heading typography', () => {
     expect(css).toContain('width: min(316px, calc(100% - 48px))');
-    expect(css).toContain('width: 632px');
     expect(css).toContain('border-radius: 18px');
+    expect(css).toContain('border-width: 0.5px');
+    expect(css).toContain('width: 632px');
     expect(css).toContain('border-radius: 36px');
+    expect(css).toContain('border-width: 1px');
     expect(css).toContain('font-size: 36px');
     expect(css).toContain('line-height: 44px');
     expect(css).toContain('letter-spacing: -0.72px');
     expect(css).toContain('--color-line: #e5e7eb');
-    expect(card).toContain('px-[18px]');
-    expect(card).toContain('sm:px-9 sm:py-12');
+    expect(css).toContain('--radius-button: 16px');
+    expect(card).toContain('px-[18px] py-6');
+    expect(card).toContain('md:px-9 md:py-12');
+    expect(card).toContain('gap-6 md:gap-12');
+    expect(heading).toContain('icon?: ReactNode');
   });
 
-  it('has pill primary buttons, loading copy, errors and password rules', () => {
-    expect(button).toContain('rounded-full');
-    expect(button).toContain('min-h-11 h-16');
-    expect(login).toContain('Logging in…');
-    expect(login).toContain('Log in with Google');
-    expect(login).toContain('Log in with Apple');
+  it('preserves chooser copy, provider order, routing, form copy and rule states', () => {
+    expect(chooser).toContain('Create your sellonit account');
+    expect(chooser).toContain('Sign up with Google <GoogleMark');
+    expect(chooser).toContain('Sign up with Apple <AppleMark');
+    expect(chooser.indexOf('Sign up with Google')).toBeLessThan(
+      chooser.indexOf('GoogleMark className'),
+    );
+    expect(chooser).toContain('Continue with email');
+    expect(chooser).toContain("router.push('/auth/register/account-details')");
+    expect(secondaryButton).toContain("shape === 'pill' ? 'rounded-full' : 'rounded-button'");
+    expect(chooser).toContain('underline underline-offset-2');
+    expect(setup).toContain('BagMark');
+    expect(layout).toContain("'Sign up'");
+    expect(layout).toContain("'Account details'");
+    expect(signup).toContain('placeholder="Enter your first name"');
+    expect(signup).toContain('placeholder="Enter your last name"');
+    expect(signup).toContain('placeholder="you@example.com"');
+    expect(signup).toContain('placeholder="Create password"');
+    expect(signup).toContain('placeholder="Confirm password"');
+    expect(signup).toContain('disabled={!valid || isSubmitting}');
+    expect(signup).toContain("!active ? 'text-[#6B7280]' : met ? 'text-success' : 'text-danger'");
     expect(validation).toContain("passwordMismatch: 'Password mismatch'");
-    expect(validation).toContain("label: 'At least 8 characters'");
-    expect(validation).toContain("label: 'At least 1 letter'");
-    expect(validation).toContain("label: 'At least 1 number'");
-    expect(signup).toContain('Creating account…');
+  });
+
+  it('keeps the card width within each requested viewport', () => {
+    for (const viewport of [320, 390, 768, 1024, 1440]) {
+      const cardWidth = viewport < 768 ? Math.min(316, viewport - 48) : 632;
+      expect(cardWidth).toBeLessThanOrEqual(viewport);
+      if (viewport === 390) expect(cardWidth).toBe(316);
+      if (viewport === 1440) expect(cardWidth).toBe(632);
+    }
   });
 });

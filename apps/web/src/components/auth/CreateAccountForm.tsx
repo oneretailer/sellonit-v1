@@ -102,6 +102,7 @@ type TextFieldProps = {
   inputMode?: 'text' | 'email';
   autoComplete: string;
   maxLength?: number;
+  disabled?: boolean;
 };
 
 function PillTextField({
@@ -118,6 +119,7 @@ function PillTextField({
   inputMode,
   autoComplete,
   maxLength,
+  disabled = false,
 }: TextFieldProps) {
   const errorId = `${id}-error`;
   const helperId = `${id}-helper`;
@@ -135,6 +137,7 @@ function PillTextField({
           inputMode={inputMode}
           autoComplete={autoComplete}
           maxLength={maxLength}
+          disabled={disabled}
           placeholder={placeholder}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -173,6 +176,7 @@ type PasswordFieldProps = {
   inputRef?: RefObject<HTMLInputElement | null>;
   describedBy: string | undefined;
   invalid?: boolean;
+  disabled?: boolean;
 };
 
 /** Pill input with its own show/hide eye button inside the right edge. */
@@ -187,6 +191,7 @@ function PasswordField({
   inputRef,
   describedBy,
   invalid = false,
+  disabled = false,
 }: PasswordFieldProps) {
   return (
     <div className="flex w-full flex-col gap-2">
@@ -200,6 +205,7 @@ function PasswordField({
           type={visible ? 'text' : 'password'}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX_LENGTH}
+          disabled={disabled}
           placeholder={placeholder}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -211,6 +217,7 @@ function PasswordField({
         <button
           type="button"
           onClick={onToggleVisibility}
+          disabled={disabled}
           aria-pressed={visible}
           aria-label={visible ? 'Hide password' : 'Show password'}
           className="shrink-0 rounded-full p-2 text-subtle hover:text-ink"
@@ -231,7 +238,7 @@ function PasswordChecklist({ password }: { password: string }) {
       {PASSWORD_RULES.map((rule) => {
         const met = rule.test(password);
         // Neutral gray until the field has content; then green/red per rule.
-        const tone = active && met ? 'text-success' : 'text-[#6B7280]';
+        const tone = !active ? 'text-[#6B7280]' : met ? 'text-success' : 'text-danger';
         return (
           <li key={rule.id} className={cn('flex items-center gap-2', tone)}>
             <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-current" />
@@ -356,10 +363,10 @@ export function CreateAccountForm() {
     <form
       onSubmit={(event) => void handleSubmit(event)}
       noValidate
-      className="flex w-full flex-col gap-6 text-left"
+      className="flex w-full flex-col gap-0 text-left"
     >
       {/* fields: vertical, gap 32 */}
-      <div className="mb-6 flex w-full flex-col gap-6 sm:mb-12">
+      <div className="mb-6 flex w-full flex-col gap-6 md:mb-12">
         <PillTextField
           id="firstName"
           label="First name"
@@ -374,6 +381,7 @@ export function CreateAccountForm() {
           autoComplete="given-name"
           maxLength={NAME_MAX_LENGTH}
           inputRef={firstNameRef}
+          disabled={isSubmitting}
         />
         <PillTextField
           id="lastName"
@@ -389,6 +397,7 @@ export function CreateAccountForm() {
           autoComplete="family-name"
           maxLength={NAME_MAX_LENGTH}
           inputRef={lastNameRef}
+          disabled={isSubmitting}
         />
 
         <PillTextField
@@ -408,13 +417,14 @@ export function CreateAccountForm() {
           autoComplete="email"
           maxLength={EMAIL_MAX_LENGTH}
           inputRef={emailRef}
+          disabled={isSubmitting}
         />
 
         <div className="flex w-full flex-col gap-2">
           <PasswordField
             id="password"
             label="Password"
-            placeholder="Create a password"
+            placeholder="Create password"
             value={password}
             onChange={(value) => {
               setPassword(value);
@@ -427,6 +437,7 @@ export function CreateAccountForm() {
               serverFieldErrors.password ? 'password-rules password-error' : 'password-rules'
             }
             invalid={Boolean(serverFieldErrors.password)}
+            disabled={isSubmitting}
           />
           <PasswordChecklist password={password} />
           {serverFieldErrors.password ? (
@@ -440,7 +451,7 @@ export function CreateAccountForm() {
           <PasswordField
             id="confirmPassword"
             label="Confirm password"
-            placeholder="Re-enter your password"
+            placeholder="Confirm password"
             value={confirm}
             onChange={(value) => setConfirm(value)}
             visible={showConfirm}
@@ -448,6 +459,7 @@ export function CreateAccountForm() {
             inputRef={confirmRef}
             describedBy={confirmMessage ? 'confirm-error' : undefined}
             invalid={Boolean(confirmMessage)}
+            disabled={isSubmitting}
           />
           {/* mismatch error: live region, shown while confirm is non-empty and differs */}
           <div aria-live="polite">
@@ -462,12 +474,13 @@ export function CreateAccountForm() {
       </div>
 
       {/* terms checkbox: real input, whole row clickable */}
-      <div className="flex w-full flex-col gap-2">
+      <div className="mb-6 flex w-full flex-col gap-2">
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input
             ref={termsRef}
             type="checkbox"
             checked={termsAccepted}
+            disabled={isSubmitting}
             onChange={(event) => {
               setTermsAccepted(event.target.checked);
               setTouched((current) => ({ ...current, terms: true }));
@@ -499,6 +512,7 @@ export function CreateAccountForm() {
         {/* primary button: full width, 68 tall at lg, radius 36, semibold, dark text */}
         <button
           type="submit"
+          disabled={!valid || isSubmitting}
           aria-disabled={!valid || isSubmitting}
           aria-busy={isSubmitting || undefined}
           className={cn(

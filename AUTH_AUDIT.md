@@ -108,3 +108,46 @@ Invalid/expired/consumed tokens show the backend's invalid-token message and rec
 - Web typecheck and `npx eslint apps/web/src --max-warnings 0` pass. Web production build passes.
 - Root `npm run lint` is blocked in its prelint Prisma generation step: Prisma binary download from `binaries.prisma.sh` failed due sandbox network restrictions. Direct repository-wide eslint also reports pre-existing/generated Prisma unsafe-type diagnostics in `apps/api`; backend was not changed.
 - No browser/Playwright executable is installed. The presentation test verifies source CSS values, not computed browser styles; screenshots and runtime viewport measurements remain UNVERIFIED.
+
+## Added chooser/account-details design notes
+
+### BagMark
+
+- Reusable component: `apps/web/src/components/brand/BagMark.tsx`, one named export `BagMark`.
+- Its SVG paths are placeholder artwork. Replace them with the final mark while preserving the `0 0 56 60` viewBox, public props, `stroke="currentColor"`, and scaling classes. Default color comes from the existing orange token.
+- Used only on the sign-up-method chooser (`/auth/register`) and account-details form (`/auth/register/account-details`). It is intentionally absent on Login and Reset password.
+
+### Routing
+
+- `/auth/register` is now the sign-up-method chooser.
+- “Continue with email” navigates to `/auth/register/account-details`, which hosts the existing `CreateAccountForm`.
+- Existing catch-all legacy form-step URLs under `/auth/register/*` redirect to `/auth/register/account-details`; the plain `/auth/register` route is the new chooser entry.
+- The register layout selects its header label from the path: “Sign up” for the chooser and “Account details” for the form.
+
+### Design assumptions and gaps
+
+- [E] Button radius uses new `--radius-button: 16px`; social and chooser primary buttons use 64px height as the nearest existing scale to the estimated 66px.
+- [E] Icon-to-heading spacing is 24px, heading-to-subtitle is 8px, chooser social button gap is 16px, and the OR divider has 24px vertical padding.
+- [I] BagMark is 36px wide below 768px and 56px from 768px, using one responsive component.
+- [I] Account-details form retains email-or-phone validation and normalization in the email-labelled field to preserve the earlier behavior. Backend registration accepts email only; phone registration is unsupported by the inspected backend.
+- [I] Setup error/loading states reuse the current inline-error and “Creating account…” patterns.
+- Provider logo order differs as requested: chooser label then logo; Login logo then label.
+- The “Sign up” and logged-out “Account details” header labels differ by step; “Account details” still reads like a logged-in label.
+- The default eye examples conflict. Both fields use the consistent behavior: crossed eye when hidden, open eye when visible.
+- Login and Reset password have no BagMark; confirm whether that is intentional across auth screens.
+- No mobile chooser frame was supplied; mobile uses the shared card and accessible minimum type/tap targets.
+- No designs were supplied for code entry, new password, check-your-email, verification success/failure, or account-created confirmation. Existing screens/routes remain; successful registration currently goes to the existing check-your-email route.
+- No terms/policy routes were found, so those words remain plain text.
+
+### Google/Apple readiness (updated)
+
+- Provider buttons appear on Login and the chooser. Login uses logo then label; chooser uses label then logo.
+- Both sets are visibly rendered, `aria-disabled`, have no handler, and make no API calls. Provider marks are shared from `SocialProviderMarks.tsx`; chooser buttons have `TODO(google-auth)` and `TODO(apple-auth)` comments.
+- To enable each provider, supply its OAuth start handler/redirect, callback route, backend account-link/session behavior, and loading/error/cancel handling; remove `aria-disabled` only after testing the full flow.
+
+### Extension verification
+
+- BagMark component tests cover SVG rendering, decorative ARIA, sizing classes, and titled image semantics.
+- Web Vitest: 77 tests pass; web typecheck, frontend ESLint, and production build pass after building shared workspace packages.
+- CSS/source contract tests cover declared card geometry, typography, chooser copy/provider order, account form placeholders, rule color logic, disabled-submit wiring, and card-width bounds at 320/390/768/1024/1440.
+- UNVERIFIED: no browser/Playwright executable is available, so these are source/CSS assertions rather than computed browser styles. No screenshots or real-browser horizontal-overflow checks were possible.
