@@ -154,6 +154,42 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
+  /auth/verify-email-and-login:
+    post:
+      tags: [Auth]
+      summary: Verify email address and create a session
+      description: |
+        Consumes the single-use email verification token, marks the user's
+        email address as verified, creates an authenticated session, and sets
+        the HTTP-only session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '200':
+          description: Email verified and session created
+          headers:
+            Set-Cookie:
+              description: HTTP-only session cookie.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          description: Account is not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/login:
     post:
       tags: [Auth]
@@ -174,6 +210,77 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    patch:
+      tags: [Auth]
+      summary: Add or update the authenticated user's phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePhoneRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUser'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/send-phone-verification:
+    post:
+      tags: [Auth]
+      summary: Send a phone verification code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Verification code sent
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '502':
+          description: SMS delivery failed
+        '503':
+          description: SMS service is not configured
+
+  /auth/verify-phone:
+    post:
+      tags: [Auth]
+      summary: Verify a phone number
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+      responses:
+        '200':
+          description: Phone verified
+        '400':
+          $ref: '#/components/responses/ValidationError'
 
   /auth/refresh:
     post:
@@ -1700,7 +1807,6 @@ components:
         email: {type: string, format: email}
         firstName: {type: string, maxLength: 80}
         lastName: {type: string, maxLength: 80}
-        phone: {type: string, maxLength: 30}
         status: {$ref: '#/components/schemas/UserStatus'}
         emailVerifiedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
@@ -2091,7 +2197,12 @@ components:
         password: {type: string, minLength: 8, maxLength: 128}
         firstName: {type: string, minLength: 1, maxLength: 80}
         lastName: {type: string, minLength: 1, maxLength: 80}
-        phone: {type: string, maxLength: 30}
+
+    UpdatePhoneRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone: {type: string, minLength: 7, maxLength: 30}
 
     VerifyEmailRequest:
       type: object
