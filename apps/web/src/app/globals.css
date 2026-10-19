@@ -32,6 +32,7 @@
 
   /* Shape and elevation */
   --radius-card: 36px;
+  --radius-button: 16px;
   --shadow-card: 0 4px 16px rgb(0 0 0 / 0.06);
 
   /* Layout widths (used by max-w-page / max-w-card utilities) */
@@ -39,15 +40,17 @@
   --container-card: 632px;
 }
 
-@layer components {
-  .auth-card {
+@layer utilities {
+  .auth-card.auth-card {
     width: min(316px, calc(100% - 48px));
     border-radius: 18px;
+    border-width: 0.5px;
   }
   @media (min-width: 768px) {
-    .auth-card {
+    .auth-card.auth-card {
       width: 632px;
       border-radius: 36px;
+      border-width: 1px;
     }
   }
   .auth-heading {
@@ -56,7 +59,7 @@
     line-height: 28px;
     font-weight: 600;
     letter-spacing: -0.02em;
-    color: #030712;
+    color: var(--color-ink);
   }
   @media (min-width: 768px) {
     .auth-heading {

@@ -17,11 +17,11 @@ export type AuthCardProps = {
  * shrinks on small screens (20px sides, 40px top/bottom), and is 36px sides
  * and 48px top/bottom from the `sm` breakpoint.
  */
-export function AuthCard({ children, className, gapClassName = 'gap-8' }: AuthCardProps) {
+export function AuthCard({ children, className, gapClassName = 'gap-6 md:gap-12' }: AuthCardProps) {
   return (
     <section
       className={cn(
-        'auth-card flex w-full max-w-card flex-col items-center rounded-card border border-line bg-surface px-[18px] py-8 text-center shadow-card sm:px-9 sm:py-12',
+        'auth-card flex w-full max-w-card flex-col items-stretch rounded-card border border-line bg-surface px-[18px] py-6 text-center shadow-card md:px-9 md:py-12',
         gapClassName,
         className,
       )}
