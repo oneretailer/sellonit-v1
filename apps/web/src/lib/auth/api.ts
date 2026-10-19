@@ -24,6 +24,7 @@ import type {
   RegisterUserResponse,
   ResendVerificationRequest,
   ResendVerificationResponse,
+  UpdatePhoneRequest,
   VerifyEmailRequest,
   VerifyEmailResponse,
 } from './types';
@@ -103,6 +104,15 @@ export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
     return mockVerifyEmail(token);
   }
   return verifyEmailRequest(token);
+}
+
+/** PATCH /auth/me — sets the account phone number (`{ phone }`). Requires the session cookie. */
+export function updatePhone(phone: string): Promise<MeResponse> {
+  const body: UpdatePhoneRequest = { phone };
+  return apiFetch<MeResponse>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
 }
 
 export function getMe(): Promise<MeResponse> {

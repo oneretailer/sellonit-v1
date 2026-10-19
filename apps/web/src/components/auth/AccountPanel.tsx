@@ -96,22 +96,28 @@ export function AccountPanel() {
   }
 
   const { user } = state;
-  function handlePhoneSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function savePhone(): Promise<void> {
     if (!isNigerianPhoneDigits(phoneDigits)) {
       setPhoneError('Enter a valid Nigerian phone number.');
       return;
     }
     setSavingPhone(true);
     setPhoneError(null);
-    void updatePhone(toLocalPhone(phoneDigits))
-      .then((result) => setState({ status: 'user', user: result.data }))
-      .catch((error: unknown) => {
-        setPhoneError(
-          error instanceof ApiError ? error.message : 'We could not save your phone number.',
-        );
-      })
-      .finally(() => setSavingPhone(false));
+    try {
+      const result = await updatePhone(toLocalPhone(phoneDigits));
+      setState({ status: 'user', user: result.data });
+    } catch (error: unknown) {
+      setPhoneError(
+        error instanceof ApiError ? error.message : 'We could not save your phone number.',
+      );
+    } finally {
+      setSavingPhone(false);
+    }
+  }
+
+  function handlePhoneSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void savePhone();
   }
   return (
     <div className="flex flex-col gap-6">

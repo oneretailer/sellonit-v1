@@ -79,3 +79,8 @@ export type VerifyEmailResponse = {
 export type MeResponse = {
   data: AuthUser;
 };
+
+/** PATCH /auth/me — request body. The API normalises the phone number. */
+export type UpdatePhoneRequest = {
+  phone: string;
+};

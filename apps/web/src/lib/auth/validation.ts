@@ -28,3 +28,33 @@ export function formatPhoneDisplay(value: string): string {
   }
   return value;
 }
+
+/**
+ * A Nigerian mobile number as entered after the leading 0 (ten digits starting
+ * with 7, 8 or 9), e.g. `8031234567`.
+ */
+export function isNigerianPhoneDigits(value: string): boolean {
+  return /^[789]\d{9}$/.test(value);
+}
+
+/**
+ * Converts the entered digits (`8031234567`) to the local form the API
+ * accepts (`08031234567`). The API normalises it to `+2348031234567`.
+ */
+export function toLocalPhone(digits: string): string {
+  return `0${digits}`;
+}
+
+/**
+ * Keeps only the ten subscriber digits: strips non-digits, the `234` country
+ * code, and a leading trunk `0`.
+ */
+export function normalizePhoneInput(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length > 10 && digits.startsWith('234')) {
+    digits = digits.slice(3);
+  } else if (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 10);
+}
