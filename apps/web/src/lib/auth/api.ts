@@ -14,6 +14,7 @@ import type {
   MeResponse,
   RegisterRequest,
   RegisterResponse,
+  UpdatePhoneRequest,
   VerifyEmailRequest,
   VerifyEmailResponse,
   VerifyPhoneRequest,
@@ -55,4 +56,12 @@ export function verifyEmail(token: string): Promise<VerifyEmailResponse> {
 
 export function getMe(): Promise<MeResponse> {
   return apiFetch<MeResponse>('/auth/me', { method: 'GET' });
+}
+
+export function updatePhone(phone: string): Promise<MeResponse> {
+  const body: UpdatePhoneRequest = { phone };
+  return apiFetch<MeResponse>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
 }
