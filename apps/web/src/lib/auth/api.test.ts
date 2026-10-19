@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ApiError, NetworkError } from '@/lib/api-client';
 import { FORM_ERRORS } from '@/lib/validation/auth';
-import { mapRegisterError, toRegisterUserRequest } from './api';
+import { mapRegisterError, toRegisterUserRequest, verifyEmail } from './api';
 
 describe('mapRegisterError', () => {
   it('maps 409 to the email field', () => {
@@ -43,18 +43,37 @@ describe('mapRegisterError', () => {
   });
 });
 
+describe('email verification callback endpoint', () => {
+  it('posts the link token to the real session-establishing endpoint', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ user: { id: 'u1', email: 'a@b.com' }, expiresIn: 60 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    await verifyEmail('token-value');
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/v1/auth/verify-email-and-login',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ token: 'token-value' }) }),
+    );
+    fetchSpy.mockRestore();
+  });
+});
+
 describe('toRegisterUserRequest', () => {
   it('passes the form values through without trimming the password', () => {
     expect(
       toRegisterUserRequest({
-        fullName: ' Chukwudi Okechukwu ',
+        fullName: ' Ada Example ',
         email: 'You@Example.com',
         password: ' passw0rd ',
         confirm: ' passw0rd ',
         termsAccepted: true,
       }),
     ).toEqual({
-      fullName: ' Chukwudi Okechukwu ',
+      fullName: ' Ada Example ',
       email: 'You@Example.com',
       password: ' passw0rd ',
     });

@@ -12,37 +12,37 @@ import {
 describe('detectIdentifierType', () => {
   it('treats anything with "@" as an email and everything else as a phone', () => {
     expect(detectIdentifierType('Jane@Example.com')).toBe('email');
-    expect(detectIdentifierType('08112345678')).toBe('phone');
+    expect(detectIdentifierType('08023456789')).toBe('phone');
   });
 });
 
 describe('cleanPhone', () => {
   it('strips spaces, dashes and brackets', () => {
-    expect(cleanPhone('081 1234 5678')).toBe('08112345678');
-    expect(cleanPhone('(0811) 234-5678')).toBe('08112345678');
+    expect(cleanPhone('080 2345 6789')).toBe('08023456789');
+    expect(cleanPhone('(0802) 345-6789')).toBe('08023456789');
     expect(cleanPhone('[0811]234.5678')).toBe('0811234.5678');
   });
 });
 
 describe('normalizePhone (strict 11-digit local format)', () => {
   it('accepts a leading 0 followed by 10 digits', () => {
-    expect(normalizePhone('08112345678')).toBe('08112345678');
+    expect(normalizePhone('08023456789')).toBe('08023456789');
   });
 
   it('accepts formatted input once separators are removed', () => {
-    expect(normalizePhone('081 1234 5678')).toBe('08112345678');
-    expect(normalizePhone('(0811) 234-5678')).toBe('08112345678');
+    expect(normalizePhone('080 2345 6789')).toBe('08023456789');
+    expect(normalizePhone('(0802) 345-6789')).toBe('08023456789');
   });
 
-  it('rejects +234, 234 and a 10-digit number without the leading 0', () => {
-    expect(normalizePhone('+2348112345678')).toBeNull();
-    expect(normalizePhone('2348112345678')).toBeNull();
+  it('normalizes +234 and 234 to the local form; rejects ten-digit numbers without a country code', () => {
+    expect(normalizePhone('+2348023456789')).toBe('08023456789');
+    expect(normalizePhone('2348023456789')).toBe('08023456789');
     expect(normalizePhone('8112345678')).toBeNull();
   });
 
   it('rejects other lengths, letters and stray punctuation', () => {
     expect(normalizePhone('0811234567')).toBeNull(); // 10 digits
-    expect(normalizePhone('081123456789')).toBeNull(); // 12 digits
+    expect(normalizePhone('080234567899')).toBeNull(); // 12 digits
     expect(normalizePhone('0811234567a')).toBeNull();
     expect(normalizePhone('0811.234.5678')).toBeNull();
     expect(normalizePhone('')).toBeNull();
@@ -58,8 +58,8 @@ describe('normalizeIdentifier', () => {
   });
 
   it('sends phone numbers as the cleaned 11-digit local form', () => {
-    expect(normalizeIdentifier('081 1234 5678')).toEqual({
-      identifier: '08112345678',
+    expect(normalizeIdentifier('080 2345 6789')).toEqual({
+      identifier: '08023456789',
       identifierType: 'phone',
     });
   });
@@ -68,14 +68,14 @@ describe('normalizeIdentifier', () => {
 describe('validateIdentifier', () => {
   it('accepts a valid email or 11-digit phone', () => {
     expect(validateIdentifier('jane@example.com')).toBeNull();
-    expect(validateIdentifier('(0811) 234-5678')).toBeNull();
+    expect(validateIdentifier('(0802) 345-6789')).toBeNull();
   });
 
   it('returns the shared message for empty or invalid values', () => {
     expect(validateIdentifier('')).toBe(IDENTIFIER_ERROR);
     expect(validateIdentifier('   ')).toBe(IDENTIFIER_ERROR);
     expect(validateIdentifier('jane@')).toBe(IDENTIFIER_ERROR);
-    expect(validateIdentifier('+2348112345678')).toBe(IDENTIFIER_ERROR);
+    expect(validateIdentifier('+2348112345678')).toBeNull();
     expect(validateIdentifier('8112345678')).toBe(IDENTIFIER_ERROR);
     expect(validateIdentifier('12345')).toBe(IDENTIFIER_ERROR);
   });
@@ -87,6 +87,6 @@ describe('maskIdentifier', () => {
   });
 
   it('lightly formats a phone number', () => {
-    expect(maskIdentifier('08112345678', 'phone')).toBe('0811 234 5678');
+    expect(maskIdentifier('08023456789', 'phone')).toBe('0802 345 6789');
   });
 });

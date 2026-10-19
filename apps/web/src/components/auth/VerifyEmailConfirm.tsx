@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { verifyEmail } from '@/lib/auth/api';
+import { getMe, verifyEmail } from '@/lib/auth/api';
 import { emailLinkErrorMessage, isRetryableAuthError } from '@/lib/auth/errors';
 import { PENDING_VERIFICATION_EMAIL_KEY } from '@/lib/auth/pendingVerification';
 
@@ -52,21 +52,45 @@ export function VerifyEmailConfirm() {
   const runVerification = useCallback(
     (value: string) => {
       setStatus({ kind: 'verifying' });
-      verifyEmail(value)
-        .then(() => {
+      void (async () => {
+        try {
+          // Detect an existing session for a different account before allowing the verification response to replace it.
+          if (pendingEmail) {
+            try {
+              const existing = await getMe();
+              if (existing.data.email.toLowerCase() !== pendingEmail.toLowerCase()) {
+                setStatus({
+                  kind: 'error',
+                  message:
+                    'You are already logged in as a different account. Log out of that account, then reopen this verification link.',
+                  retryable: false,
+                });
+                return;
+              }
+              if (existing.data.emailVerifiedAt) {
+                setStatus({ kind: 'verified' });
+                router.replace(existing.data.phone ? '/' : '/account');
+                return;
+              }
+            } catch {
+              // A 401 means signed out; other failures are handled by the actual verification request.
+            }
+          }
+          const result = await verifyEmail(value);
           setStatus({ kind: 'verified' });
-          // The verify call established the session (contract §verify).
-          router.replace('/account');
-        })
-        .catch((error: unknown) =>
+          // The real backend endpoint sets the HttpOnly session cookie and returns the authenticated user.
+          const next = result.user.phone ? '/' : '/account';
+          router.replace(next);
+        } catch (error: unknown) {
           setStatus({
             kind: 'error',
             message: emailLinkErrorMessage(error),
             retryable: isRetryableAuthError(error),
-          }),
-        );
+          });
+        }
+      })();
     },
-    [router],
+    [pendingEmail, router],
   );
 
   useEffect(() => {

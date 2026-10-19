@@ -14,7 +14,7 @@ export function AuthPage({ children, rightLink }: AuthPageProps) {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <Navbar rightLink={rightLink} />
-      <main className="flex flex-1 items-center justify-center px-4 pt-4 pb-12 sm:px-6">
+      <main className="flex flex-1 items-start justify-center px-0 pt-8 pb-12 sm:px-6 sm:pt-16">
         {children}
       </main>
     </div>

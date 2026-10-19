@@ -12,12 +12,8 @@
  * understands those fields) keeps working; the contract backend may ignore it.
  */
 import { apiFetch, ApiError, NetworkError } from '@/lib/api-client';
-import {
-  FORM_ERRORS,
-  normalizeEmail,
-  splitFullName,
-  type RegisterFormValues,
-} from '@/lib/validation/auth';
+import { normalizeIdentifier } from './identifier';
+import { FORM_ERRORS, splitFullName, type RegisterFormValues } from '@/lib/validation/auth';
 import type {
   MeResponse,
   RegisterUserRequest,
@@ -40,7 +36,7 @@ async function registerUserRequest(input: RegisterUserRequest): Promise<Register
     body: JSON.stringify({
       // Contract body.
       fullName,
-      email: normalizeEmail(input.email),
+      email: normalizeIdentifier(input.email).identifier,
       password: input.password, // never trimmed
       // Legacy compatibility fields for the pre-contract backend; safe to ignore.
       firstName,
@@ -62,13 +58,14 @@ export async function registerUser(input: RegisterUserRequest): Promise<Register
   return registerUserRequest(input);
 }
 
-async function resendVerificationRequest(
+function resendVerificationRequest(
   input: ResendVerificationRequest,
 ): Promise<ResendVerificationResponse> {
-  return apiFetch<ResendVerificationResponse>('/auth/resend-verification', {
-    method: 'POST',
-    body: JSON.stringify({ email: normalizeEmail(input.email) }),
-  });
+  // The inspected backend routes do not expose email-verification resend. Avoid calling an unconfirmed route.
+  void input;
+  return Promise.reject(
+    new Error('Verification email resend is not supported by the current API.'),
+  );
 }
 
 /**
@@ -87,7 +84,8 @@ export async function resendVerification(
 
 async function verifyEmailRequest(token: string): Promise<VerifyEmailResponse> {
   const body: VerifyEmailRequest = { token };
-  return apiFetch<VerifyEmailResponse>('/auth/verify-email', {
+  // Backend route that verifies and establishes the session cookie.
+  return apiFetch<VerifyEmailResponse>('/auth/verify-email-and-login', {
     method: 'POST',
     body: JSON.stringify(body),
   });

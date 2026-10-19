@@ -14,7 +14,7 @@ export function StepHeader({ title, children, align = 'center' }: StepHeaderProp
     <div
       className={cn('flex w-full flex-col gap-3', align === 'left' ? 'text-left' : 'text-center')}
     >
-      <h1 className="text-2xl font-bold text-ink">{title}</h1>
+      <h1 className="auth-heading">{title}</h1>
       {children ? <p className="text-sm text-subtle">{children}</p> : null}
     </div>
   );

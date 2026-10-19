@@ -89,6 +89,8 @@ export type Identified = {
 export function loginWithIdentifier(
   input: Identified & { password: string },
 ): Promise<LoginResponse> {
+  // TODO(backend): accept phone identifiers (the legacy field remains `email` until the API contract is updated).
+  // TODO(backend): return ACCOUNT_NOT_VERIFIED for valid credentials on unverified accounts.
   return apiFetch<LoginResponse>(AUTH_ENDPOINTS.login, {
     method: 'POST',
     body: JSON.stringify({
@@ -99,31 +101,25 @@ export function loginWithIdentifier(
 }
 
 /** Sends the password-reset code (existing endpoint). The response body is not used. */
-export async function sendResetCode(input: Identified): Promise<void> {
-  await apiFetch<unknown>(AUTH_ENDPOINTS.forgotPassword, {
-    method: 'POST',
-    body: JSON.stringify({ [EXISTING_IDENTIFIER_FIELD]: input.identifier }),
-  });
+export function sendResetCode(input: Identified): Promise<void> {
+  // Backend inventory confirms no forgot-password/code-send route exists. Keep the UI graceful without shipping a guessed endpoint.
+  void input;
+  return Promise.reject(new Error('Password reset sending is not supported by the current API.'));
 }
 
 /**
  * Sends (or re-sends) a code for a purpose.
  * - reset-password: the existing forgot-password endpoint.
- * - verify-account: the new verification-codes endpoint.
+ * - verify-account: currently unsupported by the inspected backend; rejected locally.
  */
 export async function resendCode(input: Identified & { purpose: AuthFlowPurpose }): Promise<void> {
   if (input.purpose === 'reset-password') {
     await sendResetCode(input);
     return;
   }
-  await apiFetch<unknown>(AUTH_ENDPOINTS.verificationCodes, {
-    method: 'POST',
-    body: JSON.stringify({
-      identifier: input.identifier,
-      identifierType: input.identifierType,
-      purpose: input.purpose,
-    }),
-  });
+  // Backend inventory confirms no account-code resend route. Do not issue a request to an unconfirmed endpoint.
+  void input;
+  throw new Error('Account verification-code resend is not supported by the current API.');
 }
 
 /**
@@ -131,42 +127,19 @@ export async function resendCode(input: Identified & { purpose: AuthFlowPurpose 
  * token, which the caller keeps in memory only. A response without the token
  * is treated as a failure by the caller.
  */
-export async function verifyCode(
+export function verifyCode(
   input: Identified & { purpose: AuthFlowPurpose; code: string },
 ): Promise<{ resetToken: string | null }> {
-  const body = await apiFetch<unknown>(AUTH_ENDPOINTS.verifyCode, {
-    method: 'POST',
-    body: JSON.stringify({
-      identifier: input.identifier,
-      identifierType: input.identifierType,
-      purpose: input.purpose,
-      code: input.code,
-    }),
-  });
-  return { resetToken: readResetToken(body) };
-}
-
-function readResetToken(body: unknown): string | null {
-  if (typeof body !== 'object' || body === null) {
-    return null;
-  }
-  const data = (body as { data?: unknown }).data;
-  if (typeof data !== 'object' || data === null) {
-    return null;
-  }
-  const token = (data as { resetToken?: unknown }).resetToken;
-  return typeof token === 'string' && token.length > 0 ? token : null;
+  // Backend inventory confirms no generic verification-code endpoint. Do not ship an unconfirmed call.
+  void input;
+  return Promise.reject(new Error('Code verification is not supported by the current API.'));
 }
 
 /** Sets the new password. Expects 204. The token comes from verifyCode. */
-export async function resetPassword(input: {
-  resetToken: string;
-  password: string;
-}): Promise<void> {
-  await apiFetch<unknown>(AUTH_ENDPOINTS.resetPassword, {
-    method: 'POST',
-    body: JSON.stringify({ token: input.resetToken, password: input.password }),
-  });
+export function resetPassword(input: { resetToken: string; password: string }): Promise<void> {
+  // Backend inventory confirms there is no password-reset endpoint.
+  void input;
+  return Promise.reject(new Error('Password reset is not supported by the current API.'));
 }
 
 /* ── Error mapping: API error → AuthFailure (edit here to match the backend) ── */
@@ -208,20 +181,14 @@ export function mapLoginError(error: unknown): AuthFailure {
  *   anything else           → failed
  */
 export function mapSendCodeError(error: unknown): AuthFailure {
-  if (isTransportOrServerFailure(error) || !(error instanceof ApiError)) {
-    return 'failed';
-  }
-  if (error.code === 'USER_NOT_FOUND') {
+  if (error instanceof ApiError && error.code === 'USER_NOT_FOUND') {
     return 'account-not-found';
   }
   return 'send-failed';
 }
 
 /** Resending a code (either purpose). Any non-server API error is a send failure. */
-export function mapResendCodeError(error: unknown): AuthFailure {
-  if (isTransportOrServerFailure(error) || !(error instanceof ApiError)) {
-    return 'failed';
-  }
+export function mapResendCodeError(_error: unknown): AuthFailure {
   return 'send-failed';
 }
 

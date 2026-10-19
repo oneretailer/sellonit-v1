@@ -26,6 +26,7 @@ export type NormalizedIdentifier = {
 export const IDENTIFIER_ERROR = 'Enter a valid email or phone number';
 
 const LOCAL_PHONE_PATTERN = /^0\d{10}$/;
+const NIGERIAN_INTERNATIONAL_PATTERN = /^(?:\+234|234)\d{10}$/;
 
 /** Removes the formatting users type into phone numbers: spaces, dashes and brackets. */
 export function cleanPhone(value: string): string {
@@ -39,7 +40,12 @@ export function detectIdentifierType(value: string): IdentifierType {
 /** The cleaned 11-digit local phone number, or null when it is not valid. */
 export function normalizePhone(value: string): string | null {
   const cleaned = cleanPhone(value.trim());
-  return LOCAL_PHONE_PATTERN.test(cleaned) ? cleaned : null;
+  if (LOCAL_PHONE_PATTERN.test(cleaned)) return cleaned;
+  if (NIGERIAN_INTERNATIONAL_PATTERN.test(cleaned)) {
+    const digits = cleaned.replace(/^\+?234/, '');
+    return `0${digits}`;
+  }
+  return null;
 }
 
 /**

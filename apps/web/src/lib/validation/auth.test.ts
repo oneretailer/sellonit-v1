@@ -18,11 +18,11 @@ import {
 
 describe('fullNameError', () => {
   it('accepts single and multi-part names', () => {
-    expect(fullNameError('Chukwudi Okechukwu')).toBeNull();
+    expect(fullNameError('Ada Example')).toBeNull();
     expect(fullNameError('Mary-Jane')).toBeNull();
     expect(fullNameError("O'Connor")).toBeNull();
     expect(fullNameError('Ada')).toBeNull(); // one word is allowed
-    expect(fullNameError('  Chukwudi  ')).toBeNull();
+    expect(fullNameError('  Ada  ')).toBeNull();
     expect(fullNameError('Zoë')).toBeNull();
   });
 
@@ -65,8 +65,10 @@ describe('email validation', () => {
     expect(isValidEmail(`${'a'.repeat(250)}@example.com`)).toBe(false); // > 254
   });
 
-  it('returns the minimal message', () => {
-    expect(emailError('nope')).toBe(FORM_ERRORS.emailInvalid);
+  it('accepts normalized signup identifier emails and Nigerian phones with shared copy', () => {
+    expect(emailError('nope')).toBe('Enter a valid email or phone number');
+    expect(emailError('08012345678')).toBeNull();
+    expect(emailError('+2348012345678')).toBeNull();
   });
 });
 
@@ -117,7 +119,7 @@ describe('confirmError / isConfirmMatching', () => {
 
 describe('isRegisterFormValid', () => {
   const validValues: RegisterFormValues = {
-    fullName: 'Chukwudi Okechukwu',
+    fullName: 'Ada Example',
     email: 'you@example.com',
     password: 'passw0rd',
     confirm: 'passw0rd',
@@ -140,9 +142,9 @@ describe('isRegisterFormValid', () => {
 
 describe('splitFullName (legacy-backend compatibility)', () => {
   it('splits on the first space', () => {
-    expect(splitFullName('Chukwudi Okechukwu')).toEqual({
-      firstName: 'Chukwudi',
-      lastName: 'Okechukwu',
+    expect(splitFullName('Ada Example')).toEqual({
+      firstName: 'Ada',
+      lastName: 'Example',
     });
     expect(splitFullName('Mary Jane Smith')).toEqual({
       firstName: 'Mary',
@@ -151,6 +153,6 @@ describe('splitFullName (legacy-backend compatibility)', () => {
   });
 
   it('duplicates a single-word name (legacy backend requires lastName)', () => {
-    expect(splitFullName('Chukwudi')).toEqual({ firstName: 'Chukwudi', lastName: 'Chukwudi' });
+    expect(splitFullName('Ada')).toEqual({ firstName: 'Ada', lastName: 'Ada' });
   });
 });

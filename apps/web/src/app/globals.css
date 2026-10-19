@@ -6,11 +6,16 @@
  * `@tailwind base/components/utilities` directives.
  */
 @import 'tailwindcss';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+@import '@fontsource-variable/outfit';
 
 @theme {
-  /* Typography: Poppins is loaded by next/font in src/app/layout.tsx and
-     exposed as --font-poppins on <html>. */
-  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  /* Self-hosted local font assets avoid runtime/build-time Google Fonts access. */
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
 
   /* Colour tokens — semantic names so they do not shadow Tailwind's default
      gray/orange palettes. */
@@ -18,20 +23,48 @@
   --color-surface: #ffffff; /* card background */
   --color-line: #e5e7eb; /* card border (Gray/100) */
   --color-subtle: #4b5563; /* secondary text and nav links (Gray/500) */
-  --color-ink: #181818; /* primary text, brand black */
+  --color-ink: #030712; /* Gray/900 from auth design */
   --color-primary: #ff8a00; /* orange buttons */
   --color-primary-hover: #e67c00;
-  --color-primary-disabled: #fdebd3; /* pale peach disabled button */
+  --color-primary-disabled: #ffe9cc; /* pale orange disabled button */
   --color-danger: #de350b;
   --color-success: #00875a;
 
   /* Shape and elevation */
   --radius-card: 36px;
-  --shadow-card: 0 1px 2px rgb(24 24 24 / 0.04), 0 12px 32px rgb(24 24 24 / 0.06);
+  --shadow-card: 0 4px 16px rgb(0 0 0 / 0.06);
 
   /* Layout widths (used by max-w-page / max-w-card utilities) */
   --container-page: 1200px;
   --container-card: 632px;
+}
+
+@layer components {
+  .auth-card {
+    width: min(316px, calc(100% - 48px));
+    border-radius: 18px;
+  }
+  @media (min-width: 768px) {
+    .auth-card {
+      width: 632px;
+      border-radius: 36px;
+    }
+  }
+  .auth-heading {
+    font-family: 'Outfit Variable', ui-sans-serif, sans-serif;
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #030712;
+  }
+  @media (min-width: 768px) {
+    .auth-heading {
+      font-size: 36px;
+      line-height: 44px;
+      letter-spacing: -0.72px;
+    }
+  }
 }
 
 @layer base {

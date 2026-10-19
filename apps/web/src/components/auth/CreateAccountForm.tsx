@@ -4,7 +4,6 @@ import { useRef, useState, type FormEvent, type RefObject } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
-import { Spinner } from '@/components/reuseable/Spinner';
 import { mapRegisterError, registerUser, toRegisterUserRequest } from '@/lib/auth/api';
 import { setPendingVerificationEmail } from '@/lib/auth/pendingVerification';
 import {
@@ -12,7 +11,6 @@ import {
   emailError,
   EMAIL_MAX_LENGTH,
   FORM_ERRORS,
-  fullNameError,
   isConfirmMatching,
   isPasswordValid,
   isRegisterFormValid,
@@ -82,8 +80,8 @@ function AlertCircleIcon() {
 
 /* ── Field chrome (Figma: pill input, 558 inner width, label above) ────── */
 
-const pillFieldClass =
-  'flex w-full items-center gap-3 rounded-full border border-line bg-surface px-6 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15';
+const pillFieldClass = (invalid = false) =>
+  `flex h-14 w-full items-center gap-3 rounded-xl border ${invalid ? 'border-danger' : 'border-line'} bg-surface px-5 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15 sm:h-[60px]`;
 const pillInputClass =
   'h-14 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-gray-500 sm:h-[60px] sm:text-lg lg:h-16 lg:text-xl';
 const fieldLabelClass = 'text-base font-medium text-ink sm:text-lg lg:text-xl';
@@ -129,7 +127,7 @@ function PillTextField({
       <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
-      <div className={pillFieldClass}>
+      <div className={pillFieldClass(Boolean(error))}>
         <input
           id={id}
           ref={inputRef}
@@ -147,7 +145,12 @@ function PillTextField({
         />
       </div>
       {error ? (
-        <p id={errorId} className={errorTextClass}>
+        <p
+          id={errorId}
+          aria-live="polite"
+          className={cn('flex items-center gap-2', errorTextClass)}
+        >
+          <AlertCircleIcon />
           {error}
         </p>
       ) : helper ? (
@@ -190,7 +193,7 @@ function PasswordField({
       <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
-      <div className={pillFieldClass}>
+      <div className={pillFieldClass(invalid)}>
         <input
           id={id}
           ref={inputRef}
@@ -212,7 +215,7 @@ function PasswordField({
           aria-label={visible ? 'Hide password' : 'Show password'}
           className="shrink-0 rounded-full p-2 text-subtle hover:text-ink"
         >
-          {visible ? <EyeOffIcon /> : <EyeIcon />}
+          {visible ? <EyeIcon /> : <EyeOffIcon />}
         </button>
       </div>
     </div>
@@ -228,7 +231,7 @@ function PasswordChecklist({ password }: { password: string }) {
       {PASSWORD_RULES.map((rule) => {
         const met = rule.test(password);
         // Neutral gray until the field has content; then green/red per rule.
-        const tone = active ? (met ? 'text-success' : 'text-danger') : 'text-[#6B7280]';
+        const tone = active && met ? 'text-success' : 'text-[#6B7280]';
         return (
           <li key={rule.id} className={cn('flex items-center gap-2', tone)}>
             <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-current" />
@@ -243,11 +246,13 @@ function PasswordChecklist({ password }: { password: string }) {
 
 /* ── Create account form (Figma: fields and buttons) ───────────────────── */
 
-type FieldKey = 'fullName' | 'email' | 'password' | 'confirm' | 'terms';
+type FieldKey = 'firstName' | 'lastName' | 'email' | 'password' | 'confirm' | 'terms';
 
 export function CreateAccountForm() {
   const router = useRouter();
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const fullName = `${firstName} ${lastName}`.trim();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -257,12 +262,13 @@ export function CreateAccountForm() {
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [serverFieldErrors, setServerFieldErrors] = useState<
-    Partial<Record<'fullName' | 'email' | 'password', string>>
+    Partial<Record<'firstName' | 'lastName' | 'email' | 'password', string>>
   >({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fullNameRef = useRef<HTMLInputElement>(null);
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -276,9 +282,14 @@ export function CreateAccountForm() {
     termsAccepted,
   });
 
-  const showError = (key: 'fullName' | 'email') => Boolean(touched[key]) || submitAttempted;
-  const resolvedFullNameError =
-    serverFieldErrors.fullName ?? (showError('fullName') ? fullNameError(fullName) : null);
+  const showError = (key: 'firstName' | 'lastName' | 'email') =>
+    Boolean(touched[key]) || submitAttempted;
+  const resolvedFirstNameError =
+    serverFieldErrors.firstName ??
+    (showError('firstName') && !firstName.trim() ? 'Enter your first name.' : null);
+  const resolvedLastNameError =
+    serverFieldErrors.lastName ??
+    (showError('lastName') && !lastName.trim() ? 'Enter your last name.' : null);
   const resolvedEmailError =
     serverFieldErrors.email ?? (showError('email') ? emailError(email) : null);
   // Live on every keystroke (Figma note: "Autodetect password confirmation").
@@ -287,7 +298,8 @@ export function CreateAccountForm() {
     (submitAttempted || touched.terms) && !termsAccepted ? FORM_ERRORS.termsRequired : null;
 
   const fieldRefs: Record<FieldKey, RefObject<HTMLInputElement | null>> = {
-    fullName: fullNameRef,
+    firstName: firstNameRef,
+    lastName: lastNameRef,
     email: emailRef,
     password: passwordRef,
     confirm: confirmRef,
@@ -295,7 +307,8 @@ export function CreateAccountForm() {
   };
 
   function firstInvalidField(): FieldKey | null {
-    if (fullNameError(fullName) !== null) return 'fullName';
+    if (!firstName.trim()) return 'firstName';
+    if (!lastName.trim()) return 'lastName';
     if (emailError(email) !== null) return 'email';
     if (!isPasswordValid(password)) return 'password';
     if (!isConfirmMatching(password, confirm)) return 'confirm';
@@ -343,24 +356,39 @@ export function CreateAccountForm() {
     <form
       onSubmit={(event) => void handleSubmit(event)}
       noValidate
-      className="flex w-full flex-col gap-8 text-left"
+      className="flex w-full flex-col gap-6 text-left"
     >
       {/* fields: vertical, gap 32 */}
-      <div className="flex w-full flex-col gap-8">
+      <div className="mb-6 flex w-full flex-col gap-6 sm:mb-12">
         <PillTextField
-          id="fullName"
-          label="Full name"
-          placeholder="Chukwudi Okechukwu"
-          value={fullName}
+          id="firstName"
+          label="First name"
+          placeholder="Enter your first name"
+          value={firstName}
           onChange={(value) => {
-            setFullName(value);
-            setServerFieldErrors((current) => ({ ...current, fullName: undefined }));
+            setFirstName(value);
+            setServerFieldErrors((current) => ({ ...current, firstName: undefined }));
           }}
-          onBlur={() => setTouched((current) => ({ ...current, fullName: true }))}
-          error={resolvedFullNameError}
-          autoComplete="name"
+          onBlur={() => setTouched((current) => ({ ...current, firstName: true }))}
+          error={resolvedFirstNameError}
+          autoComplete="given-name"
           maxLength={NAME_MAX_LENGTH}
-          inputRef={fullNameRef}
+          inputRef={firstNameRef}
+        />
+        <PillTextField
+          id="lastName"
+          label="Last name"
+          placeholder="Enter your last name"
+          value={lastName}
+          onChange={(value) => {
+            setLastName(value);
+            setServerFieldErrors((current) => ({ ...current, lastName: undefined }));
+          }}
+          onBlur={() => setTouched((current) => ({ ...current, lastName: true }))}
+          error={resolvedLastNameError}
+          autoComplete="family-name"
+          maxLength={NAME_MAX_LENGTH}
+          inputRef={lastNameRef}
         />
 
         <PillTextField
@@ -386,7 +414,7 @@ export function CreateAccountForm() {
           <PasswordField
             id="password"
             label="Password"
-            placeholder="Create password"
+            placeholder="Create a password"
             value={password}
             onChange={(value) => {
               setPassword(value);
@@ -412,7 +440,7 @@ export function CreateAccountForm() {
           <PasswordField
             id="confirmPassword"
             label="Confirm password"
-            placeholder="Confirm password"
+            placeholder="Re-enter your password"
             value={confirm}
             onChange={(value) => setConfirm(value)}
             visible={showConfirm}
@@ -458,7 +486,7 @@ export function CreateAccountForm() {
       </div>
 
       {/* button and footer: gap 24 */}
-      <div className="flex w-full flex-col gap-6">
+      <div className="flex w-full flex-col gap-2 sm:gap-4">
         {/* form-level errors (rate limit, network, server) */}
         <div aria-live="polite">
           {formError ? (
@@ -475,14 +503,15 @@ export function CreateAccountForm() {
           aria-busy={isSubmitting || undefined}
           className={cn(
             'flex h-14 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-xl leading-7 font-semibold text-ink transition-colors sm:h-16 sm:text-2xl sm:leading-8 lg:h-[68px] lg:py-4 lg:text-[25px] lg:leading-9',
-            valid
-              ? 'bg-[#FF8B00] hover:bg-[#E67D00] active:bg-[#CC6F00]'
-              : 'cursor-not-allowed bg-primary-disabled',
+            isSubmitting
+              ? 'cursor-not-allowed bg-[#CC7000]'
+              : valid
+                ? 'bg-primary hover:bg-primary-hover active:bg-[#CC7000]'
+                : 'cursor-not-allowed bg-primary-disabled',
             isSubmitting && 'cursor-progress',
           )}
         >
-          {isSubmitting ? <Spinner /> : null}
-          Create Account
+          {isSubmitting ? 'Creating account…' : 'Create Account'}
         </button>
 
         <p className="text-center text-base text-subtle lg:text-lg">

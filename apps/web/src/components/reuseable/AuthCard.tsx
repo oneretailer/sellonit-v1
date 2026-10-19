@@ -21,7 +21,7 @@ export function AuthCard({ children, className, gapClassName = 'gap-8' }: AuthCa
   return (
     <section
       className={cn(
-        'flex w-full max-w-card flex-col items-center rounded-card border border-line bg-surface px-5 py-10 text-center shadow-card sm:px-9 sm:py-12',
+        'auth-card flex w-full max-w-card flex-col items-center rounded-card border border-line bg-surface px-[18px] py-8 text-center shadow-card sm:px-9 sm:py-12',
         gapClassName,
         className,
       )}

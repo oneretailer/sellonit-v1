@@ -2,11 +2,10 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { Spinner } from './Spinner';
 
 /** Shared look for every full-width primary pill. */
 const pillBase =
-  'inline-flex h-14 w-full items-center justify-center gap-2 rounded-full px-6 text-base font-bold text-ink transition-colors';
+  'inline-flex min-h-11 h-16 w-full items-center justify-center gap-2 rounded-full px-6 text-xl font-semibold text-white transition-colors';
 
 export type PrimaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Shows a spinner and locks the button while a request is in flight. */
@@ -35,14 +34,13 @@ export function PrimaryButton({
       className={cn(
         pillBase,
         disabled && !loading
-          ? 'cursor-not-allowed bg-primary-disabled'
+          ? 'cursor-not-allowed bg-primary-disabled text-ink'
           : 'bg-primary hover:bg-primary-hover',
-        loading && 'cursor-progress',
+        loading && 'cursor-not-allowed bg-[#CC7000]',
         className,
       )}
       {...rest}
     >
-      {loading ? <Spinner /> : null}
       {children}
     </button>
   );

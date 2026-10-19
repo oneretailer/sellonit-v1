@@ -66,10 +66,10 @@ export function RequestCodeForm() {
   }
 
   return (
-    <AuthCard gapClassName="gap-9">
-      <StepHeader title="Reset your password" align="left">
-        Enter the email or phone number linked to your sellonit account and we will send you a
-        verification code
+    <AuthCard gapClassName="gap-5 sm:gap-9">
+      <StepHeader title="Reset your password" align="center">
+        Enter the phone number linked to your sellonit account and we will send you a verification
+        code
       </StepHeader>
 
       <form
@@ -80,7 +80,7 @@ export function RequestCodeForm() {
         <TextField
           id="identifier"
           label="Email or phone number"
-          placeholder="Email or phone number"
+          placeholder="Enter your email address or phone number"
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
@@ -102,6 +102,7 @@ export function RequestCodeForm() {
             Send verification code
           </PrimaryButton>
           <SecondaryButton
+            className="border border-line bg-white font-medium text-ink hover:bg-canvas"
             disabled={submitting}
             onClick={() => {
               clearAuthFlow();

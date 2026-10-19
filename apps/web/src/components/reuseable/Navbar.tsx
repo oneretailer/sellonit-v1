@@ -24,7 +24,7 @@ export type NavbarProps = {
 export function Navbar({ rightLink }: NavbarProps) {
   return (
     <header className="w-full">
-      <nav className="mx-auto flex h-20 w-full max-w-page items-center justify-between gap-4 px-5 sm:px-8">
+      <nav className="mx-auto flex h-[88px] w-full max-w-[1152px] items-center justify-between gap-4 px-5 sm:h-[110px] sm:px-0">
         <Link href="/" aria-label="Sellonit home" className="shrink-0 rounded-md">
           <Image
             src="/wordmark.svg"
@@ -39,16 +39,14 @@ export function Navbar({ rightLink }: NavbarProps) {
           <Link
             href={rightLink.href}
             className={cn(
-              'text-[24px] font-medium hidden lg:flex text-subtle transition-colors hover:text-ink',
+              'text-sm font-medium text-subtle transition-colors hover:text-ink sm:text-base',
               rightLink.variant === 'pill' && 'rounded-[12px] bg-surface px-5 py-2 hover:bg-canvas',
             )}
           >
             {rightLink.label}
           </Link>
         ) : rightLink ? (
-          <span className="text-[24px] font-medium hidden lg:flex text-subtle">
-            {rightLink.label}
-          </span>
+          <span className="text-sm font-medium text-subtle sm:text-base">{rightLink.label}</span>
         ) : null}
       </nav>
     </header>
