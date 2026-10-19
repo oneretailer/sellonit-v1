@@ -5,9 +5,8 @@
  * own message, which is safe to display by construction (the API never
  * returns stack traces or internals). Raw exceptions are never shown.
  *
- * `INVALID_VERIFICATION_TOKEN` is used for the phone code and the email link,
- * and the API does not say which. So the message is per screen: use the
- * screen-specific helpers below.
+ * `INVALID_VERIFICATION_TOKEN` is used by the verification link; the message
+ * is written for that screen.
  */
 import { ApiError, NetworkError } from '@/lib/api-client';
 
@@ -51,29 +50,22 @@ export function authErrorMessage(error: unknown): string {
   return UNKNOWN_MESSAGE;
 }
 
-/** Errors from POST /auth/register, shown on the phone step where the account is created. */
-export function registerErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && error.code === 'INTERNAL_ERROR') {
-    return "We couldn't finish creating your account. Your account may already exist, so try logging in with this email. If that fails, try again later.";
-  }
-  return authErrorMessage(error);
-}
-
-/** Errors from POST /auth/verify-phone. The API does not say whether the code was wrong or expired. */
-export function phoneCodeErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && error.code === 'INVALID_VERIFICATION_TOKEN') {
-    return 'That code is incorrect or has expired. Check the text message and try again.';
-  }
-  if (error instanceof ApiError && error.code === 'VALIDATION_ERROR') {
-    return 'Enter the 6-digit code from the text message.';
-  }
-  return authErrorMessage(error);
-}
-
-/** Errors from POST /auth/verify-email, shown on the /verify-email page and the dev panel. */
+/** Errors from POST /auth/verify-email, shown on the link landing route. */
 export function emailLinkErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.code === 'INVALID_VERIFICATION_TOKEN') {
-    return 'This verification link is invalid or has expired. Request a new one by registering again.';
+    return 'This verification link is invalid or has expired.';
   }
   return authErrorMessage(error);
+}
+
+/**
+ * Whether a failed verification may succeed if the same request is sent again.
+ * Network failures and server errors are transient (the token is only consumed
+ * on success, so retrying is safe); an invalid or expired token is not.
+ */
+export function isRetryableAuthError(error: unknown): boolean {
+  if (error instanceof NetworkError) {
+    return true;
+  }
+  return error instanceof ApiError && error.status >= 500;
 }

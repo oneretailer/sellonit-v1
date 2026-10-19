@@ -1,14 +1,7 @@
 import type { ReactNode } from 'react';
-import { LoginFlowProvider } from '@/components/login/LoginFlowProvider';
 import { AuthPage } from '@/components/reuseable/AuthPage';
 
-/** Shared layout for the login steps. Same navbar as the registration steps. */
+/** Login shell: logo top-left, plain "Login" text top-right (no link on the login page itself). */
 export default function LoginLayout({ children }: { children: ReactNode }) {
-  return (
-    <LoginFlowProvider>
-      <AuthPage rightLink={{ label: 'Create account', href: '/auth/register/name' }}>
-        {children}
-      </AuthPage>
-    </LoginFlowProvider>
-  );
+  return <AuthPage rightLink={{ label: 'Login', variant: 'text' }}>{children}</AuthPage>;
 }

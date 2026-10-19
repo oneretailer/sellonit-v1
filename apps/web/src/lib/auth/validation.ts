@@ -1,44 +1,14 @@
 /**
- * Frontend input validation for the auth flows.
+ * Lightweight input checks for the login flow and account display.
  *
- * These checks only catch obvious input errors early; the backend remains
- * authoritative (apps/api validates the same fields server-side).
+ * The Create account form has its own rule set in `lib/validation/auth.ts`
+ * (form, tests and API layer share that one module).
  */
-
-export const MIN_PASSWORD_LENGTH = 8;
-export const MAX_PASSWORD_LENGTH = 128;
-export const NAME_MAX_LENGTH = 80;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isEmail(value: string): boolean {
   return EMAIL_PATTERN.test(value.trim());
-}
-
-export function isPassword(value: string): boolean {
-  return value.length >= MIN_PASSWORD_LENGTH && value.length <= MAX_PASSWORD_LENGTH;
-}
-
-export function isName(value: string): boolean {
-  const trimmed = value.trim();
-  return trimmed.length >= 1 && trimmed.length <= NAME_MAX_LENGTH;
-}
-
-/**
- * The phone field shows a fixed "+234" prefix; the user types the 10-digit
- * number without the leading zero. Nigerian mobile numbers start with 7, 8 or
- * 9 (07xx/08xx/09xx in the local form).
- */
-export function isNigerianPhoneDigits(value: string): boolean {
-  return /^[789]\d{9}$/.test(value);
-}
-
-/**
- * Converts the entered digits (`8031234567`) to the local form the API
- * accepts (`08031234567`). The API normalises it to `+2348031234567`.
- */
-export function toLocalPhone(digits: string): string {
-  return `0${digits}`;
 }
 
 /**
@@ -59,20 +29,25 @@ export function formatPhoneDisplay(value: string): string {
   return value;
 }
 
-/** The backend sends a 6-digit numeric phone verification code. */
-export function isVerificationCode(value: string): boolean {
-  return /^\d{6}$/.test(value);
-}
-
-/** Strips non-digits and caps the length (used for phone/code inputs). */
-export function onlyDigits(value: string, maxLength = 6): string {
-  return value.replace(/\D/g, '').slice(0, maxLength);
+/**
+ * A Nigerian mobile number as entered after the leading 0 (ten digits starting
+ * with 7, 8 or 9), e.g. `8031234567`.
+ */
+export function isNigerianPhoneDigits(value: string): boolean {
+  return /^[789]\d{9}$/.test(value);
 }
 
 /**
- * Normalises raw input from the phone field to the 10 national digits
- * (`8031234567`). Pasting or typing a leading `0` (`08031234567`) or the
- * country code (`2348031234567`) is accepted and the prefix is dropped.
+ * Converts the entered digits (`8031234567`) to the local form the API
+ * accepts (`08031234567`). The API normalises it to `+2348031234567`.
+ */
+export function toLocalPhone(digits: string): string {
+  return `0${digits}`;
+}
+
+/**
+ * Keeps only the ten subscriber digits: strips non-digits, the `234` country
+ * code, and a leading trunk `0`.
  */
 export function normalizePhoneInput(raw: string): string {
   let digits = raw.replace(/\D/g, '');
@@ -82,32 +57,4 @@ export function normalizePhoneInput(raw: string): string {
     digits = digits.slice(1);
   }
   return digits.slice(0, 10);
-}
-
-/**
- * Display form used in the verification copy, matching the design example:
- * `8072994315` → `080 72994315` (leading 0, then a space after the first three
- * characters of the local number).
- */
-export function formatLocalPhoneSpaced(digits: string): string {
-  return `0${digits.slice(0, 2)} ${digits.slice(2)}`;
-}
-
-export type PasswordStepErrors = { password?: string; confirm?: string };
-
-/**
- * Checks the password step. The rules match the backend (8 to 128 characters).
- * The confirmation is compared exactly. It is never stored in the flow state.
- */
-export function validatePasswordStep(password: string, confirm: string): PasswordStepErrors {
-  const errors: PasswordStepErrors = {};
-  if (!isPassword(password)) {
-    errors.password = `Use between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters for your password.`;
-  }
-  if (confirm.length === 0) {
-    errors.confirm = 'Re-enter your password to confirm it.';
-  } else if (confirm !== password) {
-    errors.confirm = 'Passwords do not match.';
-  }
-  return errors;
 }

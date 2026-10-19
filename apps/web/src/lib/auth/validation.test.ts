@@ -1,57 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError, NetworkError } from '@/lib/api-client';
 import { authErrorMessage } from './errors';
-import {
-  formatLocalPhoneSpaced,
-  formatPhoneDisplay,
-  isEmail,
-  isName,
-  isNigerianPhoneDigits,
-  isPassword,
-  isVerificationCode,
-  normalizePhoneInput,
-  onlyDigits,
-  toLocalPhone,
-} from './validation';
-
-describe('isNigerianPhoneDigits', () => {
-  it('accepts 10-digit numbers starting with 7, 8 or 9', () => {
-    expect(isNigerianPhoneDigits('7031234567')).toBe(true);
-    expect(isNigerianPhoneDigits('8031234567')).toBe(true);
-    expect(isNigerianPhoneDigits('9031234567')).toBe(true);
-  });
-
-  it('rejects wrong lengths and impossible prefixes', () => {
-    expect(isNigerianPhoneDigits('')).toBe(false);
-    expect(isNigerianPhoneDigits('803123456')).toBe(false);
-    expect(isNigerianPhoneDigits('08031234567')).toBe(false);
-    expect(isNigerianPhoneDigits('80312345678')).toBe(false);
-    expect(isNigerianPhoneDigits('6031234567')).toBe(false);
-    expect(isNigerianPhoneDigits('0031234567')).toBe(false);
-    expect(isNigerianPhoneDigits('80312345 67')).toBe(false);
-  });
-});
-
-describe('toLocalPhone', () => {
-  it('converts entered digits to the local form the API accepts', () => {
-    expect(toLocalPhone('8031234567')).toBe('08031234567');
-  });
-});
-
-describe('formatPhoneDisplay', () => {
-  it('formats the local form', () => {
-    expect(formatPhoneDisplay('08031234567')).toBe('+234 803 123 4567');
-  });
-
-  it('formats the international form', () => {
-    expect(formatPhoneDisplay('+2348031234567')).toBe('+234 803 123 4567');
-    expect(formatPhoneDisplay('2348031234567')).toBe('+234 803 123 4567');
-  });
-
-  it('returns unrecognised values unchanged', () => {
-    expect(formatPhoneDisplay('not-a-number')).toBe('not-a-number');
-  });
-});
+import { formatPhoneDisplay, isEmail } from './validation';
 
 describe('isEmail', () => {
   it('accepts plain email addresses', () => {
@@ -67,38 +17,18 @@ describe('isEmail', () => {
   });
 });
 
-describe('isPassword', () => {
-  it('enforces 8-128 characters', () => {
-    expect(isPassword('password')).toBe(true);
-    expect(isPassword('12345678')).toBe(true);
-    expect(isPassword('1234567')).toBe(false);
-    expect(isPassword('x'.repeat(129))).toBe(false);
+describe('formatPhoneDisplay', () => {
+  it('formats the local form', () => {
+    expect(formatPhoneDisplay('08031234567')).toBe('+234 803 123 4567');
   });
-});
 
-describe('isName', () => {
-  it('requires 1-80 non-whitespace characters', () => {
-    expect(isName('Ada')).toBe(true);
-    expect(isName('  Ada  ')).toBe(true);
-    expect(isName('')).toBe(false);
-    expect(isName('   ')).toBe(false);
-    expect(isName('x'.repeat(81))).toBe(false);
+  it('formats the international form', () => {
+    expect(formatPhoneDisplay('+2348031234567')).toBe('+234 803 123 4567');
+    expect(formatPhoneDisplay('2348031234567')).toBe('+234 803 123 4567');
   });
-});
 
-describe('isVerificationCode', () => {
-  it('requires exactly 6 digits', () => {
-    expect(isVerificationCode('123456')).toBe(true);
-    expect(isVerificationCode('12345')).toBe(false);
-    expect(isVerificationCode('1234567')).toBe(false);
-    expect(isVerificationCode('12345a')).toBe(false);
-  });
-});
-
-describe('onlyDigits', () => {
-  it('strips non-digits and caps the length', () => {
-    expect(onlyDigits('a1 2 3!4 5 6 7', 6)).toBe('123456');
-    expect(onlyDigits('1234567890', 10)).toBe('1234567890');
+  it('returns unrecognised values unchanged', () => {
+    expect(formatPhoneDisplay('not-a-number')).toBe('not-a-number');
   });
 });
 
@@ -137,27 +67,5 @@ describe('authErrorMessage', () => {
       'Something went wrong. Please try again.',
     );
     expect(authErrorMessage('boom')).toBe('Something went wrong. Please try again.');
-  });
-});
-
-describe('normalizePhoneInput', () => {
-  it('keeps the 10 national digits and drops formatting', () => {
-    expect(normalizePhoneInput('8072994315')).toBe('8072994315');
-    expect(normalizePhoneInput('807 299 4315')).toBe('8072994315');
-  });
-
-  it('drops a pasted leading 0 or country code', () => {
-    expect(normalizePhoneInput('08072994315')).toBe('8072994315');
-    expect(normalizePhoneInput('+2348072994315')).toBe('8072994315');
-  });
-
-  it('caps the length at 10 digits', () => {
-    expect(normalizePhoneInput('80729943159999')).toBe('8072994315');
-  });
-});
-
-describe('formatLocalPhoneSpaced', () => {
-  it('formats national digits as the verification copy shows them', () => {
-    expect(formatLocalPhoneSpaced('8072994315')).toBe('080 72994315');
   });
 });

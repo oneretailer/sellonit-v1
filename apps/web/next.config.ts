@@ -5,16 +5,19 @@ const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 /**
  * Where the Next.js server reaches the API (server-side fetches and the
- * `/api/v1/*` proxy below). This is the API base WITHOUT the `/v1` suffix —
- * the API mounts its routes under `/api/v1`, so the local default is
- * `http://localhost:4000/api`. Rewrites are resolved at BUILD time, so this
- * must be set when running `next build` (the Dockerfile takes it as a build
- * arg).
+ * `/api/v1/*` proxy below). Accepts either the API origin (`http://api:4000`,
+ * the form used by docker-compose, the Dockerfile build arg and
+ * `.env.example`) or the origin with the `/api` mount prefix
+ * (`http://api:4000/api`). The API mounts its routes under `/api/v1`, so the
+ * `/api` prefix is appended below when missing. Rewrites are resolved at BUILD
+ * time, so this must be set when running `next build` (the Dockerfile takes it
+ * as a build arg).
  */
-const apiInternalUrl = (process.env.API_INTERNAL_URL ?? 'http://localhost:4000/api').replace(
+const apiInternalUrl = (process.env.API_INTERNAL_URL ?? 'http://localhost:4000').replace(
   /\/+$/,
   '',
 );
+const apiBase = /\/api$/.test(apiInternalUrl) ? apiInternalUrl : `${apiInternalUrl}/api`;
 
 /**
  * Dev-server only: extra hostnames (comma-separated, wildcards allowed) that may
@@ -84,9 +87,7 @@ const nextConfig: NextConfig = {
   rewrites() {
     // Browser code calls same-origin `/api/v1/...`; Next proxies to the API.
     // This avoids CORS in local/dev setups and never exposes internal hostnames.
-    return Promise.resolve([
-      { source: '/api/v1/:path*', destination: `${apiInternalUrl}/v1/:path*` },
-    ]);
+    return Promise.resolve([{ source: '/api/v1/:path*', destination: `${apiBase}/v1/:path*` }]);
   },
 };
 

@@ -15,18 +15,22 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string | null;
   readonly requestId: string | null;
+  /** Per-field messages from a 422 body (`error.fields`), when present. */
+  readonly fields: Record<string, string> | null;
 
   constructor(
     status: number,
     code: string | null,
     message: string,
     requestId: string | null = null,
+    fields: Record<string, string> | null = null,
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.requestId = requestId;
+    this.fields = fields;
   }
 }
 
@@ -55,6 +59,7 @@ async function readErrorBody(response: Response): Promise<ApiError> {
   let code: string | null = null;
   let message = '';
   let requestId: string | null = null;
+  let fields: Record<string, string> | null = null;
   const contentType = response.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
     try {
@@ -63,6 +68,12 @@ async function readErrorBody(response: Response): Promise<ApiError> {
         code = stringOr(body.error.code);
         message = stringOr(body.error.message) ?? '';
         requestId = stringOr(body.error.requestId);
+        if (isRecord(body.error.fields)) {
+          const entries = Object.entries(body.error.fields).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          );
+          fields = entries.length > 0 ? Object.fromEntries(entries) : null;
+        }
       }
     } catch {
       // Malformed error body — fall through to the generic message.
@@ -74,7 +85,7 @@ async function readErrorBody(response: Response): Promise<ApiError> {
         ? 'Something went wrong on our side. Please try again in a moment.'
         : 'We could not complete that request. Please try again.';
   }
-  return new ApiError(response.status, code, message, requestId);
+  return new ApiError(response.status, code, message, requestId, fields);
 }
 
 /**
