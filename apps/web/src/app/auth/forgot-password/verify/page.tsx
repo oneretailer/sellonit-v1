@@ -7,5 +7,9 @@ export const metadata: Metadata = {
 
 /** Forgot password, step 2: enter the six-digit code. */
 export default function ForgotPasswordVerifyPage() {
-  return <CodeForm purpose="reset-password" />;
+  return(
+    <div className='pt-15 w-full flex items-center justify-center'>
+       <CodeForm purpose="reset-password" />
+    </div>
+  );
 }

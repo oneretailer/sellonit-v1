@@ -360,10 +360,11 @@ export function CreateAccountForm() {
   }
 
   return (
-    <form
+   <div >
+     <form
       onSubmit={(event) => void handleSubmit(event)}
       noValidate
-      className="flex w-full flex-col gap-0 text-left"
+      className="flex w-full  flex-col gap-0 text-left"
     >
       {/* fields: vertical, gap 32 */}
       <div className="mb-6 flex w-full flex-col gap-6 md:mb-12">
@@ -536,5 +537,6 @@ export function CreateAccountForm() {
         </p>
       </div>
     </form>
+   </div>
   );
 }

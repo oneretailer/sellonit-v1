@@ -40,7 +40,7 @@ export function PrimaryButton({
           ? 'cursor-not-allowed bg-primary-disabled text-ink'
           : loading
             ? 'cursor-not-allowed bg-[#CC7000]'
-            : 'bg-primary hover:bg-primary-hover',
+            : 'bg-primary text-ink hover:bg-primary-hover',
         className,
       )}
       {...rest}

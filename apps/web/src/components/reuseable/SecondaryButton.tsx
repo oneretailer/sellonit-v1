@@ -33,7 +33,7 @@ export function SecondaryButton({
           'inline-flex min-h-14 h-16 w-full items-center justify-center gap-3 px-6 text-base font-medium text-ink transition-colors',
           shape === 'pill' ? 'rounded-full' : 'rounded-button',
           appearance === 'outline'
-            ? 'border border-line bg-white hover:bg-canvas'
+            ? 'border border-solid  bg-white hover:bg-canvas'
             : 'bg-primary-disabled hover:bg-[#fbe0bb]',
         ),
         locked ? 'cursor-not-allowed opacity-70' : null,

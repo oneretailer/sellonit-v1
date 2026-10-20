@@ -41,32 +41,148 @@
 }
 
 @layer utilities {
-  .auth-card.auth-card {
-    width: min(316px, calc(100% - 48px));
-    border-radius: 18px;
-    border-width: 0.5px;
+  /* ---------- MOBILE BASE (below 768px): same values as your original ---------- */
+  .auth-card {
+    --auth-w: min(416px, calc(100% - 48px));
+    --auth-radius: 36px;
+    --auth-pad-y: 24px;
+    --auth-pad-x: 18px;
+    --auth-gap: 24px;
+    --auth-heading-size: 24px;
+    --auth-heading-lh: 28px;
+    --auth-field-h: 48px;
+    --auth-btn-h: 52px;
+
+    box-sizing: border-box;
+    width: var(--auth-w);
+    max-width: 100%;
+    border-radius: var(--auth-radius);
+    padding: var(--auth-pad-y) var(--auth-pad-x);
+    gap: var(--auth-gap);
+    text-align: center;
+   
   }
-  @media (min-width: 768px) {
-    .auth-card.auth-card {
-      width: 632px;
-      border-radius: 36px;
-      border-width: 1px;
+
+  /* Stop children from forcing the card wider than the screen */
+  .auth-card > * {
+    min-width: 0;
+  }
+  
+
+  /* Small phones (360px and below): slightly tighter sides */
+  @media (max-width: 360px) {
+    .auth-card {
+      --auth-w: calc(100% - 32px);
+      --auth-pad-x: 16px;
     }
+  }
+
+  /* Prevent iOS zoom-on-focus */
+  @media (max-width: 767px) {
+    .auth-card input,
+    .auth-card select,
+    .auth-card textarea {
+      font-size: 16px;
+    }
+  }
+
+  /* ---------- md: 768px+ ---------- */
+  @media (min-width: 768px) {
+    .auth-card {
+      --auth-w: 480px;
+      --auth-radius: 28px;
+      --auth-pad-y: 32px;
+      --auth-pad-x: 28px;
+      --auth-gap: 28px;
+      --auth-heading-size: 28px;
+      --auth-heading-lh: 34px;
+       border: 5px solid #E5E7EB;
+    }
+  }
+
+  /* ---------- lg: 1024px+ ---------- */
+  @media (min-width: 1024px) {
+    .auth-card {
+      --auth-w: 520px;
+      --auth-radius: 30px;
+      --auth-pad-y: 36px;
+      --auth-pad-x: 32px;
+      --auth-gap: 32px;
+      --auth-heading-size: 30px;
+      --auth-heading-lh: 36px;
+      --auth-field-h: 52px;
+      --auth-btn-h: 56px;
+    }
+  }
+
+  /* ---------- xl: 1280px+ ---------- */
+  @media (min-width: 1280px) {
+    .auth-card {
+      --auth-w: 560px;
+      --auth-radius: 32px;
+      --auth-pad-y: 40px;
+      --auth-pad-x: 36px;
+      --auth-gap: 36px;
+      --auth-heading-size: 32px;
+      --auth-heading-lh: 40px;
+      --auth-field-h: 56px;
+      --auth-btn-h: 60px;
+    }
+  }
+
+  /* ---------- 2xl: 1536px+ (full Figma values) ---------- */
+  @media (min-width: 1536px) {
+    .auth-card {
+      --auth-w: 632px;
+      --auth-radius: 36px;
+      --auth-pad-y: 48px;
+      --auth-pad-x: 36px;
+      --auth-gap: 48px;
+      --auth-heading-size: 36px;
+      --auth-heading-lh: 44px;
+      --auth-field-h: 60px;
+      --auth-btn-h: 64px;
+    }
+  }
+
+  /* ---------- Short laptop screens only (never affects phones in portrait) ---------- */
+  @media (min-width: 768px) and (max-height: 800px) {
+    .auth-card {
+      --auth-pad-y: 28px;
+      --auth-gap: 24px;
+      --auth-heading-size: 28px;
+      --auth-heading-lh: 34px;
+      --auth-field-h: 46px;
+      --auth-btn-h: 50px;
+    }
+  }
+
+  /* ---------- Compact variant (reset password): md and up only ---------- */
+  @media (min-width: 768px) {
+    .auth-card.auth-card--compact {
+      --auth-gap: 20px;
+    }
+  }
+  @media (min-width: 1536px) and (min-height: 801px) {
+    .auth-card.auth-card--compact {
+      --auth-gap: 36px;
+    }
+  }
+
+  /* ---------- Shared inner sizing ---------- */
+  .auth-input {
+    height: var(--auth-field-h);
+  }
+  .auth-button {
+    height: var(--auth-btn-h);
   }
   .auth-heading {
     font-family: 'Outfit Variable', ui-sans-serif, sans-serif;
-    font-size: 20px;
-    line-height: 28px;
+    font-size: var(--auth-heading-size);
+    line-height: var(--auth-heading-lh);
     font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--color-ink);
-  }
-  @media (min-width: 768px) {
-    .auth-heading {
-      font-size: 36px;
-      line-height: 44px;
-      letter-spacing: -0.72px;
-    }
   }
 }
 
