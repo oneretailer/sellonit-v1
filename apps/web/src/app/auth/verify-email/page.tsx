@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { BagMark } from '@/components/brand/BagMark';
 import { resendVerification } from '@/lib/auth/api';
 import { PENDING_VERIFICATION_EMAIL_KEY } from '@/lib/auth/pendingVerification';
 
@@ -64,42 +65,45 @@ export default function VerifyEmailPage() {
   }
 
   return (
-   <div className='pt-15 w-full flex items-center justify-center'>
-     <div className="flex w-full max-w-[632px] flex-col items-center gap-6 rounded-3xl border border-[#E5E7EB] bg-white px-5 py-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.08)] sm:px-8 sm:py-10 lg:rounded-[36px] lg:px-[36px] lg:py-12">
-      <h1 className="text-[19px] leading-8 font-bold text-ink sm:text-[26px] sm:leading-[34px] lg:text-[30px] lg:leading-9">
-        Check your email
-      </h1>
-      <p className="text-base leading-6 font-normal text-[#6B7280] sm:text-lg sm:leading-7 lg:text-[20px] lg:leading-[30px]">
-        We sent a link to {email}
-      </p>
+    <div className="pt-15 w-full flex items-center justify-center">
+      <div className="flex w-full max-w-[632px] flex-col items-center gap-6 rounded-3xl border border-[#E5E7EB] bg-white px-5 py-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.08)] sm:px-8 sm:py-10 lg:rounded-[36px] lg:px-[36px] lg:py-12">
+        <div className="flex w-full flex-col items-center gap-4 md:gap-6">
+          <BagMark />
+          <h1 className="text-[19px] leading-8 font-bold text-ink sm:text-[26px] sm:leading-[34px] lg:text-[30px] lg:leading-9">
+            Check your email
+          </h1>
+        </div>
+        <p className="text-base leading-6 font-normal text-[#6B7280] sm:text-lg sm:leading-7 lg:text-[20px] lg:leading-[30px]">
+          We sent a link to {email}
+        </p>
 
-      <div className="flex w-full flex-col items-center gap-4" aria-live="polite">
-        <button
-          type="button"
-          onClick={() => void handleResend()}
-          disabled={cooldown > 0 || resendState === 'sending'}
-          aria-disabled={cooldown > 0 || resendState === 'sending'}
-          className="flex h-14 w-full items-center justify-center rounded-full bg-[#FF8B00] px-6 text-xl leading-7 font-semibold text-ink transition-colors hover:bg-[#E67D00] active:bg-[#CC6F00] disabled:cursor-not-allowed disabled:bg-primary-disabled sm:h-16 sm:text-2xl sm:leading-8 lg:h-[68px] lg:text-[25px] lg:leading-9"
+        <div className="flex w-full flex-col items-center gap-4" aria-live="polite">
+          <button
+            type="button"
+            onClick={() => void handleResend()}
+            disabled={cooldown > 0 || resendState === 'sending'}
+            aria-disabled={cooldown > 0 || resendState === 'sending'}
+            className="flex h-14 w-full items-center justify-center rounded-full bg-[#FF8B00] px-6 text-xl leading-7 font-semibold text-ink transition-colors hover:bg-[#E67D00] active:bg-[#CC6F00] disabled:cursor-not-allowed disabled:bg-primary-disabled sm:h-16 sm:text-2xl sm:leading-8 lg:h-[68px] lg:text-[25px] lg:leading-9"
+          >
+            {cooldown > 0 ? `Resend link in ${cooldown}s` : 'Resend link'}
+          </button>
+          {resendState === 'sent' ? (
+            <p className="text-sm text-success lg:text-base">Link sent.</p>
+          ) : null}
+          {resendState === 'failed' ? (
+            <p className="text-sm text-danger lg:text-base">
+              We couldn&apos;t send the link. Try again.
+            </p>
+          ) : null}
+        </div>
+
+        <Link
+          href="/auth/register"
+          className="text-base font-semibold text-ink underline underline-offset-2 lg:text-lg"
         >
-          {cooldown > 0 ? `Resend link in ${cooldown}s` : 'Resend link'}
-        </button>
-        {resendState === 'sent' ? (
-          <p className="text-sm text-success lg:text-base">Link sent.</p>
-        ) : null}
-        {resendState === 'failed' ? (
-          <p className="text-sm text-danger lg:text-base">
-            We couldn&apos;t send the link. Try again.
-          </p>
-        ) : null}
+          Use a different email
+        </Link>
       </div>
-
-      <Link
-        href="/auth/register"
-        className="text-base font-semibold text-ink underline underline-offset-2 lg:text-lg"
-      >
-        Use a different email
-      </Link>
     </div>
-   </div>
   );
 }

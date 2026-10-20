@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import { BagMark } from '@/components/brand/BagMark';
 import { getMe, verifyEmail } from '@/lib/auth/api';
 import { emailLinkErrorMessage, isRetryableAuthError } from '@/lib/auth/errors';
 import { PENDING_VERIFICATION_EMAIL_KEY } from '@/lib/auth/pendingVerification';
@@ -18,6 +26,15 @@ const headingClass =
   'text-[19px] leading-8 font-bold text-ink sm:text-[26px] sm:leading-[34px] lg:text-[30px] lg:leading-9';
 const bodyClass =
   'text-base leading-6 font-normal text-[#6B7280] sm:text-lg sm:leading-7 lg:text-[20px] lg:leading-[30px]';
+
+function StatusHeading({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex w-full flex-col items-center gap-4 md:gap-6">
+      <BagMark />
+      <h1 className={headingClass}>{children}</h1>
+    </div>
+  );
+}
 
 /** sessionStorage does not change behind our back; an empty subscription is enough. */
 const emptySubscribe = () => () => {};
@@ -104,7 +121,7 @@ export function VerifyEmailConfirm() {
   if (status.kind === 'verifying') {
     return (
       <div className={cardClass}>
-        <h1 className={headingClass}>Verifying your email</h1>
+        <StatusHeading>Verifying your email</StatusHeading>
         <p className={bodyClass}>This will only take a moment.</p>
       </div>
     );
@@ -113,7 +130,7 @@ export function VerifyEmailConfirm() {
   if (status.kind === 'verified') {
     return (
       <div className={cardClass}>
-        <h1 className={headingClass}>Email verified</h1>
+        <StatusHeading>Email verified</StatusHeading>
         <p className={bodyClass}>Your email address is verified. Taking you to your account.</p>
       </div>
     );
@@ -121,7 +138,7 @@ export function VerifyEmailConfirm() {
 
   return (
     <div className={cardClass}>
-      <h1 className={headingClass}>We could not verify your email</h1>
+      <StatusHeading>We could not verify your email</StatusHeading>
       <p className={bodyClass} aria-live="polite">
         {status.message}
       </p>
