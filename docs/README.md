@@ -82,3 +82,4 @@ This contract intentionally defines the external API boundary. Internal Express 
 The repository remains a skeleton with pure lifecycle guards, not an implemented
 commerce API. See [the alignment audit](v1.0.3-alignment.md) for verified coverage
 and the remaining persistence, authorization and provider integration work.
+i added the stuuf
