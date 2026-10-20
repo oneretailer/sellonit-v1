@@ -1,13 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { BagMark } from './BagMark';
+import { BAG_MARK_SIZE_CLASS, BagMark } from './BagMark';
 
 describe('BagMark', () => {
   it('renders a decorative SVG and accepts sizing classes', () => {
-    const html = renderToStaticMarkup(<BagMark className="w-9 sm:w-14 text-primary" />);
+    const html = renderToStaticMarkup(<BagMark />);
     expect(html).toContain('<svg');
     expect(html).toContain('aria-hidden="true"');
-    expect(html).toContain('w-9 sm:w-14');
+    expect(html).toContain(BAG_MARK_SIZE_CLASS);
     expect(html).toContain('text-primary');
     expect(html).toContain('viewBox="0 0 56 60"');
   });

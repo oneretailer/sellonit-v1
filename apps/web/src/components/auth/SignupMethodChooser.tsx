@@ -14,10 +14,7 @@ export function SignupMethodChooser() {
   return (
     <div className="pt-15 w-full flex items-center justify-center">
       <AuthCard gapClassName="gap-9 pt-10 md:gap-12">
-        <AuthCardHeader
-          icon={<BagMark className="w-9 text-primary md:w-14" />}
-          title="Create your sellonit account"
-        >
+        <AuthCardHeader icon={<BagMark />} title="Create your sellonit account">
           <span className="text-[15px]"> Choose how you&apos;d like to get started</span>
         </AuthCardHeader>
 
