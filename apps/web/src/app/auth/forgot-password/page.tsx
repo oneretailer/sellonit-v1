@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 export default function ForgotPasswordPage() {
   return (
     <>
-    <div className='pt-15 w-full flex items-center justify-center'>
-      <RequestCodeForm />
-    </div>
+      <div className="pt-15 w-full flex items-center justify-center">
+        <RequestCodeForm />
+      </div>
     </>
   );
 }

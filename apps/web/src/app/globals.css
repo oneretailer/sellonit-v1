@@ -60,14 +60,12 @@
     padding: var(--auth-pad-y) var(--auth-pad-x);
     gap: var(--auth-gap);
     text-align: center;
-   
   }
 
   /* Stop children from forcing the card wider than the screen */
   .auth-card > * {
     min-width: 0;
   }
-  
 
   /* Small phones (360px and below): slightly tighter sides */
   @media (max-width: 360px) {
@@ -96,7 +94,7 @@
       --auth-gap: 28px;
       --auth-heading-size: 28px;
       --auth-heading-lh: 34px;
-       border: 5px solid #E5E7EB;
+      border: 5px solid #e5e7eb;
     }
   }
 

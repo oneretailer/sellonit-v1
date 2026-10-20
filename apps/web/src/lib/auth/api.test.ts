@@ -45,14 +45,12 @@ describe('mapRegisterError', () => {
 
 describe('email verification callback endpoint', () => {
   it('posts the link token to the real session-establishing endpoint', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(
-        new Response(JSON.stringify({ user: { id: 'u1', email: 'a@b.com' }, expiresIn: 60 }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-      );
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ user: { id: 'u1', email: 'a@b.com' }, expiresIn: 60 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
     await verifyEmail('token-value');
     expect(fetchSpy).toHaveBeenCalledWith(
       '/api/v1/auth/verify-email-and-login',

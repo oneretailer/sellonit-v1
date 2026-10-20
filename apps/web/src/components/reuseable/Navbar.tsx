@@ -40,10 +40,9 @@ export function Navbar({ rightLink }: NavbarProps) {
             href={rightLink.href}
             className={cn(
               'text-sm font-medium text-subtle transition-colors hover:text-ink sm:text-base',
-           
             )}
           >
-         <span className='text-[18px] md:text-[24px] '> {rightLink.label}</span>  
+            <span className="text-[18px] md:text-[24px] "> {rightLink.label}</span>
           </Link>
         ) : rightLink ? (
           <span className="text-sm font-medium text-subtle sm:text-base">{rightLink.label}</span>
