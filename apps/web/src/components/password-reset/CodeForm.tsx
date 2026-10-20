@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
@@ -192,7 +193,7 @@ export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
 
   return (
     <AuthCard gapClassName="gap-9">
-      <StepHeader title="Enter verification code" align="left">
+      <StepHeader title="Enter verification code" align="left" icon={<BagMark />}>
         {`We sent a code to ${maskedTo}`}
       </StepHeader>
 

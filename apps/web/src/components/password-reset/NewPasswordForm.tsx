@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PasswordField } from '@/components/reuseable/PasswordField';
@@ -98,7 +99,7 @@ export function NewPasswordForm() {
 
   return (
     <AuthCard gapClassName="gap-9">
-      <StepHeader title="Create a new password" align="left">
+      <StepHeader title="Create a new password" align="left" icon={<BagMark />}>
         Choose a new password for your sellonit account
       </StepHeader>
 

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
@@ -67,7 +68,7 @@ export function RequestCodeForm() {
 
   return (
     <AuthCard gapClassName="gap-6 md:gap-9">
-      <StepHeader title="Reset your password" align="center">
+      <StepHeader title="Reset your password" align="center" icon={<BagMark />}>
         Enter the phone number linked to your sellonit account and we will send you a verification
         code
       </StepHeader>

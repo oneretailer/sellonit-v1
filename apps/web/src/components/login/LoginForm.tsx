@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PasswordField } from '@/components/reuseable/PasswordField';
@@ -114,7 +115,7 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
 
   return (
     <AuthCard gapClassName="gap-6 sm:gap-12">
-      <StepHeader title="Welcome back" align="center">
+      <StepHeader title="Welcome back" align="center" icon={<BagMark />}>
         Log in to continue to your Sellonit account
       </StepHeader>
 
