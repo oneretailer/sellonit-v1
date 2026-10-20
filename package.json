@@ -37,7 +37,8 @@
     "validate:api": "redocly lint docs/openapi.yaml",
     "check:api-types": "node scripts/check-api-types.mjs",
     "infra:up": "docker compose up -d postgres redis",
-    "infra:down": "docker compose down"
+    "infra:down": "docker compose down",
+    "studio": "npm run prisma:studio --prefix apps/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -12,9 +12,11 @@ export default function AccountPage() {
   return (
     <div className="">
       <AuthPage>
-        <AuthCard className="items-stretch text-left">
+       <div className='pt-15 w-full flex items-center justify-center'>
+         <AuthCard className="items-stretch text-left">
           <AccountPanel />
         </AuthCard>
+       </div>
       </AuthPage>
     </div>
   );

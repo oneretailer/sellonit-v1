@@ -64,7 +64,8 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="flex w-full max-w-[632px] flex-col items-center gap-6 rounded-3xl border border-[#E5E7EB] bg-white px-5 py-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.08)] sm:px-8 sm:py-10 lg:rounded-[36px] lg:px-[36px] lg:py-12">
+   <div className='pt-15 w-full flex items-center justify-center'>
+     <div className="flex w-full max-w-[632px] flex-col items-center gap-6 rounded-3xl border border-[#E5E7EB] bg-white px-5 py-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.08)] sm:px-8 sm:py-10 lg:rounded-[36px] lg:px-[36px] lg:py-12">
       <h1 className="text-[19px] leading-8 font-bold text-ink sm:text-[26px] sm:leading-[34px] lg:text-[30px] lg:leading-9">
         Check your email
       </h1>
@@ -99,5 +100,6 @@ export default function VerifyEmailPage() {
         Use a different email
       </Link>
     </div>
+   </div>
   );
 }

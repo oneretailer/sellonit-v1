@@ -7,5 +7,11 @@ export const metadata: Metadata = {
 
 /** Forgot password, final step: success. */
 export default function ForgotPasswordSuccessPage() {
-  return <ResetSuccess />;
+  return  (
+    <>
+    <div className='pt-15 w-full flex items-center justify-center'>
+      <ResetSuccess />
+    </div>
+    </>
+  );
 }

@@ -7,5 +7,9 @@ import { AuthPage } from '@/components/reuseable/AuthPage';
  * (logo only) until then.
  */
 export default function VerifyEmailLayout({ children }: { children: ReactNode }) {
-  return <AuthPage>{children}</AuthPage>;
+  return (
+    <div className='pt-15 w-full flex items-center justify-center'>
+      <AuthPage>{children}</AuthPage>;
+    </div>
+  )
 }
