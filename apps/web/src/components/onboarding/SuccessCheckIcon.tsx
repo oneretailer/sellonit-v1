@@ -11,7 +11,7 @@ export function SuccessCheckIcon() {
       <path
         d="m28 49 13 13 27-29"
         stroke="currentColor"
-        strokeWidth="3"
+        strokeWidth="7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

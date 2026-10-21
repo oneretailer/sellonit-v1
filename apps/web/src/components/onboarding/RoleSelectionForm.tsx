@@ -51,7 +51,9 @@ export function RoleSelectionForm() {
   }
 
   return (
-    <AuthCard gapClassName="gap-6 md:gap-9">
+    <>
+    <div className='pt-15 w-full flex items-center justify-center'>
+      <AuthCard gapClassName="gap-6 md:gap-9">
       <AuthCardHeader title="How will you use Sellonit?">
         <span className="mx-auto block max-w-96 text-base text-subtle sm:text-lg">
           Choose the option that best describes your business
@@ -115,5 +117,7 @@ export function RoleSelectionForm() {
         </div>
       </form>
     </AuthCard>
+    </div>
+    </>
   );
 }
