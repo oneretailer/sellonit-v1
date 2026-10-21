@@ -43,7 +43,7 @@ const emptySubscribe = () => () => {};
  * Reads the token from the query string and calls POST /auth/verify-email
  * once, on mount. The ref stops React StrictMode from running the effect
  * twice, which would spend a single-use token twice. On success the contract
- * API has established the session, so the app routes to the dashboard.
+ * API has established the session, so the app routes to the standalone account-success screen.
  */
 export function VerifyEmailConfirm() {
   const router = useRouter();
@@ -93,11 +93,10 @@ export function VerifyEmailConfirm() {
               // A 401 means signed out; other failures are handled by the actual verification request.
             }
           }
-          const result = await verifyEmail(value);
+          await verifyEmail(value);
           setStatus({ kind: 'verified' });
-          // The real backend endpoint sets the HttpOnly session cookie and returns the authenticated user.
-          const next = result.user.phone ? '/' : '/account';
-          router.replace(next);
+          // The verification endpoint establishes the HttpOnly session before this standalone success route loads.
+          router.replace('/auth/welcome');
         } catch (error: unknown) {
           setStatus({
             kind: 'error',

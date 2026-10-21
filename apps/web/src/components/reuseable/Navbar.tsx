@@ -13,6 +13,7 @@ export type NavbarLink = {
   href?: Route;
   /** `pill` renders a small white chip; `text` renders a plain gray link. */
   variant?: 'pill' | 'text';
+  className?: string;
 };
 
 export type NavbarProps = {
@@ -40,12 +41,15 @@ export function Navbar({ rightLink }: NavbarProps) {
             href={rightLink.href}
             className={cn(
               'text-sm font-medium text-subtle transition-colors hover:text-ink sm:text-base',
+              rightLink.className,
             )}
           >
             <span className="text-[18px] md:text-[24px] "> {rightLink.label}</span>
           </Link>
         ) : rightLink ? (
-          <span className="text-sm font-medium text-subtle sm:text-base">{rightLink.label}</span>
+          <span className={cn('text-sm font-medium text-subtle sm:text-base', rightLink.className)}>
+            {rightLink.label}
+          </span>
         ) : null}
       </nav>
     </header>
