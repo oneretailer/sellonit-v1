@@ -8,6 +8,7 @@ export type RoleRecommendation = {
 
 export interface RoleApi {
   saveRole(role: AccountRole): Promise<RoleRecommendation>;
+  getRecommendation(role: AccountRole): RoleRecommendation;
 }
 
 type RecommendationTarget = Omit<RoleRecommendation, 'role'>;
@@ -19,10 +20,15 @@ const RECOMMENDATIONS: Record<AccountRole, RecommendationTarget> = {
   supplier: { track: 'supplier', nextRoute: '/account' },
 };
 
+function getLocalRecommendation(role: AccountRole): RoleRecommendation {
+  return { role, ...RECOMMENDATIONS[role] };
+}
+
 export const localRoleApi: RoleApi = {
   saveRole(role) {
-    return Promise.resolve({ role, ...RECOMMENDATIONS[role] });
+    return Promise.resolve(getLocalRecommendation(role));
   },
+  getRecommendation: getLocalRecommendation,
 };
 
 /** TODO(backend): replace with the agreed save-role endpoint and response contract. */
@@ -30,6 +36,8 @@ export const httpRoleApi: RoleApi = {
   saveRole(_role) {
     return Promise.reject(new Error('TODO(backend): no role-selection endpoint is confirmed yet.'));
   },
+  // The recommendation routes remain local until role-specific routes exist.
+  getRecommendation: getLocalRecommendation,
 };
 
 // Single place to switch implementations after the backend contract exists.

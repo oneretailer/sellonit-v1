@@ -17,6 +17,14 @@ describe('role API selection and local recommendations', () => {
     expect(roleApi).toBe(localRoleApi);
   });
 
+  it('derives a saved role recommendation without issuing another save request', () => {
+    expect(roleApi.getRecommendation('retailer')).toEqual({
+      role: 'retailer',
+      track: 'retailer',
+      nextRoute: '/account',
+    });
+  });
+
   it('keeps the future HTTP adapter inactive until a contract is supplied', async () => {
     await expect(httpRoleApi.saveRole('retailer')).rejects.toThrow(
       'TODO(backend): no role-selection endpoint is confirmed yet.',

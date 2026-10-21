@@ -4,11 +4,23 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMe } from '@/lib/auth/api';
 import { ApiError } from '@/lib/api-client';
+import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
+import { readOnboardingRole } from '@/lib/auth/flowState';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 
 type SessionState = 'checking' | 'authenticated' | 'redirecting' | 'error';
+
+async function getSessionAfterHydration() {
+  try {
+    return await getMe();
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    return getMe();
+  }
+}
 
 /** Guards standalone post-registration/onboarding routes with the existing session API. */
 export function RequireAuthenticatedSession({ children }: { children: ReactNode }) {
@@ -18,9 +30,15 @@ export function RequireAuthenticatedSession({ children }: { children: ReactNode 
 
   useEffect(() => {
     let active = true;
-    void getMe()
+    void getSessionAfterHydration()
       .then(() => {
-        if (active) setState('authenticated');
+        if (!active) return;
+        if (readOnboardingRole()) {
+          setState('redirecting');
+          router.replace(getPostAuthDestination());
+          return;
+        }
+        setState('authenticated');
       })
       .catch((error: unknown) => {
         if (!active) return;

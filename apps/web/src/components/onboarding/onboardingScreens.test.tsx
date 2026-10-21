@@ -10,6 +10,10 @@ import { VerifyEmailConfirm } from '@/components/auth/VerifyEmailConfirm';
 import { ROLE_OPTIONS } from '@/lib/onboarding/roles';
 import { clearOnboardingRole, ONBOARDING_ROLE_STORAGE_KEY } from '@/lib/auth/flowState';
 import { ApiError } from '@/lib/api-client';
+import {
+  getPendingVerificationEmail,
+  setPendingVerificationEmail,
+} from '@/lib/auth/pendingVerification';
 
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn(), back: vi.fn() },
@@ -50,13 +54,17 @@ vi.mock('@/lib/auth/api', () => ({
 }));
 
 vi.mock('@/lib/onboarding/roleApi', () => ({
-  roleApi: { saveRole: mocks.saveRole },
+  roleApi: {
+    saveRole: mocks.saveRole,
+    getRecommendation: (role: string) => ({ role, track: role, nextRoute: '/account' }),
+  },
 }));
 
 afterEach(() => cleanup());
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   sessionStorage.clear();
   clearOnboardingRole();
   mocks.token = 'email-token';
@@ -168,7 +176,7 @@ describe('role selection screen', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toHaveProperty('disabled', false);
   });
 
-  it('restores the selected role after unmount and refresh-like remount', async () => {
+  it('uses the saved role after a refresh-like remount without looping on role selection', async () => {
     const { unmount } = render(<RoleSelectionPage />);
     const radio = await screen.findByRole('radio', { name: ROLE_OPTIONS[1].label });
     fireEvent.click(radio);
@@ -176,7 +184,8 @@ describe('role selection screen', () => {
 
     unmount();
     render(<RoleSelectionPage />);
-    await waitFor(() => expect(getRadio(ROLE_OPTIONS[1].label)).toHaveProperty('checked', true));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/account'));
+    expect(sessionStorage.getItem(ONBOARDING_ROLE_STORAGE_KEY)).toBe('retailer');
   });
 
   it('redirects unauthenticated visitors to Login', async () => {
@@ -187,11 +196,25 @@ describe('role selection screen', () => {
 });
 
 describe('verification success redirect', () => {
-  it('uses replace to reach the reusable success screen after session-establishing verification', async () => {
+  it('uses replace to reach success and clears pending email after session-establishing verification', async () => {
+    setPendingVerificationEmail('person@example.com');
     mocks.verifyEmail.mockResolvedValue({ user: { email: 'person@example.com', phone: null } });
     render(<VerifyEmailConfirm />);
 
     await waitFor(() => expect(mocks.verifyEmail).toHaveBeenCalledWith('email-token'));
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/welcome'));
+    expect(getPendingVerificationEmail()).toBeNull();
+  });
+
+  it('sends an already-verified callback through the onboarding gate rather than /account by default', async () => {
+    setPendingVerificationEmail('person@example.com');
+    mocks.getMe.mockResolvedValue({
+      data: { email: 'person@example.com', emailVerifiedAt: '2026-10-21T00:00:00.000Z' },
+    });
+    render(<VerifyEmailConfirm />);
+
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
+    expect(mocks.verifyEmail).not.toHaveBeenCalled();
+    expect(getPendingVerificationEmail()).toBeNull();
   });
 });

@@ -23,6 +23,7 @@ import {
   resendAvailableAfterSend,
   type AuthFlowPurpose,
 } from '@/lib/auth/flowState';
+import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
 import { useForgotPasswordFlow } from './FlowProvider';
 import { useStoredAuthFlow } from './useStoredAuthFlow';
 
@@ -77,8 +78,8 @@ function ResendCodeButton({
  * for both purposes:
  * - reset-password: a verified code returns a reset token (held in memory)
  *   and the user moves to the new-password step.
- * - verify-account: a verified code finishes verification and the app goes to
- *   /account, as the existing verify-email flow does.
+ * - verify-account: a verified code finishes verification and routes through
+ *   the shared post-auth onboarding gate.
  *
  * The code is never stored. A refresh empties the input, as intended.
  */
@@ -154,7 +155,7 @@ export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
         // Existing post-verification behaviour (see VerifyEmailConfirm).
         finishing.current = true;
         clearAuthFlow();
-        router.replace('/account');
+        router.replace(getPostAuthDestination());
       }
     } catch (error) {
       inFlight.current = false;

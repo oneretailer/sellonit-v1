@@ -26,6 +26,8 @@ import {
   type NormalizedIdentifier,
 } from '@/lib/auth/identifier';
 import { resendAvailableAfterSend, writeAuthFlow } from '@/lib/auth/flowState';
+import { clearPendingVerificationEmail } from '@/lib/auth/pendingVerification';
+import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
 
 export type LoginFormProps = {
   /** Pre-filled identifier from `?email=` (e.g. after the "already exists" redirect). */
@@ -75,8 +77,9 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
     setSubmitting(true);
     try {
       await loginWithIdentifier({ ...target, password });
-      // Stays disabled while the app navigates away.
-      router.replace('/account');
+      clearPendingVerificationEmail();
+      // Stays disabled while the app navigates through the onboarding gate.
+      router.replace(getPostAuthDestination());
     } catch (error) {
       inFlight.current = false;
       setSubmitting(false);
