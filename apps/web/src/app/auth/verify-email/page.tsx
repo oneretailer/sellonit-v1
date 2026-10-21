@@ -2,57 +2,61 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { AuthCardHeader } from '@/components/auth/StepHeader';
 import { BagMark } from '@/components/brand/BagMark';
+import { AuthCard } from '@/components/reuseable/AuthCard';
+import { InlineError } from '@/components/reuseable/InlineError';
+import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
+import { SecondaryButton } from '@/components/reuseable/SecondaryButton';
+import { TextField } from '@/components/reuseable/TextField';
 import { resendVerification } from '@/lib/auth/api';
-import { PENDING_VERIFICATION_EMAIL_KEY } from '@/lib/auth/pendingVerification';
+import {
+  clearPendingVerificationEmail,
+  getPendingVerificationEmail,
+  setPendingVerificationEmail,
+  subscribePendingVerificationEmail,
+} from '@/lib/auth/pendingVerification';
+import { isEmail } from '@/lib/auth/validation';
+import { normalizeEmail } from '@/lib/validation/auth';
 
-/** TODO: replace with Figma design. Minimal functional placeholder only. */
-
-/** Resend cooldown in seconds (addition — Figma has no design for this page). */
 const RESEND_COOLDOWN_SECONDS = 30;
-
-/** sessionStorage does not change behind our back; an empty subscription is enough. */
-const emptySubscribe = () => () => {};
 
 export default function VerifyEmailPage() {
   const router = useRouter();
-  // Client-only storage, read without effects (server snapshot is always null).
-  const email = useSyncExternalStore(
-    emptySubscribe,
-    () => window.sessionStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY),
+  const pendingEmail = useSyncExternalStore(
+    subscribePendingVerificationEmail,
+    getPendingVerificationEmail,
     () => null,
   );
-  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  const [manualEmail, setManualEmail] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
   const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
-  const startedRef = useRef(false);
+  const email = manualEmail ?? pendingEmail ?? '';
+  const hasPendingEmail = pendingEmail !== null && manualEmail === null;
 
-  // Guard: without a pending email there is nothing to verify — go back.
   useEffect(() => {
-    if (!email) {
-      router.replace('/auth/register');
-    }
-  }, [email, router]);
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
 
-  // Cooldown countdown.
-  useEffect(() => {
-    if (startedRef.current) {
-      return;
-    }
-    startedRef.current = true;
-    const timer = setInterval(() => {
-      setCooldown((current) => (current > 0 ? current - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const normalizedEmail = useMemo(() => normalizeEmail(email), [email]);
+  const loginHref = isEmail(normalizedEmail)
+    ? `/auth/login?email=${encodeURIComponent(normalizedEmail)}`
+    : '/auth/login';
 
   async function handleResend() {
-    if (!email || cooldown > 0 || resendState === 'sending') {
-      return;
-    }
+    if (!isEmail(normalizedEmail) || cooldown > 0 || resendState === 'sending') return;
+
+    setEmailError(null);
     setResendState('sending');
     try {
-      await resendVerification({ email });
+      await resendVerification({ email: normalizedEmail });
+      // Persist only after a resend succeeds; this record contains no password.
+      setPendingVerificationEmail(normalizedEmail);
+      setManualEmail(null);
       setResendState('sent');
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch {
@@ -60,50 +64,88 @@ export default function VerifyEmailPage() {
     }
   }
 
-  if (!email) {
-    return null;
+  function handleVerifiedLogin() {
+    router.push(loginHref);
   }
 
   return (
-    <div className="pt-15 w-full flex items-center justify-center">
-      <div className="flex w-full max-w-[632px] flex-col items-center gap-6 rounded-3xl border border-[#E5E7EB] bg-white px-5 py-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.08)] sm:px-8 sm:py-10 lg:rounded-[36px] lg:px-[36px] lg:py-12">
-        <div className="flex w-full flex-col items-center gap-4 md:gap-6">
-          <BagMark />
-          <h1 className="text-[19px] leading-8 font-bold text-ink sm:text-[26px] sm:leading-[34px] lg:text-[30px] lg:leading-9">
-            Check your email
-          </h1>
-        </div>
-        <p className="text-base leading-6 font-normal text-[#6B7280] sm:text-lg sm:leading-7 lg:text-[20px] lg:leading-[30px]">
-          We sent a link to {email}
-        </p>
+    <AuthCard gapClassName="gap-6 md:gap-9">
+      <AuthCardHeader icon={<BagMark />} title="Check your email">
+        {hasPendingEmail ? (
+          <>We sent a verification link to {email}. You can resend it below.</>
+        ) : (
+          <>Enter your email address to resend a verification link.</>
+        )}
+      </AuthCardHeader>
+
+      <div className="flex w-full flex-col gap-6 text-left">
+        <TextField
+          id="verification-email"
+          label="Email address"
+          type="email"
+          autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={email}
+          onChange={(value) => {
+            if (hasPendingEmail && normalizeEmail(value) !== normalizeEmail(email)) {
+              clearPendingVerificationEmail();
+            }
+            setManualEmail(value);
+            setEmailError(value.trim() && !isEmail(value) ? 'Enter a valid email address.' : null);
+            setResendState('idle');
+          }}
+          error={emailError}
+          placeholder="Enter your email address"
+        />
 
         <div className="flex w-full flex-col items-center gap-4" aria-live="polite">
-          <button
+          <PrimaryButton
             type="button"
+            disabled={!isEmail(normalizedEmail) || cooldown > 0 || resendState === 'sending'}
+            loading={resendState === 'sending'}
+            className="auth-button text-ink"
             onClick={() => void handleResend()}
-            disabled={cooldown > 0 || resendState === 'sending'}
-            aria-disabled={cooldown > 0 || resendState === 'sending'}
-            className="flex h-14 w-full items-center justify-center rounded-full bg-[#FF8B00] px-6 text-xl leading-7 font-semibold text-ink transition-colors hover:bg-[#E67D00] active:bg-[#CC6F00] disabled:cursor-not-allowed disabled:bg-primary-disabled sm:h-16 sm:text-2xl sm:leading-8 lg:h-[68px] lg:text-[25px] lg:leading-9"
           >
-            {cooldown > 0 ? `Resend link in ${cooldown}s` : 'Resend link'}
-          </button>
-          {resendState === 'sent' ? (
-            <p className="text-sm text-success lg:text-base">Link sent.</p>
-          ) : null}
+            {resendState === 'sending'
+              ? 'Sending…'
+              : cooldown > 0
+                ? `Resend verification link in ${cooldown}s`
+                : 'Resend verification link'}
+          </PrimaryButton>
+          {resendState === 'sent' ? <p className="text-base text-success">Link sent.</p> : null}
           {resendState === 'failed' ? (
-            <p className="text-sm text-danger lg:text-base">
-              We couldn&apos;t send the link. Try again.
-            </p>
+            <InlineError className="text-base">
+              We couldn&apos;t send a verification link right now. Try again later, or log in once
+              you&apos;ve verified your email.
+            </InlineError>
           ) : null}
         </div>
 
-        <Link
-          href="/auth/register"
-          className="text-base font-semibold text-ink underline underline-offset-2 lg:text-lg"
+        <SecondaryButton
+          type="button"
+          appearance="outline"
+          disabled={!isEmail(normalizedEmail)}
+          onClick={handleVerifiedLogin}
         >
-          Use a different email
-        </Link>
+          I&apos;ve verified my email
+        </SecondaryButton>
+        <p className="text-center text-base text-subtle">
+          Ready to continue?{' '}
+          <Link href={loginHref} className="font-semibold text-ink underline underline-offset-2">
+            Log in
+          </Link>
+        </p>
+        <p className="text-center text-base text-subtle">
+          Need to use a different address?{' '}
+          <Link
+            href="/auth/register"
+            className="font-semibold text-ink underline underline-offset-2"
+          >
+            Create an account
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthCard>
   );
 }

@@ -94,7 +94,7 @@ async function verifyEmailRequest(token: string): Promise<VerifyEmailResponse> {
 /**
  * `token` is the token from the `/auth/verify-email/confirm?token=` link.
  * On success the contract API also establishes the session cookie, so the
- * app can route straight to the dashboard.
+ * app can show the standalone success screen before the onboarding gate.
  */
 export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
   if (MOCK_AUTH) {

@@ -13,7 +13,12 @@ import {
 import { BagMark } from '@/components/brand/BagMark';
 import { getMe, verifyEmail } from '@/lib/auth/api';
 import { emailLinkErrorMessage, isRetryableAuthError } from '@/lib/auth/errors';
-import { PENDING_VERIFICATION_EMAIL_KEY } from '@/lib/auth/pendingVerification';
+import {
+  clearPendingVerificationEmail,
+  getPendingVerificationEmail,
+  subscribePendingVerificationEmail,
+} from '@/lib/auth/pendingVerification';
+import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
 
 type ConfirmStatus =
   | { kind: 'verifying' }
@@ -36,9 +41,6 @@ function StatusHeading({ children }: { children: ReactNode }) {
   );
 }
 
-/** sessionStorage does not change behind our back; an empty subscription is enough. */
-const emptySubscribe = () => () => {};
-
 /**
  * Reads the token from the query string and calls POST /auth/verify-email
  * once, on mount. The ref stops React StrictMode from running the effect
@@ -49,10 +51,9 @@ export function VerifyEmailConfirm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  // Client-only storage, read without effects (server snapshot is always null).
   const pendingEmail = useSyncExternalStore(
-    emptySubscribe,
-    () => window.sessionStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY),
+    subscribePendingVerificationEmail,
+    getPendingVerificationEmail,
     () => null,
   );
   const [status, setStatus] = useState<ConfirmStatus>(() =>
@@ -71,6 +72,7 @@ export function VerifyEmailConfirm() {
       setStatus({ kind: 'verifying' });
       void (async () => {
         try {
+          const pendingEmail = getPendingVerificationEmail();
           // Detect an existing session for a different account before allowing the verification response to replace it.
           if (pendingEmail) {
             try {
@@ -85,8 +87,9 @@ export function VerifyEmailConfirm() {
                 return;
               }
               if (existing.data.emailVerifiedAt) {
+                clearPendingVerificationEmail();
                 setStatus({ kind: 'verified' });
-                router.replace(existing.data.phone ? '/' : '/account');
+                router.replace(getPostAuthDestination());
                 return;
               }
             } catch {
@@ -94,6 +97,7 @@ export function VerifyEmailConfirm() {
             }
           }
           await verifyEmail(value);
+          clearPendingVerificationEmail();
           setStatus({ kind: 'verified' });
           // The verification endpoint establishes the HttpOnly session before this standalone success route loads.
           router.replace('/auth/welcome');
@@ -106,7 +110,7 @@ export function VerifyEmailConfirm() {
         }
       })();
     },
-    [pendingEmail, router],
+    [router],
   );
 
   useEffect(() => {
