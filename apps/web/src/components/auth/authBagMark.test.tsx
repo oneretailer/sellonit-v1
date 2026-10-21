@@ -82,13 +82,15 @@ vi.mock('@/components/password-reset/FlowProvider', () => ({
 
 function assertOneDecorativeBagBeforeHeading(element: ReactElement) {
   const markup = renderToStaticMarkup(element);
-  const bags = [...markup.matchAll(/viewBox="0 0 56 60"/g)];
+  const bags = [...markup.matchAll(/src="\/shopping-bag\.svg"/g)];
   expect(bags).toHaveLength(1);
   const bagIndex = bags[0]?.index ?? -1;
-  const svgStart = markup.lastIndexOf('<svg', bagIndex);
-  const svgEnd = markup.indexOf('>', bagIndex);
-  expect(markup.slice(svgStart, svgEnd)).toContain('aria-hidden="true"');
-  expect(bagIndex).toBeLessThan(markup.indexOf('<h1'));
+  const imageStart = markup.lastIndexOf('<img', bagIndex);
+  const imageEnd = markup.indexOf('>', bagIndex);
+  const imageTag = markup.slice(imageStart, imageEnd + 1);
+  expect(imageTag).toContain('alt=""');
+  expect(imageTag).toContain('aria-hidden="true"');
+  expect(imageStart).toBeLessThan(markup.indexOf('<h1'));
 }
 
 describe('auth screen BagMark rendering', () => {

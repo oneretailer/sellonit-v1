@@ -23,12 +23,12 @@ describe('auth presentation contract', () => {
         'Supporting copy',
       ),
     );
-    const bagIndex = markup.indexOf('viewBox="0 0 56 60"');
+    const bagIndex = markup.indexOf('src="/shopping-bag.svg"');
     expect(bagIndex).toBeGreaterThanOrEqual(0);
-    expect(
-      markup.slice(markup.lastIndexOf('<svg', bagIndex), markup.indexOf('>', bagIndex)),
-    ).toContain('aria-hidden="true"');
-    expect(bagIndex).toBeLessThan(markup.indexOf('<h1'));
+    const imageStart = markup.lastIndexOf('<img', bagIndex);
+    const imageEnd = markup.indexOf('>', bagIndex);
+    expect(markup.slice(imageStart, imageEnd)).toContain('aria-hidden="true"');
+    expect(imageStart).toBeLessThan(markup.indexOf('<h1'));
     expect(markup.indexOf('<h1')).toBeLessThan(markup.indexOf('Supporting copy'));
   });
 

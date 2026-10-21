@@ -1,20 +1,18 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { BAG_MARK_SIZE_CLASS, BagMark } from './BagMark';
+import { BagMark } from './BagMark';
 
 describe('BagMark', () => {
-  it('renders a decorative SVG and accepts sizing classes', () => {
+  it('renders a decorative bag image', () => {
     const html = renderToStaticMarkup(<BagMark />);
-    expect(html).toContain('<svg');
+    expect(html).toContain('src="/shopping-bag.svg"');
+    expect(html).toContain('alt=""');
     expect(html).toContain('aria-hidden="true"');
-    expect(html).toContain(BAG_MARK_SIZE_CLASS);
-    expect(html).toContain('text-primary');
-    expect(html).toContain('viewBox="0 0 56 60"');
   });
 
   it('exposes an accessible image when a title is supplied', () => {
     const html = renderToStaticMarkup(<BagMark title="Sellonit bag" />);
-    expect(html).toContain('role="img"');
-    expect(html).toContain('<title id="bag-mark-title">Sellonit bag</title>');
+    expect(html).toContain('alt="Sellonit bag"');
+    expect(html).not.toContain('aria-hidden="true"');
   });
 });
