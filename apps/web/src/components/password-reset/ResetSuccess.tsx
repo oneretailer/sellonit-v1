@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
 import { useForgotPasswordFlow } from './FlowProvider';
@@ -29,7 +30,7 @@ export function ResetSuccess() {
 
   return (
     <AuthCard gapClassName="gap-9">
-      <StepHeader title="Password updated 😄🎉">
+      <StepHeader title="Password updated 😄🎉" icon={<BagMark />}>
         Your password has been changed. You can now log in with your new password
       </StepHeader>
       <div className="flex w-full flex-col gap-3">

@@ -4,7 +4,6 @@ import { useRef, useState, type FormEvent, type RefObject } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
-import { Spinner } from '@/components/reuseable/Spinner';
 import { mapRegisterError, registerUser, toRegisterUserRequest } from '@/lib/auth/api';
 import { setPendingVerificationEmail } from '@/lib/auth/pendingVerification';
 import {
@@ -12,7 +11,6 @@ import {
   emailError,
   EMAIL_MAX_LENGTH,
   FORM_ERRORS,
-  fullNameError,
   isConfirmMatching,
   isPasswordValid,
   isRegisterFormValid,
@@ -82,8 +80,8 @@ function AlertCircleIcon() {
 
 /* ── Field chrome (Figma: pill input, 558 inner width, label above) ────── */
 
-const pillFieldClass =
-  'flex w-full items-center gap-3 rounded-full border border-line bg-surface px-6 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15';
+const pillFieldClass = (invalid = false) =>
+  `flex h-14 w-full items-center gap-3 rounded-xl border ${invalid ? 'border-danger' : 'border-line'} bg-surface px-5 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15 sm:h-[60px]`;
 const pillInputClass =
   'h-14 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-gray-500 sm:h-[60px] sm:text-lg lg:h-16 lg:text-xl';
 const fieldLabelClass = 'text-base font-medium text-ink sm:text-lg lg:text-xl';
@@ -104,6 +102,7 @@ type TextFieldProps = {
   inputMode?: 'text' | 'email';
   autoComplete: string;
   maxLength?: number;
+  disabled?: boolean;
 };
 
 function PillTextField({
@@ -120,6 +119,7 @@ function PillTextField({
   inputMode,
   autoComplete,
   maxLength,
+  disabled = false,
 }: TextFieldProps) {
   const errorId = `${id}-error`;
   const helperId = `${id}-helper`;
@@ -129,7 +129,7 @@ function PillTextField({
       <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
-      <div className={pillFieldClass}>
+      <div className={pillFieldClass(Boolean(error))}>
         <input
           id={id}
           ref={inputRef}
@@ -137,6 +137,7 @@ function PillTextField({
           inputMode={inputMode}
           autoComplete={autoComplete}
           maxLength={maxLength}
+          disabled={disabled}
           placeholder={placeholder}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -147,7 +148,12 @@ function PillTextField({
         />
       </div>
       {error ? (
-        <p id={errorId} className={errorTextClass}>
+        <p
+          id={errorId}
+          aria-live="polite"
+          className={cn('flex items-center gap-2', errorTextClass)}
+        >
+          <AlertCircleIcon />
           {error}
         </p>
       ) : helper ? (
@@ -170,6 +176,7 @@ type PasswordFieldProps = {
   inputRef?: RefObject<HTMLInputElement | null>;
   describedBy: string | undefined;
   invalid?: boolean;
+  disabled?: boolean;
 };
 
 /** Pill input with its own show/hide eye button inside the right edge. */
@@ -184,19 +191,21 @@ function PasswordField({
   inputRef,
   describedBy,
   invalid = false,
+  disabled = false,
 }: PasswordFieldProps) {
   return (
     <div className="flex w-full flex-col gap-2">
       <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
-      <div className={pillFieldClass}>
+      <div className={pillFieldClass(invalid)}>
         <input
           id={id}
           ref={inputRef}
           type={visible ? 'text' : 'password'}
           autoComplete="new-password"
           maxLength={PASSWORD_MAX_LENGTH}
+          disabled={disabled}
           placeholder={placeholder}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -208,11 +217,12 @@ function PasswordField({
         <button
           type="button"
           onClick={onToggleVisibility}
+          disabled={disabled}
           aria-pressed={visible}
           aria-label={visible ? 'Hide password' : 'Show password'}
           className="shrink-0 rounded-full p-2 text-subtle hover:text-ink"
         >
-          {visible ? <EyeOffIcon /> : <EyeIcon />}
+          {visible ? <EyeIcon /> : <EyeOffIcon />}
         </button>
       </div>
     </div>
@@ -228,7 +238,7 @@ function PasswordChecklist({ password }: { password: string }) {
       {PASSWORD_RULES.map((rule) => {
         const met = rule.test(password);
         // Neutral gray until the field has content; then green/red per rule.
-        const tone = active ? (met ? 'text-success' : 'text-danger') : 'text-[#6B7280]';
+        const tone = !active ? 'text-[#6B7280]' : met ? 'text-success' : 'text-danger';
         return (
           <li key={rule.id} className={cn('flex items-center gap-2', tone)}>
             <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-current" />
@@ -243,11 +253,13 @@ function PasswordChecklist({ password }: { password: string }) {
 
 /* ── Create account form (Figma: fields and buttons) ───────────────────── */
 
-type FieldKey = 'fullName' | 'email' | 'password' | 'confirm' | 'terms';
+type FieldKey = 'firstName' | 'lastName' | 'email' | 'password' | 'confirm' | 'terms';
 
 export function CreateAccountForm() {
   const router = useRouter();
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const fullName = `${firstName} ${lastName}`.trim();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -257,12 +269,13 @@ export function CreateAccountForm() {
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [serverFieldErrors, setServerFieldErrors] = useState<
-    Partial<Record<'fullName' | 'email' | 'password', string>>
+    Partial<Record<'firstName' | 'lastName' | 'email' | 'password', string>>
   >({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fullNameRef = useRef<HTMLInputElement>(null);
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -276,9 +289,14 @@ export function CreateAccountForm() {
     termsAccepted,
   });
 
-  const showError = (key: 'fullName' | 'email') => Boolean(touched[key]) || submitAttempted;
-  const resolvedFullNameError =
-    serverFieldErrors.fullName ?? (showError('fullName') ? fullNameError(fullName) : null);
+  const showError = (key: 'firstName' | 'lastName' | 'email') =>
+    Boolean(touched[key]) || submitAttempted;
+  const resolvedFirstNameError =
+    serverFieldErrors.firstName ??
+    (showError('firstName') && !firstName.trim() ? 'Enter your first name.' : null);
+  const resolvedLastNameError =
+    serverFieldErrors.lastName ??
+    (showError('lastName') && !lastName.trim() ? 'Enter your last name.' : null);
   const resolvedEmailError =
     serverFieldErrors.email ?? (showError('email') ? emailError(email) : null);
   // Live on every keystroke (Figma note: "Autodetect password confirmation").
@@ -287,7 +305,8 @@ export function CreateAccountForm() {
     (submitAttempted || touched.terms) && !termsAccepted ? FORM_ERRORS.termsRequired : null;
 
   const fieldRefs: Record<FieldKey, RefObject<HTMLInputElement | null>> = {
-    fullName: fullNameRef,
+    firstName: firstNameRef,
+    lastName: lastNameRef,
     email: emailRef,
     password: passwordRef,
     confirm: confirmRef,
@@ -295,7 +314,8 @@ export function CreateAccountForm() {
   };
 
   function firstInvalidField(): FieldKey | null {
-    if (fullNameError(fullName) !== null) return 'fullName';
+    if (!firstName.trim()) return 'firstName';
+    if (!lastName.trim()) return 'lastName';
     if (emailError(email) !== null) return 'email';
     if (!isPasswordValid(password)) return 'password';
     if (!isConfirmMatching(password, confirm)) return 'confirm';
@@ -340,158 +360,186 @@ export function CreateAccountForm() {
   }
 
   return (
-    <form
-      onSubmit={(event) => void handleSubmit(event)}
-      noValidate
-      className="flex w-full flex-col gap-8 text-left"
-    >
-      {/* fields: vertical, gap 32 */}
-      <div className="flex w-full flex-col gap-8">
-        <PillTextField
-          id="fullName"
-          label="Full name"
-          placeholder="Chukwudi Okechukwu"
-          value={fullName}
-          onChange={(value) => {
-            setFullName(value);
-            setServerFieldErrors((current) => ({ ...current, fullName: undefined }));
-          }}
-          onBlur={() => setTouched((current) => ({ ...current, fullName: true }))}
-          error={resolvedFullNameError}
-          autoComplete="name"
-          maxLength={NAME_MAX_LENGTH}
-          inputRef={fullNameRef}
-        />
-
-        <PillTextField
-          id="email"
-          label="Email address"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(value) => {
-            setEmail(value);
-            setServerFieldErrors((current) => ({ ...current, email: undefined }));
-          }}
-          onBlur={() => setTouched((current) => ({ ...current, email: true }))}
-          error={resolvedEmailError}
-          helper="We'll use your email for account recovery and important account messages."
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          maxLength={EMAIL_MAX_LENGTH}
-          inputRef={emailRef}
-        />
-
-        <div className="flex w-full flex-col gap-2">
-          <PasswordField
-            id="password"
-            label="Password"
-            placeholder="Create password"
-            value={password}
+    <div>
+      <form
+        onSubmit={(event) => void handleSubmit(event)}
+        noValidate
+        className="flex w-full  flex-col gap-0 text-left"
+      >
+        {/* fields: vertical, gap 32 */}
+        <div className="mb-6 flex w-full flex-col gap-6 md:mb-12">
+          <PillTextField
+            id="firstName"
+            label="First name"
+            placeholder="Enter your first name"
+            value={firstName}
             onChange={(value) => {
-              setPassword(value);
-              clearServerErrors();
+              setFirstName(value);
+              setServerFieldErrors((current) => ({ ...current, firstName: undefined }));
             }}
-            visible={showPassword}
-            onToggleVisibility={() => setShowPassword((current) => !current)}
-            inputRef={passwordRef}
-            describedBy={
-              serverFieldErrors.password ? 'password-rules password-error' : 'password-rules'
-            }
-            invalid={Boolean(serverFieldErrors.password)}
+            onBlur={() => setTouched((current) => ({ ...current, firstName: true }))}
+            error={resolvedFirstNameError}
+            autoComplete="given-name"
+            maxLength={NAME_MAX_LENGTH}
+            inputRef={firstNameRef}
+            disabled={isSubmitting}
           />
-          <PasswordChecklist password={password} />
-          {serverFieldErrors.password ? (
-            <p id="password-error" className={errorTextClass}>
-              {serverFieldErrors.password}
-            </p>
-          ) : null}
-        </div>
+          <PillTextField
+            id="lastName"
+            label="Last name"
+            placeholder="Enter your last name"
+            value={lastName}
+            onChange={(value) => {
+              setLastName(value);
+              setServerFieldErrors((current) => ({ ...current, lastName: undefined }));
+            }}
+            onBlur={() => setTouched((current) => ({ ...current, lastName: true }))}
+            error={resolvedLastNameError}
+            autoComplete="family-name"
+            maxLength={NAME_MAX_LENGTH}
+            inputRef={lastNameRef}
+            disabled={isSubmitting}
+          />
 
-        <div className="flex w-full flex-col gap-2">
-          <PasswordField
-            id="confirmPassword"
-            label="Confirm password"
-            placeholder="Confirm password"
-            value={confirm}
-            onChange={(value) => setConfirm(value)}
-            visible={showConfirm}
-            onToggleVisibility={() => setShowConfirm((current) => !current)}
-            inputRef={confirmRef}
-            describedBy={confirmMessage ? 'confirm-error' : undefined}
-            invalid={Boolean(confirmMessage)}
+          <PillTextField
+            id="email"
+            label="Email address"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(value) => {
+              setEmail(value);
+              setServerFieldErrors((current) => ({ ...current, email: undefined }));
+            }}
+            onBlur={() => setTouched((current) => ({ ...current, email: true }))}
+            error={resolvedEmailError}
+            helper="We'll use your email for account recovery and important account messages."
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            maxLength={EMAIL_MAX_LENGTH}
+            inputRef={emailRef}
+            disabled={isSubmitting}
           />
-          {/* mismatch error: live region, shown while confirm is non-empty and differs */}
-          <div aria-live="polite">
-            {confirmMessage ? (
-              <p id="confirm-error" className={cn('flex items-center gap-2', errorTextClass)}>
-                <AlertCircleIcon />
-                {confirmMessage}
+
+          <div className="flex w-full flex-col gap-2">
+            <PasswordField
+              id="password"
+              label="Password"
+              placeholder="Create password"
+              value={password}
+              onChange={(value) => {
+                setPassword(value);
+                clearServerErrors();
+              }}
+              visible={showPassword}
+              onToggleVisibility={() => setShowPassword((current) => !current)}
+              inputRef={passwordRef}
+              describedBy={
+                serverFieldErrors.password ? 'password-rules password-error' : 'password-rules'
+              }
+              invalid={Boolean(serverFieldErrors.password)}
+              disabled={isSubmitting}
+            />
+            <PasswordChecklist password={password} />
+            {serverFieldErrors.password ? (
+              <p id="password-error" className={errorTextClass}>
+                {serverFieldErrors.password}
               </p>
             ) : null}
           </div>
+
+          <div className="flex w-full flex-col gap-2">
+            <PasswordField
+              id="confirmPassword"
+              label="Confirm password"
+              placeholder="Confirm password"
+              value={confirm}
+              onChange={(value) => setConfirm(value)}
+              visible={showConfirm}
+              onToggleVisibility={() => setShowConfirm((current) => !current)}
+              inputRef={confirmRef}
+              describedBy={confirmMessage ? 'confirm-error' : undefined}
+              invalid={Boolean(confirmMessage)}
+              disabled={isSubmitting}
+            />
+            {/* mismatch error: live region, shown while confirm is non-empty and differs */}
+            <div aria-live="polite">
+              {confirmMessage ? (
+                <p id="confirm-error" className={cn('flex items-center gap-2', errorTextClass)}>
+                  <AlertCircleIcon />
+                  {confirmMessage}
+                </p>
+              ) : null}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* terms checkbox: real input, whole row clickable */}
-      <div className="flex w-full flex-col gap-2">
-        <label className="flex min-h-11 cursor-pointer items-center gap-3">
-          <input
-            ref={termsRef}
-            type="checkbox"
-            checked={termsAccepted}
-            onChange={(event) => {
-              setTermsAccepted(event.target.checked);
-              setTouched((current) => ({ ...current, terms: true }));
-            }}
-            aria-invalid={termsError ? true : undefined}
-            aria-describedby={termsError ? 'terms-error' : undefined}
-            className="size-5 shrink-0 accent-primary"
-          />
-          <span className="text-base text-ink lg:text-lg">I agree with the terms and policy</span>
-        </label>
-        {termsError ? (
-          <p id="terms-error" className={errorTextClass}>
-            {termsError}
-          </p>
-        ) : null}
-      </div>
-
-      {/* button and footer: gap 24 */}
-      <div className="flex w-full flex-col gap-6">
-        {/* form-level errors (rate limit, network, server) */}
-        <div aria-live="polite">
-          {formError ? (
-            <p role="alert" className={errorTextClass}>
-              {formError}
+        {/* terms checkbox: real input, whole row clickable */}
+        <div className="mb-6 flex w-full flex-col gap-2">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3">
+            <input
+              ref={termsRef}
+              type="checkbox"
+              checked={termsAccepted}
+              disabled={isSubmitting}
+              onChange={(event) => {
+                setTermsAccepted(event.target.checked);
+                setTouched((current) => ({ ...current, terms: true }));
+              }}
+              aria-invalid={termsError ? true : undefined}
+              aria-describedby={termsError ? 'terms-error' : undefined}
+              className="size-5 shrink-0 accent-primary"
+            />
+            <span className="text-base text-ink lg:text-lg">I agree with the terms and policy</span>
+          </label>
+          {termsError ? (
+            <p id="terms-error" className={errorTextClass}>
+              {termsError}
             </p>
           ) : null}
         </div>
 
-        {/* primary button: full width, 68 tall at lg, radius 36, semibold, dark text */}
-        <button
-          type="submit"
-          aria-disabled={!valid || isSubmitting}
-          aria-busy={isSubmitting || undefined}
-          className={cn(
-            'flex h-14 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-xl leading-7 font-semibold text-ink transition-colors sm:h-16 sm:text-2xl sm:leading-8 lg:h-[68px] lg:py-4 lg:text-[25px] lg:leading-9',
-            valid
-              ? 'bg-[#FF8B00] hover:bg-[#E67D00] active:bg-[#CC6F00]'
-              : 'cursor-not-allowed bg-primary-disabled',
-            isSubmitting && 'cursor-progress',
-          )}
-        >
-          {isSubmitting ? <Spinner /> : null}
-          Create Account
-        </button>
+        {/* button and footer: gap 24 */}
+        <div className="flex w-full flex-col gap-2 sm:gap-4">
+          {/* form-level errors (rate limit, network, server) */}
+          <div aria-live="polite">
+            {formError ? (
+              <p role="alert" className={errorTextClass}>
+                {formError}
+              </p>
+            ) : null}
+          </div>
 
-        <p className="text-center text-base text-subtle lg:text-lg">
-          Already have an account?{' '}
-          <Link href="/auth/login" className="font-semibold text-ink underline underline-offset-2">
-            Log in here
-          </Link>
-        </p>
-      </div>
-    </form>
+          {/* primary button: full width, 68 tall at lg, radius 36, semibold, dark text */}
+          <button
+            type="submit"
+            disabled={!valid || isSubmitting}
+            aria-disabled={!valid || isSubmitting}
+            aria-busy={isSubmitting || undefined}
+            className={cn(
+              'flex h-14 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-xl leading-7 font-semibold text-ink transition-colors sm:h-16 sm:text-2xl sm:leading-8 lg:h-[68px] lg:py-4 lg:text-[25px] lg:leading-9',
+              isSubmitting
+                ? 'cursor-not-allowed bg-[#CC7000]'
+                : valid
+                  ? 'bg-primary hover:bg-primary-hover active:bg-[#CC7000]'
+                  : 'cursor-not-allowed bg-primary-disabled',
+              isSubmitting && 'cursor-progress',
+            )}
+          >
+            {isSubmitting ? 'Creating account…' : 'Create Account'}
+          </button>
+
+          <p className="text-center text-base text-subtle lg:text-lg">
+            Already have an account?{' '}
+            <Link
+              href="/auth/login"
+              className="font-semibold text-ink underline underline-offset-2"
+            >
+              Log in here
+            </Link>
+          </p>
+        </div>
+      </form>
+    </div>
   );
 }

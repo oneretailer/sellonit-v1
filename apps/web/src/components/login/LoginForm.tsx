@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PasswordField } from '@/components/reuseable/PasswordField';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
+import { AppleMark, GoogleMark } from '@/components/reuseable/SocialProviderMarks';
 import { AlertCircleIcon, RefreshIcon } from '@/components/reuseable/icons';
 import { TextField } from '@/components/reuseable/TextField';
 import {
@@ -24,6 +26,8 @@ import {
   type NormalizedIdentifier,
 } from '@/lib/auth/identifier';
 import { resendAvailableAfterSend, writeAuthFlow } from '@/lib/auth/flowState';
+import { clearPendingVerificationEmail } from '@/lib/auth/pendingVerification';
+import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
 
 export type LoginFormProps = {
   /** Pre-filled identifier from `?email=` (e.g. after the "already exists" redirect). */
@@ -73,14 +77,15 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
     setSubmitting(true);
     try {
       await loginWithIdentifier({ ...target, password });
-      // Stays disabled while the app navigates away.
-      router.replace('/account');
+      clearPendingVerificationEmail();
+      // Stays disabled while the app navigates through the onboarding gate.
+      router.replace(getPostAuthDestination());
     } catch (error) {
       inFlight.current = false;
       setSubmitting(false);
       const failure = mapLoginError(error);
       if (failure === 'wrong-credentials') {
-        setPasswordError(authMessageFor(failure));
+        setFormError(authMessageFor(failure));
       } else if (failure === 'account-not-verified') {
         setUnverified(target);
       } else {
@@ -112,8 +117,8 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
   }
 
   return (
-    <AuthCard gapClassName="gap-12">
-      <StepHeader title="Welcome back" align="center">
+    <AuthCard gapClassName="gap-6 sm:gap-12">
+      <StepHeader title="Welcome back" align="center" icon={<BagMark />}>
         Log in to continue to your Sellonit account
       </StepHeader>
 
@@ -125,7 +130,7 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
         <TextField
           id="identifier"
           label="Email or phone number"
-          placeholder="Email or phone number"
+          placeholder="Enter your email address or phone number"
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
@@ -202,9 +207,28 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
 
         {formError ? <InlineError>{formError}</InlineError> : null}
 
-        <PrimaryButton type="submit" loading={submitting}>
-          Log In
-        </PrimaryButton>
+        {/* TODO(google-auth): supply OAuth handler/redirect before enabling provider controls. */}
+        {/* TODO(apple-auth): supply OAuth handler/redirect before enabling provider controls. */}
+        <div className="flex w-full flex-col gap-4">
+          <PrimaryButton type="submit" loading={submitting}>
+            {submitting ? 'Logging in…' : 'Log In'}
+          </PrimaryButton>
+          <p className="py-1 text-center text-sm font-bold text-ink">OR</p>
+          <button
+            type="button"
+            aria-disabled="true"
+            className="flex min-h-14 w-full cursor-not-allowed items-center justify-center gap-3 rounded-full border border-line bg-white px-5 text-base font-medium text-ink"
+          >
+            <GoogleMark /> Log in with Google
+          </button>
+          <button
+            type="button"
+            aria-disabled="true"
+            className="flex min-h-14 w-full cursor-not-allowed items-center justify-center gap-3 rounded-full border border-line bg-white px-5 text-base font-medium text-ink"
+          >
+            <AppleMark /> Log in with Apple
+          </button>
+        </div>
       </form>
 
       <p className="text-center text-sm text-subtle">

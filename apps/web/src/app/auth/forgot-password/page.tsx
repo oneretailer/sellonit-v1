@@ -8,5 +8,11 @@ export const metadata: Metadata = {
 
 /** Forgot password, step 1: enter an email or phone number to receive a code. */
 export default function ForgotPasswordPage() {
-  return <RequestCodeForm />;
+  return (
+    <>
+      <div className="pt-15 w-full flex items-center justify-center">
+        <RequestCodeForm />
+      </div>
+    </>
+  );
 }

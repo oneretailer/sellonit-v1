@@ -12,9 +12,12 @@ type LoginPageProps = {
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  // Only a well-formed email is accepted from the query string. Never a password.
   const { email } = await searchParams;
   const value = Array.isArray(email) ? email[0] : email;
   const initialIdentifier = value && isEmail(value) ? value : undefined;
-  return <LoginForm initialIdentifier={initialIdentifier} />;
+  return (
+    <div className="pt-15 w-full flex items-center justify-center">
+      <LoginForm initialIdentifier={initialIdentifier} />
+    </div>
+  );
 }

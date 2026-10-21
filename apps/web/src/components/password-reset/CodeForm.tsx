@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
@@ -22,6 +23,7 @@ import {
   resendAvailableAfterSend,
   type AuthFlowPurpose,
 } from '@/lib/auth/flowState';
+import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
 import { useForgotPasswordFlow } from './FlowProvider';
 import { useStoredAuthFlow } from './useStoredAuthFlow';
 
@@ -76,8 +78,8 @@ function ResendCodeButton({
  * for both purposes:
  * - reset-password: a verified code returns a reset token (held in memory)
  *   and the user moves to the new-password step.
- * - verify-account: a verified code finishes verification and the app goes to
- *   /account, as the existing verify-email flow does.
+ * - verify-account: a verified code finishes verification and routes through
+ *   the shared post-auth onboarding gate.
  *
  * The code is never stored. A refresh empties the input, as intended.
  */
@@ -153,7 +155,7 @@ export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
         // Existing post-verification behaviour (see VerifyEmailConfirm).
         finishing.current = true;
         clearAuthFlow();
-        router.replace('/account');
+        router.replace(getPostAuthDestination());
       }
     } catch (error) {
       inFlight.current = false;
@@ -192,7 +194,7 @@ export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
 
   return (
     <AuthCard gapClassName="gap-9">
-      <StepHeader title="Enter verification code" align="left">
+      <StepHeader title="Enter verification code" align="left" icon={<BagMark />}>
         {`We sent a code to ${maskedTo}`}
       </StepHeader>
 

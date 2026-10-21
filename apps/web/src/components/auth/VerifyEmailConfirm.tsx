@@ -2,10 +2,23 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { verifyEmail } from '@/lib/auth/api';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import { BagMark } from '@/components/brand/BagMark';
+import { getMe, verifyEmail } from '@/lib/auth/api';
 import { emailLinkErrorMessage, isRetryableAuthError } from '@/lib/auth/errors';
-import { PENDING_VERIFICATION_EMAIL_KEY } from '@/lib/auth/pendingVerification';
+import {
+  clearPendingVerificationEmail,
+  getPendingVerificationEmail,
+  subscribePendingVerificationEmail,
+} from '@/lib/auth/pendingVerification';
+import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
 
 type ConfirmStatus =
   | { kind: 'verifying' }
@@ -19,23 +32,28 @@ const headingClass =
 const bodyClass =
   'text-base leading-6 font-normal text-[#6B7280] sm:text-lg sm:leading-7 lg:text-[20px] lg:leading-[30px]';
 
-/** sessionStorage does not change behind our back; an empty subscription is enough. */
-const emptySubscribe = () => () => {};
+function StatusHeading({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex w-full flex-col items-center gap-4 md:gap-6">
+      <BagMark />
+      <h1 className={headingClass}>{children}</h1>
+    </div>
+  );
+}
 
 /**
  * Reads the token from the query string and calls POST /auth/verify-email
  * once, on mount. The ref stops React StrictMode from running the effect
  * twice, which would spend a single-use token twice. On success the contract
- * API has established the session, so the app routes to the dashboard.
+ * API has established the session, so the app routes to the standalone account-success screen.
  */
 export function VerifyEmailConfirm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  // Client-only storage, read without effects (server snapshot is always null).
   const pendingEmail = useSyncExternalStore(
-    emptySubscribe,
-    () => window.sessionStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY),
+    subscribePendingVerificationEmail,
+    getPendingVerificationEmail,
     () => null,
   );
   const [status, setStatus] = useState<ConfirmStatus>(() =>
@@ -52,19 +70,45 @@ export function VerifyEmailConfirm() {
   const runVerification = useCallback(
     (value: string) => {
       setStatus({ kind: 'verifying' });
-      verifyEmail(value)
-        .then(() => {
+      void (async () => {
+        try {
+          const pendingEmail = getPendingVerificationEmail();
+          // Detect an existing session for a different account before allowing the verification response to replace it.
+          if (pendingEmail) {
+            try {
+              const existing = await getMe();
+              if (existing.data.email.toLowerCase() !== pendingEmail.toLowerCase()) {
+                setStatus({
+                  kind: 'error',
+                  message:
+                    'You are already logged in as a different account. Log out of that account, then reopen this verification link.',
+                  retryable: false,
+                });
+                return;
+              }
+              if (existing.data.emailVerifiedAt) {
+                clearPendingVerificationEmail();
+                setStatus({ kind: 'verified' });
+                router.replace(getPostAuthDestination());
+                return;
+              }
+            } catch {
+              // A 401 means signed out; other failures are handled by the actual verification request.
+            }
+          }
+          await verifyEmail(value);
+          clearPendingVerificationEmail();
           setStatus({ kind: 'verified' });
-          // The verify call established the session (contract §verify).
-          router.replace('/account');
-        })
-        .catch((error: unknown) =>
+          // The verification endpoint establishes the HttpOnly session before this standalone success route loads.
+          router.replace('/auth/welcome');
+        } catch (error: unknown) {
           setStatus({
             kind: 'error',
             message: emailLinkErrorMessage(error),
             retryable: isRetryableAuthError(error),
-          }),
-        );
+          });
+        }
+      })();
     },
     [router],
   );
@@ -80,7 +124,7 @@ export function VerifyEmailConfirm() {
   if (status.kind === 'verifying') {
     return (
       <div className={cardClass}>
-        <h1 className={headingClass}>Verifying your email</h1>
+        <StatusHeading>Verifying your email</StatusHeading>
         <p className={bodyClass}>This will only take a moment.</p>
       </div>
     );
@@ -89,7 +133,7 @@ export function VerifyEmailConfirm() {
   if (status.kind === 'verified') {
     return (
       <div className={cardClass}>
-        <h1 className={headingClass}>Email verified</h1>
+        <StatusHeading>Email verified</StatusHeading>
         <p className={bodyClass}>Your email address is verified. Taking you to your account.</p>
       </div>
     );
@@ -97,7 +141,7 @@ export function VerifyEmailConfirm() {
 
   return (
     <div className={cardClass}>
-      <h1 className={headingClass}>We could not verify your email</h1>
+      <StatusHeading>We could not verify your email</StatusHeading>
       <p className={bodyClass} aria-live="polite">
         {status.message}
       </p>
