@@ -160,3 +160,36 @@ Invalid/expired/consumed tokens show the backend's invalid-token message and rec
 - Inspection found no root auth redirect, guard, analytics, middleware, or proxy behavior to preserve. No backend files, contracts, or auth features/routes were changed or removed. Changed files: `apps/web/src/app/page.tsx`, `apps/web/src/lib/auth/authPresentation.test.ts`, `apps/web/src/components/reuseable/PrimaryButton.tsx` (stale comment wording), and this audit.
 - Added source-contract assertions that both routes use the shared chooser, landing header label remains “Learn more,” and old landing marketing copy is absent. Existing geometry assertions cover the card width at 320, 390, 768, 1024, and 1440 CSS pixels.
 - UNVERIFIED: no browser-based runtime layout/overflow measurement or screenshots were performed; width assertions verify declared/source geometry only. No deletion occurred.
+
+## Post-registration success and role selection (2026-10-21)
+
+### Flow and routes
+
+- Registration continues to `/auth/verify-email` (check-email). The verification link lands at `/auth/verify-email/confirm`; after the existing verify-and-login endpoint establishes its session, a newly verified user is sent with `router.replace` to `/auth/welcome`.
+- `/auth/welcome` is a standalone, session-guarded success screen and can be used by future Google sign-up without requiring email-verification state. Its CTA navigates to `/auth/role-selection`.
+- `/auth/role-selection` is also session-guarded. The native radio group remembers only its selected role ID through the existing session-storage flow helper. Continue calls the local role API, receives a recommendation and navigates to its `nextRoute`; Back is a link to `/auth/welcome`, not browser history.
+- All current local recommendation tracks route to the existing `/account` destination. There are no role-specific frontend onboarding routes yet, so role-specific onboarding screens are recorded as missing routes/designs.
+- The already-verified/different-session callback preflight remains unchanged: returning verified users retain the existing home/account destination; the success screen is not made their default destination. The new screen itself has no timed redirect.
+
+### Backend contract inventory and readiness
+
+- Inspected API route registrations and `docs/openapi.yaml` read-only. No role-selection or onboarding-preference endpoint exists. Existing backend `UserRole` values (OWNER, ADMIN, STAFF, SUPPLIER, RETAILER) are authorization/business roles, not the new onboarding-intent choices; the frontend does not map or submit the new choices as backend permissions.
+- `roleApi` defaults to `localRoleApi`; it performs no network request and uses one role-to-track/route lookup. `httpRoleApi` is a typed, non-networking TODO skeleton. When a backend contract is agreed, the one-line implementation switch is the exported `roleApi` assignment in `apps/web/src/lib/onboarding/roleApi.ts`.
+- Persisted role ID is sufficient to re-derive the local recommendation lookup for later screens; no labels, business data, or speculative recommendation payload are stored.
+- **PROPOSED backend request (not implemented or called):** define an authenticated `POST /api/v1/me/onboarding/role` accepting `{ "role": "entrepreneur" | "retailer" | "supplier" }` and returning a stable recommendation (`role`, `track`, `nextRoute`); define a matching authenticated `GET` to read the current role/recommendation so returning users can skip role selection. Specify validation, idempotency, versioning, and authorization before adoption. These paths are proposals only, not existing endpoints.
+- Google/Apple provider buttons remain inert and make no provider/API calls. The standalone `/auth/welcome` route is ready as a success destination for a future Google flow, but provider callbacks/session creation are still unimplemented.
+
+### Design assumptions and gaps
+
+- [I] Role IDs (`entrepreneur`, `retailer`, `supplier`) and one-to-one recommendation tracks are inferred from the descriptions; they are onboarding preferences, not backend permission roles. The full descriptive radio copy is inferred UI wording for these intents and needs product/design confirmation.
+- [I] With no dedicated onboarding entry for any track, local recommendations use `/account` as the existing next step. The recommendation-result screen is not invented; role-specific onboarding screens/routes remain missing.
+- [I] Selection is persisted as a single role ID in session storage. A recommendation is re-derived from that ID and the local lookup rather than storing duplicate recommendation fields.
+- [I] The save-in-progress label is “Saving…” and uses the shared darker loading-button state. Save failure retains the role and shows the specified inline error.
+- [I] Success icon is 64px on mobile and 96px from `md`; body text uses the existing type scale and a 360px maximum width. No status artwork is supplied, so `SuccessCheckIcon` uses the existing success token and line icon conventions.
+- [C] The success header's right label is “Account details”; this appears odd on a success screen and is retained as specified.
+- [C] The design's “sucessfully” typo is corrected to “successfully”. The party-popper emoji is decorative (`aria-hidden`) so the accessible heading is “Account successfully created”.
+- [C] The role screen has no BagMark, unlike the other account cards; implemented as specified.
+- [C] The design's 624px role-card width and 48px side padding differ from the shared AuthCard's 632px cap and 36px desktop sides. The shared responsive AuthCard wins; card widths/padding are not hardcoded.
+- [E] Role subtitle max width, option-card padding/radius/gaps, radio sizing, and body typography snap to existing responsive/type tokens; option labels remain 16px minimum and controls meet the 44px tap-target floor.
+- [I] The success title focus moves on mount using a programmatically focusable heading. Unauthenticated guard checks use the existing `/auth/me` session endpoint; HTTP 401 redirects to Login, while network/server errors remain recoverable and do not bounce the user to Login.
+- No mobile frames, exact role-specific onboarding designs, recommendation-result design, Google OAuth callback, or current-role backend read/write contract were supplied. Browser viewport measurements remain to be verified in a real layout engine.
