@@ -193,3 +193,29 @@ Invalid/expired/consumed tokens show the backend's invalid-token message and rec
 - [E] Role subtitle max width, option-card padding/radius/gaps, radio sizing, and body typography snap to existing responsive/type tokens; option labels remain 16px minimum and controls meet the 44px tap-target floor.
 - [I] The success title focus moves on mount using a programmatically focusable heading. Unauthenticated guard checks use the existing `/auth/me` session endpoint; HTTP 401 redirects to Login, while network/server errors remain recoverable and do not bounce the user to Login.
 - No mobile frames, exact role-specific onboarding designs, recommendation-result design, Google OAuth callback, or current-role backend read/write contract were supplied. Browser viewport measurements remain to be verified in a real layout engine.
+
+## Post-signup persistence and authenticated destination gates (2026-10-21)
+
+### Refresh diagnosis and recovery behavior
+
+- **Root cause:** `VerifyEmailPage` used `useSyncExternalStore` with a server snapshot that is always `null`, then immediately redirected when that temporary null appeared. That mistaken guard sent users to `/auth/register`, whose page renders the account-creation chooser. The pending email was stored only in tab-scoped `sessionStorage`; a normal reload generally preserves it, but that scope is brittle and the hydration guard could discard the page before reading it.
+- Pending verification now stores only `{ email, expiresAt }` in browser `localStorage` for 24 hours. Passwords and other signup fields are never stored. Expired/malformed records are removed; successful verification and successful login clear the record (and any legacy session-storage value). Browser storage is origin/browser-local and does not share sessions or email state between Safari and Brave.
+- A missing/expired record no longer redirects. The check-your-email page stays visible with an editable email field, resend action, “I’ve verified my email” action to `/auth/login?email=...`, and a separate Log in link. The email query is encoded and remains subject to the login page’s existing email validation.
+- The verified-email action is a navigation aid for cross-browser verification, not a status check: the user must sign in in the browser where they want to continue. No verification-status polling or status endpoint was found.
+
+### Login and post-auth destination inventory
+
+- Read-only inspection of backend `publicUserSelect`, `AuthUser`, `/auth/login`, `/auth/me`, and OpenAPI confirms the returned user includes identity/contact/status/verification timestamps, but **no onboarding role/status**. Existing backend `UserRole`/business membership roles are authorization values, not the product onboarding preferences. The interim source of truth is `readOnboardingRole()` in the existing flow persistence (sessionStorage); a fresh browser/tab without that value goes to role selection until the user chooses there.
+- `getPostAuthDestination()` sends users with no locally stored role to `/auth/role-selection`; with a stored role it reads `roleApi.getRecommendation(role).nextRoute`. There is no existing `next`/return URL support in the repo (only the validated `?email=` login prefill), so no next/return parameter was added.
+- Changed direct default-to-`/account` redirects:
+  1. `LoginForm` success now clears pending email and routes through `getPostAuthDestination()`.
+  2. `VerifyEmailConfirm`’s already-verified session branch now clears pending email and routes through the same gate. Fresh verification still shows the existing standalone `/auth/welcome` success screen; that guarded route forwards a role-selected user to the recommendation instead of trapping them there.
+  3. `CodeForm`’s verify-account success now routes through the shared post-auth gate.
+- Added an authenticated visitor gate for `/` and ordinary `/auth/*` entry/form routes. `/auth/welcome`, `/auth/role-selection`, and `/auth/verify-email/confirm` retain their specialized guards/verification-account mismatch logic. The role route’s session guard forwards a user with a saved role to its recommendation, preventing a redirect loop. Protected routes retry a 401 once after a short delay before sending the user to Login; generic public-route checks simply leave the public page available if session lookup fails.
+- The existing `/account` route/card was **kept**. No route file was removed. `/account` remains the current local recommendation for all three roles because no role-specific frontend onboarding routes exist; it is no longer the login, generic auth-entry, root, or verification default.
+
+### Backend requests and limits
+
+- Backend request: return the chosen role/onboarding status on the user object so any browser can skip role selection. Specifically, include the value in authenticated login and `/auth/me` responses. Until then, another browser has no role record and correctly starts at role selection.
+- Add an authenticated or privacy-preserving verification-status lookup so the check-email page can learn that a link was opened in a different browser and offer sign-in. No such endpoint was found; the client does not poll.
+- Add a supported email-verification resend contract. The current frontend `resendVerification` intentionally rejects locally because no email-resend endpoint exists in the inspected backend; the screen shows the recovery action and a polite failure if it is attempted. No speculative API URL is called.
