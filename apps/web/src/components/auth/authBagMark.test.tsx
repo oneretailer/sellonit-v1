@@ -60,6 +60,16 @@ vi.mock('react', async (importOriginal) => {
   };
 });
 
+vi.mock('@/lib/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    status: 'unauthenticated',
+    user: null,
+    cachedDisplayName: null,
+    acceptAuthenticatedUser: vi.fn(),
+    refreshSession: vi.fn(),
+  }),
+}));
+
 vi.mock('@/lib/auth/api', () => ({
   getMe: vi.fn(),
   verifyEmail: vi.fn(),

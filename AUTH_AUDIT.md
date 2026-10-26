@@ -219,3 +219,34 @@ Invalid/expired/consumed tokens show the backend's invalid-token message and rec
 - Backend request: return the chosen role/onboarding status on the user object so any browser can skip role selection. Specifically, include the value in authenticated login and `/auth/me` responses. Until then, another browser has no role record and correctly starts at role selection.
 - Add an authenticated or privacy-preserving verification-status lookup so the check-email page can learn that a link was opened in a different browser and offer sign-in. No such endpoint was found; the client does not poll.
 - Add a supported email-verification resend contract. The current frontend `resendVerification` intentionally rejects locally because no email-resend endpoint exists in the inspected backend; the screen shows the recovery action and a polite failure if it is attempted. No speculative API URL is called.
+## Supplier dashboard and session-flash update (2026-10-26)
+
+### Routes and role destinations
+
+- Updated the existing `lib/onboarding/roleApi` lookup as the single destination source: supplier → `/dashboard/overview`; entrepreneur and retailer → `/dashboard/coming-soon`. Login, onboarding, authenticated-entry redirects, and dashboard role corrections now use the shared post-auth route logic; `/account` is retained as a route but is no longer the default destination.
+- The shared dashboard route guard sends an unauthenticated user to Login, an authenticated user without a stored onboarding role to role selection, and a user with a mismatched role to that role's configured destination. Entrepreneur/retailer receive the auth-shell “Your dashboard is coming soon” page; supplier receives the overview. Other dashboard navigation destinations use the shared “This section is coming soon” panel.
+- Logout is not offered on coming-soon pages because no existing logout action/endpoint is available. No backend code or `BagMark` was modified.
+
+### Dashboard API/data behavior
+
+- Dashboard data is typed behind a single adapter chooser. The active local adapter returns structurally empty collections and zero numeric values; a typed future HTTP adapter is an unused, non-calling skeleton. No speculative URLs or backend requests were added. `useSupplierDashboard(range)` provides loading, error, retry, and range-specific results.
+- UI presents only actual authenticated user fields (e.g. name/contact where available); dashboard metrics/currency default to zero, and chart, stock alerts, and orders render proper empty states. Populated data is supported through the typed adapter contract/test mocks only; no sample/design names, amounts, products, SKUs, or order IDs are supplied as defaults.
+- The supplier workspace contains responsive setup progress, header/sidebar/mobile drawer, typed navigation, welcome/date presets, zero-safe summaries, an SVG sales chart with keyboard-usable tooltip and empty state, stock alerts, and responsive order table/cards. Profile setup remains a disabled progress-card link with a TODO; no profile form or backend wiring was added.
+
+### Session-flash diagnosis and cache safety
+
+- Root cause: guarded UI previously rendered a visible “Checking your session” message/wrapper during the asynchronous cookie-backed session check. Several screens also maintained their own session lookups, which could introduce inconsistent loading and account flashes.
+- The shared session provider now owns the cookie-backed `GET /api/v1/auth/me` confirmation; server layout performs an initial check when the HTTP-only cookie is available, and client guard rendering uses non-text skeletons while the authoritative state is unresolved. Duplicate account-page session loading was removed. No guarded content is rendered until the session is server-confirmed.
+- A small `sessionStorage` hint may paint a cached display name only. It is explicitly not an authorization source and cannot expose protected data; a failed/expired authoritative check clears it. A 401 receives one short retry for hydration/cookie timing, while transient failures remain retryable and do not become a logged-out redirect. Role stores in guards are read as an initial routing snapshot rather than subscribed to mid-interaction, so selecting a role does not prematurely redirect before Continue is pressed.
+- Exact visible “Checking your session” copy is absent from `apps/web/src`. Account details use the shared provider; no backend/session contract changed.
+
+### Backend contract and limitations
+
+- Read-only inspection of backend routes, handlers, OpenAPI, and user response source found no implemented supplier analytics endpoint matching the documented supplier analytics parameters (including required `businessId`). No dashboard API was called or inferred. The local empty adapter remains active pending a confirmed contract and user/business identity fields.
+- Auth user response confirms identity/contact/status/timestamps but not business name, business membership, profile-completion state, or onboarding role. The stored onboarding choice remains browser/session scoped as in the pre-existing flow. Cross-browser durable role routing and persisted analytics await backend support.
+
+### Tests, validation, and UNVERIFIED items
+
+- Added/updated coverage for local and mocked populated dashboard data, zero/empty states and forbidden sample strings, formatting/date presets, setup progress, role routes and session gates, navigation/placeholders, mobile drawer focus/escape/overlay/scroll-lock/focus return, range-based API hook states, stale-hint expiration, and chart tooltip keyboard focus.
+- `npx vitest run` (from `apps/web`): **22 files passed, 162 tests passed**. `npx eslint apps/web/src --max-warnings 0` passed; `npm run typecheck` passed after workspace packages were built. These frontend-scoped checks avoid the existing root Prisma-generation network blocker and pre-existing API lint diagnostics described above.
+- UNVERIFIED: browser viewport/runtime overflow and real-device drawer behavior; no browser viewport checks were run. No screenshots or design assets were available/required. The live dashboard API remains unverified/unimplemented by design.

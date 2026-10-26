@@ -19,6 +19,7 @@ import {
   subscribePendingVerificationEmail,
 } from '@/lib/auth/pendingVerification';
 import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
+import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 
 type ConfirmStatus =
   | { kind: 'verifying' }
@@ -49,6 +50,7 @@ function StatusHeading({ children }: { children: ReactNode }) {
  */
 export function VerifyEmailConfirm() {
   const router = useRouter();
+  const { acceptAuthenticatedUser } = useAuthSession();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const pendingEmail = useSyncExternalStore(
@@ -87,6 +89,7 @@ export function VerifyEmailConfirm() {
                 return;
               }
               if (existing.data.emailVerifiedAt) {
+                acceptAuthenticatedUser(existing.data);
                 clearPendingVerificationEmail();
                 setStatus({ kind: 'verified' });
                 router.replace(getPostAuthDestination());
@@ -96,11 +99,12 @@ export function VerifyEmailConfirm() {
               // A 401 means signed out; other failures are handled by the actual verification request.
             }
           }
-          await verifyEmail(value);
+          const verified = await verifyEmail(value);
+          acceptAuthenticatedUser(verified.user);
           clearPendingVerificationEmail();
           setStatus({ kind: 'verified' });
-          // The verification endpoint establishes the HttpOnly session before this standalone success route loads.
-          router.replace('/auth/welcome');
+          // The verification response establishes the cookie-backed session; use the same role route lookup as login.
+          router.replace(getPostAuthDestination());
         } catch (error: unknown) {
           setStatus({
             kind: 'error',
@@ -110,7 +114,7 @@ export function VerifyEmailConfirm() {
         }
       })();
     },
-    [router],
+    [acceptAuthenticatedUser, router],
   );
 
   useEffect(() => {

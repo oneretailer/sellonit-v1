@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { RedirectAuthenticatedUser } from './RedirectAuthenticatedUser';
 
 const ROUTES_WITH_OWN_SESSION_HANDLING = new Set([
-  '/auth/welcome',
   '/auth/role-selection',
   '/auth/verify-email/confirm',
 ]);

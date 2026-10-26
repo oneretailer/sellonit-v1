@@ -5,11 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AccountWelcomePage from '@/app/auth/welcome/page';
+import { AccountCreatedSuccess } from './AccountCreatedSuccess';
 import RoleSelectionPage from '@/app/auth/role-selection/page';
 import { VerifyEmailConfirm } from '@/components/auth/VerifyEmailConfirm';
 import { ROLE_OPTIONS } from '@/lib/onboarding/roles';
 import { clearOnboardingRole, ONBOARDING_ROLE_STORAGE_KEY } from '@/lib/auth/flowState';
-import { ApiError } from '@/lib/api-client';
 import {
   getPendingVerificationEmail,
   setPendingVerificationEmail,
@@ -18,6 +18,9 @@ import {
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn(), back: vi.fn() },
   getMe: vi.fn(),
+  sessionStatus: 'authenticated',
+  acceptAuthenticatedUser: vi.fn(),
+  refreshSession: vi.fn(),
   verifyEmail: vi.fn(),
   saveRole: vi.fn(),
   token: 'email-token',
@@ -47,6 +50,17 @@ vi.mock('next/image', () => ({
   ),
 }));
 
+vi.mock('@/lib/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    status: mocks.sessionStatus,
+    user:
+      mocks.sessionStatus === 'authenticated' ? { firstName: 'Person', lastName: 'Example' } : null,
+    cachedDisplayName: 'Person Example',
+    acceptAuthenticatedUser: mocks.acceptAuthenticatedUser,
+    refreshSession: mocks.refreshSession,
+  }),
+}));
+
 vi.mock('@/lib/auth/api', () => ({
   getMe: mocks.getMe,
   verifyEmail: mocks.verifyEmail,
@@ -56,7 +70,11 @@ vi.mock('@/lib/auth/api', () => ({
 vi.mock('@/lib/onboarding/roleApi', () => ({
   roleApi: {
     saveRole: mocks.saveRole,
-    getRecommendation: (role: string) => ({ role, track: role, nextRoute: '/account' }),
+    getRecommendation: (role: string) => ({
+      role,
+      track: role,
+      nextRoute: role === 'supplier' ? '/dashboard/overview' : '/dashboard/coming-soon',
+    }),
   },
 }));
 
@@ -67,7 +85,9 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   clearOnboardingRole();
+  mocks.sessionStatus = 'authenticated';
   mocks.token = 'email-token';
+  mocks.refreshSession.mockResolvedValue({ email: 'person@example.com' });
   mocks.getMe.mockResolvedValue({ data: { email: 'person@example.com' } });
 });
 
@@ -85,7 +105,7 @@ async function findRadio(label: string): Promise<HTMLInputElement> {
 
 describe('account-created success screen', () => {
   it('renders one decorative bag before its heading, success icon, copy, and role CTA; focuses the heading', async () => {
-    render(<AccountWelcomePage />);
+    render(<AccountCreatedSuccess />);
 
     const heading = await screen.findByRole('heading', { name: 'Account successfully created' });
     await waitFor(() => expect(document.activeElement).toBe(heading));
@@ -106,7 +126,7 @@ describe('account-created success screen', () => {
   });
 
   it('redirects unauthenticated visitors to Login', async () => {
-    mocks.getMe.mockRejectedValue(new ApiError(401, 'UNAUTHORIZED', 'Not signed in'));
+    mocks.sessionStatus = 'unauthenticated';
     render(<AccountWelcomePage />);
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/login'));
   });
@@ -148,7 +168,7 @@ describe('role selection screen', () => {
     mocks.saveRole.mockResolvedValue({
       role: 'supplier',
       track: 'supplier',
-      nextRoute: '/account',
+      nextRoute: '/dashboard/overview',
     });
     render(<RoleSelectionPage />);
 
@@ -156,7 +176,7 @@ describe('role selection screen', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(mocks.saveRole).toHaveBeenCalledWith('supplier'));
-    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith('/account'));
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith('/dashboard/overview'));
     expect(sessionStorage.getItem(ONBOARDING_ROLE_STORAGE_KEY)).toBe('supplier');
   });
 
@@ -184,12 +204,14 @@ describe('role selection screen', () => {
 
     unmount();
     render(<RoleSelectionPage />);
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/account'));
+    await waitFor(() =>
+      expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/coming-soon'),
+    );
     expect(sessionStorage.getItem(ONBOARDING_ROLE_STORAGE_KEY)).toBe('retailer');
   });
 
   it('redirects unauthenticated visitors to Login', async () => {
-    mocks.getMe.mockRejectedValue(new ApiError(401, 'UNAUTHORIZED', 'Not signed in'));
+    mocks.sessionStatus = 'unauthenticated';
     render(<RoleSelectionPage />);
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/login'));
   });
@@ -202,7 +224,7 @@ describe('verification success redirect', () => {
     render(<VerifyEmailConfirm />);
 
     await waitFor(() => expect(mocks.verifyEmail).toHaveBeenCalledWith('email-token'));
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/welcome'));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
     expect(getPendingVerificationEmail()).toBeNull();
   });
 

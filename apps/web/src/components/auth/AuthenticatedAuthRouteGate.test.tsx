@@ -2,22 +2,31 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { ApiError } from '@/lib/api-client';
 import { AuthenticatedAuthRouteGate } from './AuthenticatedAuthRouteGate';
 import { RedirectAuthenticatedUser } from './RedirectAuthenticatedUser';
 import { clearOnboardingRole, writeOnboardingRole } from '@/lib/auth/flowState';
 
 const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn() },
-  getMe: vi.fn(),
   pathname: '/auth/login',
+  status: 'authenticated',
+  refreshSession: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => mocks.router,
   usePathname: () => mocks.pathname,
 }));
-vi.mock('@/lib/auth/api', () => ({ getMe: mocks.getMe }));
+vi.mock('@/lib/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    status: mocks.status,
+    user: mocks.status === 'authenticated' ? { firstName: 'Jane', lastName: 'Doe' } : null,
+    cachedDisplayName: 'Jane Doe',
+    refreshSession: mocks.refreshSession,
+  }),
+}));
+
+const child = <p>Public auth content</p>;
 
 afterEach(() => cleanup());
 beforeEach(() => {
@@ -26,81 +35,68 @@ beforeEach(() => {
   sessionStorage.clear();
   clearOnboardingRole();
   mocks.pathname = '/auth/login';
-  mocks.getMe.mockResolvedValue({ data: { email: 'jane@example.com' } });
+  mocks.status = 'authenticated';
 });
 
-const child = <p>Public auth content</p>;
-
 describe('authenticated entry gates', () => {
-  it.each(['/auth/login', '/auth/register', '/auth/forgot-password'])(
-    'routes an authenticated visit to %s through the shared onboarding gate',
+  it.each(['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/welcome'])(
+    'routes an authenticated visit to %s through the role lookup',
     async (pathname) => {
       mocks.pathname = pathname;
       render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
       await waitFor(() =>
         expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'),
       );
+      expect(screen.queryByText('Public auth content')).toBeNull();
     },
   );
 
-  it('routes an authenticated landing visit with no saved role to role selection', async () => {
-    render(
-      <RedirectAuthenticatedUser locationKey="/">
-        <p>Signup chooser</p>
-      </RedirectAuthenticatedUser>,
-    );
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
+  it('sends authenticated suppliers from auth entry routes to Overview', async () => {
+    writeOnboardingRole('supplier');
+    render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
   });
 
-  it('uses the saved role recommendation for authenticated visitors to public entry routes', async () => {
+  it('sends an authenticated retailer through its coming-soon recommendation', async () => {
     writeOnboardingRole('retailer');
     render(
       <RedirectAuthenticatedUser locationKey="/">
-        <p>Signup chooser</p>
+        <p>Landing</p>
       </RedirectAuthenticatedUser>,
     );
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/account'));
+    await waitFor(() =>
+      expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/coming-soon'),
+    );
   });
 
-  it('does not gate the verification callback route, which has its own account-mismatch check', () => {
+  it('does not render logged-out content while the shared session is unresolved', () => {
+    mocks.status = 'checking';
+    render(
+      <RedirectAuthenticatedUser locationKey="/auth/login">{child}</RedirectAuthenticatedUser>,
+    );
+    expect(screen.queryByText('Public auth content')).toBeNull();
+    expect(screen.getByRole('status')).toBeTruthy();
+  });
+
+  it('shows public content for a confirmed signed-out session', () => {
+    mocks.status = 'unauthenticated';
+    render(
+      <RedirectAuthenticatedUser locationKey="/auth/login">{child}</RedirectAuthenticatedUser>,
+    );
+    expect(screen.getByText('Public auth content')).toBeTruthy();
+  });
+
+  it('keeps the verification callback on its account-mismatch flow', () => {
     mocks.pathname = '/auth/verify-email/confirm';
+    mocks.status = 'unauthenticated';
     render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
     expect(screen.getByText('Public auth content')).toBeTruthy();
-    expect(mocks.getMe).not.toHaveBeenCalled();
   });
 
-  it('does not route around the guarded onboarding success and role routes', () => {
+  it('keeps role selection on its own authenticated role guard', () => {
     mocks.pathname = '/auth/role-selection';
     render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
     expect(screen.getByText('Public auth content')).toBeTruthy();
-    expect(mocks.getMe).not.toHaveBeenCalled();
-  });
-
-  it('retries a transient 401 once so a newly established session is not bounced to Login', async () => {
-    mocks.getMe
-      .mockRejectedValueOnce(new ApiError(401, 'UNAUTHORIZED', 'Cookie not visible yet'))
-      .mockResolvedValueOnce({ data: { email: 'jane@example.com' } });
-    render(
-      <RedirectAuthenticatedUser locationKey="/auth/login">
-        <p>Login form</p>
-      </RedirectAuthenticatedUser>,
-    );
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
-    expect(mocks.router.replace).not.toHaveBeenCalledWith('/auth/login');
-    expect(mocks.getMe).toHaveBeenCalledTimes(2);
-  });
-
-  it('leaves unauthenticated and unavailable sessions on the public route', async () => {
-    mocks.getMe
-      .mockRejectedValueOnce(new ApiError(401, 'UNAUTHORIZED', 'Not signed in'))
-      .mockRejectedValueOnce(new ApiError(401, 'UNAUTHORIZED', 'Not signed in'));
-    render(
-      <RedirectAuthenticatedUser locationKey="/auth/login">
-        <p>Login form</p>
-      </RedirectAuthenticatedUser>,
-    );
-    expect(await screen.findByText('Login form')).toBeTruthy();
-    await waitFor(() => expect(mocks.getMe).toHaveBeenCalledTimes(2));
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 });

@@ -15,6 +15,7 @@ import {
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
   loginWithIdentifier: vi.fn(),
+  acceptAuthenticatedUser: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => mocks.router }));
@@ -34,6 +35,9 @@ vi.mock('next/image', () => ({
     <img {...props} />
   ),
 }));
+vi.mock('@/lib/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => ({ acceptAuthenticatedUser: mocks.acceptAuthenticatedUser }),
+}));
 vi.mock('@/lib/auth/authService', () => ({
   AUTH_MESSAGES: { accountNotVerified: 'Your account is not verified.' },
   authMessageFor: vi.fn(),
@@ -50,7 +54,21 @@ beforeEach(() => {
   clearPendingVerificationEmail();
   clearOnboardingRole();
   vi.clearAllMocks();
-  mocks.loginWithIdentifier.mockResolvedValue({ user: { email: 'jane@example.com' } });
+  mocks.loginWithIdentifier.mockResolvedValue({
+    user: {
+      id: 'user-1',
+      email: 'jane@example.com',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      phone: null,
+      status: 'ACTIVE',
+      emailVerifiedAt: '2026-10-26T00:00:00.000Z',
+      phoneVerifiedAt: null,
+      createdAt: '2026-10-26T00:00:00.000Z',
+      updatedAt: '2026-10-26T00:00:00.000Z',
+    },
+    expiresIn: 3600,
+  });
 });
 
 async function completeLogin() {
@@ -74,7 +92,8 @@ describe('post-login onboarding destination', () => {
   it('routes a user with a saved role to that role recommendation', async () => {
     writeOnboardingRole('supplier');
     await completeLogin();
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/account'));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
+    expect(mocks.acceptAuthenticatedUser).toHaveBeenCalled();
   });
 
   it('clears pending verification email after a successful login', async () => {

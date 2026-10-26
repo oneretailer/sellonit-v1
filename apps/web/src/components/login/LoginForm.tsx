@@ -28,6 +28,7 @@ import {
 import { resendAvailableAfterSend, writeAuthFlow } from '@/lib/auth/flowState';
 import { clearPendingVerificationEmail } from '@/lib/auth/pendingVerification';
 import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
+import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 
 export type LoginFormProps = {
   /** Pre-filled identifier from `?email=` (e.g. after the "already exists" redirect). */
@@ -41,6 +42,7 @@ export type LoginFormProps = {
  */
 export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
   const router = useRouter();
+  const { acceptAuthenticatedUser } = useAuthSession();
   const [identifier, setIdentifier] = useState(initialIdentifier);
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -76,7 +78,8 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
     inFlight.current = true;
     setSubmitting(true);
     try {
-      await loginWithIdentifier({ ...target, password });
+      const response = await loginWithIdentifier({ ...target, password });
+      acceptAuthenticatedUser(response.user);
       clearPendingVerificationEmail();
       // Stays disabled while the app navigates through the onboarding gate.
       router.replace(getPostAuthDestination());

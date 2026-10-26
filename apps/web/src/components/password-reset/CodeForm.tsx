@@ -24,6 +24,7 @@ import {
   type AuthFlowPurpose,
 } from '@/lib/auth/flowState';
 import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
+import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 import { useForgotPasswordFlow } from './FlowProvider';
 import { useStoredAuthFlow } from './useStoredAuthFlow';
 
@@ -85,6 +86,7 @@ function ResendCodeButton({
  */
 export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
   const router = useRouter();
+  const { refreshSession } = useAuthSession();
   const resetFlow = useForgotPasswordFlow();
   const [flow, updateFlow] = useStoredAuthFlow();
 
@@ -153,6 +155,8 @@ export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
         router.push('/auth/forgot-password/new-password');
       } else {
         // Existing post-verification behaviour (see VerifyEmailConfirm).
+        const authenticatedUser = await refreshSession();
+        if (!authenticatedUser) throw new Error('Session was not established after verification.');
         finishing.current = true;
         clearAuthFlow();
         router.replace(getPostAuthDestination());
