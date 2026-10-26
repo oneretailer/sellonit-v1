@@ -9,7 +9,7 @@ import { SuccessCheckIcon } from './SuccessCheckIcon';
 
 function SharedSizeBagMark() {
   return (
-    <span className={`block shrink-0 ${BAG_MARK_SIZE_CLASS} [&>img]:!w-full`}>
+    <span className={``}>
       <BagMark />
     </span>
   );
@@ -23,24 +23,27 @@ export function AccountCreatedSuccess() {
   }, []);
 
   return (
-    <AuthCard gapClassName="gap-6 md:gap-9">
+   <div className='pt-15 w-full flex items-center justify-center'>
+     <AuthCard gapClassName="gap-6 md:gap-9">
       <AuthCardHeader
         icon={<SharedSizeBagMark />}
         headingRef={headingRef}
-        headingTabIndex={-1}
+       
         title={
           <>
-            Account successfully created <span aria-hidden="true">🎉</span>
+          <span aria-hidden="true">  Account successfully created </span>
           </>
         }
       />
-      <SuccessCheckIcon />
+    <div className='flex items-cenetr justify-center w-full'>  <SuccessCheckIcon /></div>
       <p className="mx-auto max-w-[360px] text-base font-medium text-ink md:text-lg xl:text-xl">
         Click on the button below to set up your business account
       </p>
-      <PrimaryLinkButton href="/auth/role-selection" className="auth-button text-ink">
-        Set up your Business account
+      <PrimaryLinkButton href="/auth/role-selection"
+       className="auth-button text-ink">
+        Set up your account
       </PrimaryLinkButton>
     </AuthCard>
+   </div>
   );
 }

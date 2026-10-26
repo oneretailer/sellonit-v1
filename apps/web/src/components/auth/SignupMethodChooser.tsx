@@ -43,9 +43,9 @@ export function SignupMethodChooser() {
           <PrimaryButton
             shape="pill"
             onClick={() => router.push('/auth/register/account-details')}
-            className="text-xl sm:text-2xl"
+            className="text-xl"
           >
-            <span className="text-black">Continue with email</span>
+            <span className="text-black ">Continue with email</span>
           </PrimaryButton>
         </div>
 

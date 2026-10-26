@@ -69,7 +69,8 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <AuthCard gapClassName="gap-6 md:gap-9">
+   <div className='pt-15 w-full flex items-center justify-center'>
+     <AuthCard gapClassName="gap-6 md:gap-9">
       <AuthCardHeader icon={<BagMark />} title="Check your email">
         {hasPendingEmail ? (
           <>We sent a verification link to {email}. You can resend it below.</>
@@ -127,6 +128,7 @@ export default function VerifyEmailPage() {
           appearance="outline"
           disabled={!isEmail(normalizedEmail)}
           onClick={handleVerifiedLogin}
+          className=''
         >
           I&apos;ve verified my email
         </SecondaryButton>
@@ -147,5 +149,6 @@ export default function VerifyEmailPage() {
         </p>
       </div>
     </AuthCard>
+   </div>
   );
 }

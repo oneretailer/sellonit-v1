@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 
 /** Shared look for every full-width primary pill. */
 const pillBase =
-  'inline-flex min-h-11 h-16 w-full items-center justify-center gap-2 px-6 text-xl font-semibold text-white transition-colors';
+  'inline-flex min-h-11 h-12 w-full items-center justify-center gap-2 px-6 text-xl font-medium text-ink transition-colors';
 
 export type PrimaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Shows loading state and locks the button while a request is in flight. */
@@ -35,7 +35,7 @@ export function PrimaryButton({
       aria-busy={loading || undefined}
       className={cn(
         pillBase,
-        shape === 'pill' ? 'rounded-full' : 'rounded-button',
+        shape === 'pill' ? 'rounded-full ' : 'rounded-button',
         disabled && !loading
           ? 'cursor-not-allowed bg-primary-disabled text-ink'
           : loading

@@ -30,7 +30,7 @@ export function SecondaryButton({
       aria-busy={loading || undefined}
       className={cn(
         cn(
-          'inline-flex min-h-14 h-16 w-full items-center justify-center gap-3 px-6 text-base font-medium text-ink transition-colors',
+          'inline-flex min-h-12 h-12 w-full items-center justify-center gap-3 px-6 text-base font-medium text-ink transition-colors',
           shape === 'pill' ? 'rounded-full' : 'rounded-button',
           appearance === 'outline'
             ? 'border border-solid  bg-white hover:bg-canvas'
