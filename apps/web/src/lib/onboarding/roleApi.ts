@@ -15,9 +15,9 @@ type RecommendationTarget = Omit<RoleRecommendation, 'role'>;
 
 /** Local product routing until a backend role/onboarding contract is confirmed. */
 const RECOMMENDATIONS: Record<AccountRole, RecommendationTarget> = {
-  entrepreneur: { track: 'entrepreneur', nextRoute: '/account' },
-  retailer: { track: 'retailer', nextRoute: '/account' },
-  supplier: { track: 'supplier', nextRoute: '/account' },
+  entrepreneur: { track: 'entrepreneur', nextRoute: '/dashboard/coming-soon' },
+  retailer: { track: 'retailer', nextRoute: '/dashboard/coming-soon' },
+  supplier: { track: 'supplier', nextRoute: '/dashboard/overview' },
 };
 
 function getLocalRecommendation(role: AccountRole): RoleRecommendation {
