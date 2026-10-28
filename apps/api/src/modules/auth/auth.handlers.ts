@@ -1,5 +1,11 @@
 import type { Request, Response } from 'express';
-import { AuthError, type LoginInput, type RegisterInput, type UpdatePhoneInput } from './auth.js';
+import {
+  AuthError,
+  type BusinessType,
+  type LoginInput,
+  type RegisterInput,
+  type UpdatePhoneInput,
+} from './auth.js';
 import {
   accessTokenCookieName,
   getUser,
@@ -9,6 +15,7 @@ import {
   sendPhoneVerification,
   verifyEmailAndCreateSession,
   verifyToken,
+  setBusinessIntent,
 } from './auth.service.js';
 
 type ApiErrorResponse = {
@@ -87,6 +94,10 @@ function bodyField(req: Request, key: string): unknown {
   return (req.body as Record<string, unknown>)[key];
 }
 
+function businessTypeField(value: unknown): value is BusinessType {
+  return value === 'RETAILER' || value === 'ENTREPRENEUR' || value === 'ENTERPRISE';
+}
+
 export async function registerHandler(req: Request, res: Response): Promise<void> {
   const input = registerInput(req.body);
   if (!input) {
@@ -155,6 +166,33 @@ export async function updatePhoneHandler(req: Request, res: Response): Promise<v
   }
   try {
     res.status(200).json({ data: await updatePhone(req.userId, input.phone) });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function setBusinessIntentHandler(req: Request, res: Response): Promise<void> {
+  if (!req.userId) {
+    sendError(req, res, new AuthError('UNAUTHORIZED', 'Authentication required', 401));
+    return;
+  }
+
+  const businessType = bodyField(req, 'businessType');
+  if (!businessTypeField(businessType)) {
+    sendError(
+      req,
+      res,
+      new AuthError(
+        'VALIDATION_ERROR',
+        'Business type must be RETAILER, ENTREPRENEUR, or ENTERPRISE',
+        400,
+      ),
+    );
+    return;
+  }
+
+  try {
+    res.status(200).json({ data: await setBusinessIntent(req.userId, businessType) });
   } catch (error) {
     sendError(req, res, error);
   }

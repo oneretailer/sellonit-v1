@@ -19,6 +19,8 @@ export type RegisterInput = {
 
 export type LoginInput = { email: string; password: string };
 export type UpdatePhoneInput = { phone: string };
+export type BusinessType = 'RETAILER' | 'ENTREPRENEUR' | 'ENTERPRISE';
+export type SetBusinessIntentInput = { businessType: BusinessType };
 
 export class AuthError extends Error {
   public readonly code: string;

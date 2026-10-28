@@ -353,6 +353,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponseUser'
 
+  /auth/business-intent:
+    put:
+      tags: [Auth]
+      summary: Save the authenticated user's business onboarding intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessType]
+              properties:
+                businessType:
+                  $ref: '#/components/schemas/BusinessType'
+      responses:
+        '200':
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUser'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
   /businesses:
     get:
       tags: [Businesses]
@@ -1719,7 +1743,7 @@ components:
       enum: [OWNER, ADMIN, STAFF, SUPPLIER, RETAILER]
     BusinessType:
       type: string
-      enum: [SUPPLIER, ENTERPRISE, RETAILER]
+      enum: [RETAILER, ENTREPRENEUR, ENTERPRISE]
     UserStatus:
       type: string
       enum: [PENDING_VERIFICATION, ACTIVE, SUSPENDED, DEACTIVATED]
@@ -1808,6 +1832,9 @@ components:
         firstName: {type: string, maxLength: 80}
         lastName: {type: string, maxLength: 80}
         status: {$ref: '#/components/schemas/UserStatus'}
+        onboardingIntent:
+          type: [string, 'null']
+          $ref: '#/components/schemas/BusinessType'
         emailVerifiedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}

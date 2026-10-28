@@ -22,6 +22,7 @@ model User {
   passwordHash    String
  
   status          UserStatus @default(ACTIVE)
+  onboardingIntent BusinessType?
   emailVerifiedAt DateTime?
   phoneVerifiedAt DateTime?
   createdAt       DateTime  @default(now())
@@ -66,6 +67,7 @@ model Business {
   name String
   slug String @unique
   ownerId String
+  type BusinessType @default(RETAILER)
   status BusinessStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -94,6 +96,12 @@ enum VerificationType {
 enum BusinessStatus {
   ACTIVE
   SUSPENDED
+}
+
+enum BusinessType {
+  RETAILER
+  ENTREPRENEUR
+  ENTERPRISE
 }
 
 enum BusinessRole {

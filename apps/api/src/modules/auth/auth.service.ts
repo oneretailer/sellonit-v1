@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Resend } from 'resend';
 import twilio from 'twilio';
 import { prisma } from '../../infrastructure/db.js';
-import { AuthError, type LoginInput, type RegisterInput } from './auth.js';
+import { AuthError, type BusinessType, type LoginInput, type RegisterInput } from './auth.js';
 import { emailVerificationTemplate } from './templates/email-verification.template.js';
 
 const accessTokenLifetime = 30 * 24 * 60 * 60;
@@ -17,6 +17,7 @@ const publicUserSelect = {
   lastName: true,
   phone: true,
   status: true,
+  onboardingIntent: true,
   emailVerifiedAt: true,
   phoneVerifiedAt: true,
   createdAt: true,
@@ -126,6 +127,14 @@ export async function updatePhone(userId: string, value: string) {
     select: publicUserSelect,
   });
   return user;
+}
+
+export async function setBusinessIntent(userId: string, businessType: BusinessType) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { onboardingIntent: businessType },
+    select: publicUserSelect,
+  });
 }
 
 export async function sendPhoneVerification(email: string): Promise<void> {
