@@ -592,6 +592,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/business-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the authenticated user's business onboarding intent */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        businessType: components["schemas"]["BusinessType"];
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated user profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUser"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/businesses": {
         parameters: {
             query?: never;
@@ -3315,7 +3358,7 @@ export interface components {
         /** @enum {string} */
         UserRole: "OWNER" | "ADMIN" | "STAFF" | "SUPPLIER" | "RETAILER";
         /** @enum {string} */
-        BusinessType: "SUPPLIER" | "ENTERPRISE" | "RETAILER";
+        BusinessType: "RETAILER" | "ENTREPRENEUR" | "ENTERPRISE";
         /** @enum {string} */
         UserStatus: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
         /** @enum {string} */
@@ -3379,6 +3422,7 @@ export interface components {
             firstName?: string;
             lastName?: string;
             status: components["schemas"]["UserStatus"];
+            onboardingIntent?: components["schemas"]["BusinessType"];
             /** Format: date-time */
             emailVerifiedAt?: string | null;
             /** Format: date-time */
