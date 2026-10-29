@@ -73,13 +73,13 @@ describe('endpoints and request bodies', () => {
     });
   });
 
-  it('reset password: POST /auth/reset-password with { token, password }', async () => {
-    const { calls } = stubFetch(204);
-    await resetPassword({ resetToken: 'tok', password: 'abc12345' });
+  it('reset password: POST /auth/reset-password with { email, code, password }', async () => {
+    const { calls } = stubFetch(200, { data: { message: 'Password reset successfully' } });
+    await resetPassword({ resetToken: '123456', email: 'jane@example.com', password: 'abc12345' });
     expect(calls[0]).toEqual({
       url: '/api/v1/auth/reset-password',
       method: 'POST',
-      body: { token: 'tok', password: 'abc12345' },
+      body: { email: 'jane@example.com', code: '123456', password: 'abc12345' },
     });
   });
 
@@ -104,7 +104,7 @@ describe('endpoints and request bodies', () => {
     expect(result).toEqual({ resetToken: 't' });
   });
 
-  it('verify code without a token body yields a null token (caller treats it as a failure)', async () => {
+  it('verify code keeps the entered OTP for the password request', async () => {
     stubFetch(200, { data: { verified: true } });
     const result = await verifyCode({
       identifier: '08112345678',
@@ -112,7 +112,7 @@ describe('endpoints and request bodies', () => {
       purpose: 'reset-password',
       code: '123456',
     });
-    expect(result).toEqual({ resetToken: null });
+    expect(result).toEqual({ resetToken: '123456' });
   });
 
   it('resend for verify-account: POST /auth/verification-codes', async () => {

@@ -1,10 +1,11 @@
 import bcrypt from 'bcrypt';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { Resend } from 'resend';
 import twilio from 'twilio';
 import { prisma } from '../../infrastructure/db.js';
 import { AuthError, type BusinessType, type LoginInput, type RegisterInput } from './auth.js';
 import { emailVerificationTemplate } from './templates/email-verification.template.js';
+import { passwordResetTemplate } from './templates/password-reset.template.js';
 
 const accessTokenLifetime = 30 * 24 * 60 * 60;
 export const accessTokenCookieName = 'sellonit_access_token';
@@ -42,6 +43,20 @@ async function sendEmail(to: string, firstName: string, verificationToken: strin
     firstName,
     verificationUrl: `${process.env.VERIFICATION_BASE_URL}/verify-email?token=${encodeURIComponent(verificationToken)}`,
   });
+  const { error } = await new Resend(key).emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? '',
+    to: [to],
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+  if (error) throw new Error(`Resend email delivery failed: ${error.message}`);
+}
+
+async function sendPasswordResetEmail(to: string, firstName: string, code: string): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key || key.includes('placeholder')) return;
+  const template = passwordResetTemplate({ firstName, code });
   const { error } = await new Resend(key).emails.send({
     from: process.env.RESEND_FROM_EMAIL ?? '',
     to: [to],
@@ -162,6 +177,72 @@ export async function sendPhoneVerification(email: string): Promise<void> {
     },
   });
   await sendSms(user.phone, phoneToken);
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { email: normalizeEmail(email) },
+    select: { id: true, email: true, firstName: true, status: true },
+  });
+  if (!user) throw new AuthError('USER_NOT_FOUND', 'No account was found for this email', 404);
+  if (user.status !== 'ACTIVE')
+    throw new AuthError('ACCOUNT_UNAVAILABLE', 'This account is not active', 403);
+
+  const code = String(randomInt(100000, 1000000));
+  await prisma.verificationToken.updateMany({
+    where: { userId: user.id, type: 'PASSWORD_RESET', consumedAt: null },
+    data: { consumedAt: new Date() },
+  });
+  await prisma.verificationToken.create({
+    data: {
+      userId: user.id,
+      type: 'PASSWORD_RESET',
+      tokenHash: hash(code),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    },
+  });
+  await sendPasswordResetEmail(user.email, user.firstName, code);
+}
+
+export async function verifyPasswordResetCode(email: string, code: string): Promise<void> {
+  const record = await prisma.verificationToken.findFirst({
+    where: {
+      type: 'PASSWORD_RESET',
+      tokenHash: hash(code),
+      consumedAt: null,
+      expiresAt: { gt: new Date() },
+      user: { email: normalizeEmail(email) },
+    },
+  });
+  if (!record)
+    throw new AuthError('INVALID_CODE', 'The verification code is invalid or expired', 400);
+}
+
+export async function resetPassword(email: string, code: string, password: string): Promise<void> {
+  const record = await prisma.verificationToken.findFirst({
+    where: {
+      type: 'PASSWORD_RESET',
+      tokenHash: hash(code),
+      consumedAt: null,
+      expiresAt: { gt: new Date() },
+      user: { email: normalizeEmail(email) },
+    },
+  });
+  if (!record)
+    throw new AuthError('INVALID_CODE', 'The verification code is invalid or expired', 400);
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.verificationToken.update({ where: { id: record.id }, data: { consumedAt: now } }),
+    prisma.user.update({
+      where: { id: record.userId },
+      data: { passwordHash: await bcrypt.hash(password, 12) },
+    }),
+    prisma.session.updateMany({
+      where: { userId: record.userId, revokedAt: null },
+      data: { revokedAt: now },
+    }),
+  ]);
 }
 
 async function createSession(userId: string): Promise<string> {

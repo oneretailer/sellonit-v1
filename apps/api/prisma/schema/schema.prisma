@@ -91,6 +91,7 @@ model Membership {
 enum VerificationType {
   EMAIL
   PHONE
+  PASSWORD_RESET
 }
 
 enum BusinessStatus {

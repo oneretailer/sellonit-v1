@@ -16,6 +16,9 @@ import {
   verifyEmailAndCreateSession,
   verifyToken,
   setBusinessIntent,
+  requestPasswordReset,
+  verifyPasswordResetCode,
+  resetPassword,
 } from './auth.service.js';
 
 type ApiErrorResponse = {
@@ -29,14 +32,42 @@ function requestId(req: Request): string {
 }
 
 function sendError(req: Request, res: Response, error: unknown): void {
-  const authError =
-    error instanceof AuthError
-      ? error
-      : new AuthError('INTERNAL_ERROR', 'An unexpected error occurred', 500);
+  const id = requestId(req);
+  const authError = toAuthError(error);
+  if (!(error instanceof AuthError)) {
+    const details = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    console.error(`[auth] requestId=${id} code=${authError.code} cause=${details}`);
+  }
   const body: ApiErrorResponse = {
-    error: { code: authError.code, message: authError.message, requestId: requestId(req) },
+    error: { code: authError.code, message: authError.message, requestId: id },
   };
   res.status(authError.statusCode).json(body);
+}
+
+function toAuthError(error: unknown): AuthError {
+  if (error instanceof AuthError) return error;
+  const candidate = error as { code?: unknown; message?: unknown };
+  const message = typeof candidate?.message === 'string' ? candidate.message : '';
+  // This usually means the PASSWORD_RESET enum migration was not deployed.
+  if (
+    candidate?.code === 'P2023' ||
+    message.includes('PASSWORD_RESET') ||
+    message.includes('VerificationType')
+  ) {
+    return new AuthError(
+      'DATABASE_MIGRATION_REQUIRED',
+      'Password reset is temporarily unavailable because the database is not up to date',
+      503,
+    );
+  }
+  if (message.startsWith('Resend email delivery failed:')) {
+    return new AuthError(
+      'EMAIL_DELIVERY_FAILED',
+      'We could not send the password reset email. Check the email provider configuration.',
+      502,
+    );
+  }
+  return new AuthError('INTERNAL_ERROR', 'An unexpected error occurred', 500);
 }
 
 function stringField(value: unknown): value is string {
@@ -253,6 +284,58 @@ export async function sendPhoneVerificationHandler(req: Request, res: Response):
     }
     await sendPhoneVerification(email);
     res.json({ data: { sent: true } });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function forgotPasswordHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const email = bodyField(req, 'email');
+    if (!stringField(email) || !emailField(email))
+      throw new AuthError('VALIDATION_ERROR', 'A valid email is required', 400);
+    await requestPasswordReset(email);
+    res.status(202).json({ data: { sent: true } });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function verifyPasswordResetCodeHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const email = bodyField(req, 'identifier') ?? bodyField(req, 'email');
+    const code = bodyField(req, 'code');
+    if (!stringField(email) || !emailField(email) || !stringField(code) || !/^\d{6}$/.test(code))
+      throw new AuthError('INVALID_CODE', 'The verification code is invalid or expired', 400);
+    await verifyPasswordResetCode(email, code);
+    res.json({ data: { verified: true } });
+  } catch (error) {
+    sendError(req, res, error);
+  }
+}
+
+export async function resetPasswordHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const email = bodyField(req, 'email');
+    const code = bodyField(req, 'code');
+    const password = bodyField(req, 'password');
+    if (
+      !stringField(email) ||
+      !emailField(email) ||
+      !stringField(code) ||
+      !/^\d{6}$/.test(code) ||
+      !stringField(password) ||
+      password.length < 8 ||
+      password.length > 128
+    ) {
+      throw new AuthError(
+        'VALIDATION_ERROR',
+        'Enter a valid email, 6-digit OTP, and password between 8 and 128 characters',
+        400,
+      );
+    }
+    await resetPassword(email, code, password);
+    res.status(200).json({ data: { message: 'Password reset successfully' } });
   } catch (error) {
     sendError(req, res, error);
   }

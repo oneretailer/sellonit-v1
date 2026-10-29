@@ -10,6 +10,9 @@ import {
   verifyEmailHandler,
   verifyPhoneHandler,
   setBusinessIntentHandler,
+  forgotPasswordHandler,
+  verifyPasswordResetCodeHandler,
+  resetPasswordHandler,
 } from '../../modules/auth/auth.handlers.js';
 
 const router = Router();
@@ -23,5 +26,8 @@ router.post('/verify-email', verifyEmailHandler);
 router.get('/verify-email/:token', verifyEmailHandler);
 router.post('/send-phone-verification', sendPhoneVerificationHandler);
 router.post('/verify-phone', verifyPhoneHandler);
+router.post('/forgot-password', forgotPasswordHandler);
+router.post('/verification-codes/verify', verifyPasswordResetCodeHandler);
+router.post('/reset-password', resetPasswordHandler);
 
 export default router;

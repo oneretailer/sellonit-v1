@@ -541,12 +541,64 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Password reset */
-                204: {
+                /** @description Password reset successfully */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @example Password reset successfully */
+                                message: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verification-codes/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify a password reset OTP */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyPasswordResetCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description OTP verified */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @example true */
+                                verified: boolean;
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -3828,8 +3880,15 @@ export interface components {
             email: string;
         };
         ResetPasswordRequest: {
-            token: string;
+            /** Format: email */
+            email: string;
+            code: string;
             password: string;
+        };
+        VerifyPasswordResetCodeRequest: {
+            /** Format: email */
+            identifier: string;
+            code: string;
         };
         TokenResponse: {
             accessToken: string;

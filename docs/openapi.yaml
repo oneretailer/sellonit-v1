@@ -338,8 +338,45 @@ paths:
             schema:
               $ref: '#/components/schemas/ResetPasswordRequest'
       responses:
-        '204':
-          description: Password reset
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [message]
+                    properties:
+                      message: {type: string, example: Password reset successfully}
+
+  /auth/verification-codes/verify:
+    post:
+      tags: [Auth]
+      summary: Verify a password reset OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyPasswordResetCodeRequest'
+      responses:
+        '200':
+          description: OTP verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [verified]
+                    properties:
+                      verified: {type: boolean, example: true}
 
   /me:
     get:
@@ -2258,10 +2295,18 @@ components:
 
     ResetPasswordRequest:
       type: object
-      required: [token, password]
+      required: [email, code, password]
       properties:
-        token: {type: string}
+        email: {type: string, format: email}
+        code: {type: string, pattern: '^\\d{6}$'}
         password: {type: string, minLength: 8, maxLength: 128}
+
+    VerifyPasswordResetCodeRequest:
+      type: object
+      required: [identifier, code]
+      properties:
+        identifier: {type: string, format: email}
+        code: {type: string, pattern: '^\\d{6}$'}
 
     TokenResponse:
       type: object
