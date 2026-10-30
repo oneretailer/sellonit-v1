@@ -11,7 +11,7 @@
 
 /**
  * Unicode letters and marks, then letters, marks, spaces, apostrophes,
- * hyphens and periods (Figma placeholder "Chukwudi Okechukwu"). The first
+ * hyphens and periods (Figma placeholder "Ada Example"). The first
  * character must be a letter (or mark), so names cannot start with a
  * separator or symbol. Two words are NOT required (single-word names pass).
  */
@@ -126,7 +126,11 @@ export function fullNameError(value: string): string | null {
 }
 
 export function emailError(value: string): string | null {
-  return isValidEmail(value) ? null : FORM_ERRORS.emailInvalid;
+  // Signup's combined identifier accepts email or Nigerian phone, matching login/reset.
+  if (value.includes('@'))
+    return isValidEmail(value) ? null : 'Enter a valid email or phone number';
+  const phone = value.trim().replace(/[\s\-()[\]]/g, '');
+  return /^(?:0\d{10}|\+?234\d{10})$/.test(phone) ? null : 'Enter a valid email or phone number';
 }
 
 /** Live confirm-password error: shown whenever confirm is non-empty and differs. */

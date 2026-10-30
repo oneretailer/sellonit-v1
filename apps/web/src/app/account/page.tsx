@@ -10,10 +10,14 @@ export const metadata: Metadata = {
 
 export default function AccountPage() {
   return (
-    <AuthPage>
-      <AuthCard className="items-stretch text-left">
-        <AccountPanel />
-      </AuthCard>
-    </AuthPage>
+    <div className="">
+      <AuthPage>
+        <div className="pt-15 w-full flex items-center justify-center">
+          <AuthCard className="items-stretch text-left">
+            <AccountPanel />
+          </AuthCard>
+        </div>
+      </AuthPage>
+    </div>
   );
 }

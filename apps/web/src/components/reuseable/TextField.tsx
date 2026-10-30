@@ -30,7 +30,7 @@ export function TextField({
   const helperId = `${id}-helper`;
   return (
     <div className={cn('flex w-full flex-col gap-2 text-left', className)}>
-      <label htmlFor={id} className="text-sm font-medium text-ink">
+      <label htmlFor={id} className="text-sm font-medium text-ink sm:text-lg">
         {label}
       </label>
       <div className={pillFieldClass(Boolean(error), rest.disabled)}>

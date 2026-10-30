@@ -1,21 +1,36 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { cn } from '@/lib/cn';
 
-export type StepHeaderProps = {
-  title: string;
+export type AuthCardHeaderProps = {
+  title: ReactNode;
   children?: ReactNode;
-  /** Centred on the login screen; left-aligned on the others. Defaults to centred. */
+  icon?: ReactNode;
   align?: 'center' | 'left';
+  headingRef?: Ref<HTMLHeadingElement>;
+  headingTabIndex?: number;
 };
 
-/** Heading and supporting line at the top of an auth step card. */
-export function StepHeader({ title, children, align = 'center' }: StepHeaderProps) {
+/** Heading group shared by auth cards; optional artwork is provided by the screen. */
+export function AuthCardHeader({
+  title,
+  children,
+  icon,
+  align = 'center',
+  headingRef,
+  headingTabIndex,
+}: AuthCardHeaderProps) {
   return (
-    <div
-      className={cn('flex w-full flex-col gap-3', align === 'left' ? 'text-left' : 'text-center')}
-    >
-      <h1 className="text-2xl font-bold text-ink">{title}</h1>
-      {children ? <p className="text-sm text-subtle">{children}</p> : null}
+    <div className={cn('flex w-full flex-col', align === 'left' ? 'text-left' : 'text-center')}>
+      {icon ? <div className="mb-4 flex w-full justify-center md:mb-6">{icon}</div> : null}
+      <div className="flex w-full flex-col gap-2">
+        <h1 ref={headingRef} tabIndex={headingTabIndex} className="auth-heading">
+          {title}
+        </h1>
+        {children ? <p className="text-base text-subtle sm:text-lg">{children}</p> : null}
+      </div>
     </div>
   );
 }
+
+/** Backwards-compatible name for existing auth screens. */
+export const StepHeader = AuthCardHeader;

@@ -12,9 +12,11 @@
  * for the lifetime of the page instead. That variable is client-only, so it
  * is never shared between server requests.
  */
+import { isAccountRole, type AccountRole } from '@/lib/onboarding/roles';
 import type { IdentifierType } from './identifier';
 
 export const AUTH_FLOW_STORAGE_KEY = 'auth_flow';
+export const ONBOARDING_ROLE_STORAGE_KEY = 'sellonit_onboarding_role';
 
 /** Resend cooldown after any successful send, in seconds. */
 export const RESEND_COOLDOWN_SECONDS = 30;
@@ -40,6 +42,17 @@ const IDENTIFIER_TYPES: readonly IdentifierType[] = ['email', 'phone'];
 
 /** Used only when sessionStorage cannot be used. Client-side only. */
 let memoryFallback: AuthFlowState | null = null;
+let onboardingRoleMemoryFallback: AccountRole | null = null;
+const onboardingRoleListeners = new Set<() => void>();
+
+export function subscribeOnboardingRole(listener: () => void): () => void {
+  onboardingRoleListeners.add(listener);
+  return () => onboardingRoleListeners.delete(listener);
+}
+
+function notifyOnboardingRoleListeners(): void {
+  onboardingRoleListeners.forEach((listener) => listener());
+}
 
 /** Change listeners for React (see useStoredAuthFlow). */
 const listeners = new Set<() => void>();
@@ -186,4 +199,52 @@ export function clearAuthFlow(): void {
 /** Epoch ms for "now + the resend cooldown". */
 export function resendAvailableAfterSend(now: number = Date.now()): number {
   return now + RESEND_COOLDOWN_SECONDS * 1000;
+}
+
+/** Stores only the onboarding role ID so selection can be restored on Back or refresh. */
+export function writeOnboardingRole(role: AccountRole): AccountRole {
+  onboardingRoleMemoryFallback = role;
+  const storage = browserStorage();
+  if (storage !== null) {
+    try {
+      storage.setItem(ONBOARDING_ROLE_STORAGE_KEY, role);
+    } catch {
+      // Keep the in-memory selection available if browser storage is blocked.
+    }
+  }
+  notifyOnboardingRoleListeners();
+  return role;
+}
+
+export function readOnboardingRole(): AccountRole | null {
+  const storage = browserStorage();
+  if (storage !== null) {
+    try {
+      const storedRole = storage.getItem(ONBOARDING_ROLE_STORAGE_KEY);
+      if (storedRole === null) return onboardingRoleMemoryFallback;
+      if (isAccountRole(storedRole)) {
+        onboardingRoleMemoryFallback = storedRole;
+        return storedRole;
+      }
+      storage.removeItem(ONBOARDING_ROLE_STORAGE_KEY);
+      onboardingRoleMemoryFallback = null;
+      return null;
+    } catch {
+      // Fall through to the in-memory copy.
+    }
+  }
+  return onboardingRoleMemoryFallback;
+}
+
+export function clearOnboardingRole(): void {
+  onboardingRoleMemoryFallback = null;
+  const storage = browserStorage();
+  if (storage !== null) {
+    try {
+      storage.removeItem(ONBOARDING_ROLE_STORAGE_KEY);
+    } catch {
+      // Nothing else to clear.
+    }
+  }
+  notifyOnboardingRoleListeners();
 }

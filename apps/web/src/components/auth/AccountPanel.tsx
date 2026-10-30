@@ -1,75 +1,48 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PhoneField } from '@/components/reuseable/PhoneField';
-import { PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
-import { getMe, updatePhone } from '@/lib/auth/api';
+import { PrimaryButton, PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
+import { updatePhone } from '@/lib/auth/api';
 import { ApiError } from '@/lib/api-client';
+import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 import {
   formatPhoneDisplay,
   isNigerianPhoneDigits,
   normalizePhoneInput,
   toLocalPhone,
 } from '@/lib/auth/validation';
-import type { AuthUser } from '@/lib/auth/types';
 
-type PanelState =
-  | { status: 'loading' }
-  | { status: 'signedOut' }
-  | { status: 'error' }
-  | { status: 'user'; user: AuthUser };
-
-/**
- * Minimal signed-in confirmation. It only reads GET /auth/me with the
- * browser-managed session cookie; no tokens are stored or read client-side.
- * The backend does not expose a logout endpoint, so none is offered.
- */
+/** Minimal account details view backed by the shared cookie-session provider. */
 export function AccountPanel() {
-  const [state, setState] = useState<PanelState>({ status: 'loading' });
-  const [phoneDigits, setPhoneDigits] = useState('');
+  const { status, user, refreshSession, acceptAuthenticatedUser } = useAuthSession();
+  const [phoneDraft, setPhoneDraft] = useState<{ userId: string; digits: string } | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [savingPhone, setSavingPhone] = useState(false);
+  const phoneDigits = user
+    ? phoneDraft?.userId === user.id
+      ? phoneDraft.digits
+      : user.phone
+        ? normalizePhoneInput(user.phone)
+        : ''
+    : '';
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const result = await getMe();
-        if (!cancelled) {
-          setState({ status: 'user', user: result.data });
-          setPhoneDigits(result.data.phone ? normalizePhoneInput(result.data.phone) : '');
-        }
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        if (error instanceof ApiError && error.status === 401) {
-          setState({ status: 'signedOut' });
-        } else {
-          setState({ status: 'error' });
-        }
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (state.status === 'loading') {
+  if (status === 'checking') {
     return (
-      <div className="flex flex-col items-center gap-3 py-6">
+      <div aria-busy="true" className="flex flex-col items-center gap-4 py-6">
         <span
-          className="size-4 animate-spin rounded-full border-2 border-ink/25 border-t-ink"
-          aria-hidden="true"
+          role="status"
+          aria-label="Loading account"
+          className="block h-7 w-40 animate-pulse rounded-full bg-gray-200"
         />
-        <p className="text-sm text-gray-500">Checking your session…</p>
+        <span className="block h-4 w-56 max-w-full animate-pulse rounded-full bg-gray-100" />
+        <span className="block h-12 w-full animate-pulse rounded-xl bg-gray-100" />
       </div>
     );
   }
 
-  if (state.status === 'signedOut') {
+  if (status === 'unauthenticated') {
     return (
       <div className="flex flex-col items-center gap-6 text-center">
         <div className="flex flex-col gap-3">
@@ -81,7 +54,7 @@ export function AccountPanel() {
     );
   }
 
-  if (state.status === 'error') {
+  if (status === 'error' || !user) {
     return (
       <div className="flex flex-col items-center gap-6 text-center">
         <div className="flex flex-col gap-3">
@@ -90,12 +63,11 @@ export function AccountPanel() {
             Something went wrong. Check your connection and try again.
           </p>
         </div>
-        <PrimaryLinkButton href="/auth/login">Log in</PrimaryLinkButton>
+        <PrimaryButton onClick={() => void refreshSession()}>Try again</PrimaryButton>
       </div>
     );
   }
 
-  const { user } = state;
   async function savePhone(): Promise<void> {
     if (!isNigerianPhoneDigits(phoneDigits)) {
       setPhoneError('Enter a valid Nigerian phone number.');
@@ -105,7 +77,11 @@ export function AccountPanel() {
     setPhoneError(null);
     try {
       const result = await updatePhone(toLocalPhone(phoneDigits));
-      setState({ status: 'user', user: result.data });
+      setPhoneDraft({
+        userId: result.data.id,
+        digits: result.data.phone ? normalizePhoneInput(result.data.phone) : '',
+      });
+      acceptAuthenticatedUser(result.data);
     } catch (error: unknown) {
       setPhoneError(
         error instanceof ApiError ? error.message : 'We could not save your phone number.',
@@ -143,7 +119,7 @@ export function AccountPanel() {
           id="account-phone"
           value={phoneDigits}
           onChange={(value) => {
-            setPhoneDigits(normalizePhoneInput(value));
+            setPhoneDraft({ userId: user.id, digits: normalizePhoneInput(value) });
             setPhoneError(null);
           }}
           error={phoneError !== null}
@@ -180,7 +156,7 @@ function AccountRow({
     <li className="flex items-center justify-between gap-3 text-sm">
       <span className="text-subtle">{label}</span>
       {verified === undefined ? (
-        <span className="text-right font-semibold break-words">{value}</span>
+        <span className="break-words text-right font-semibold">{value}</span>
       ) : (
         <span
           className={

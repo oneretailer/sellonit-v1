@@ -4,6 +4,8 @@ import { Spinner } from './Spinner';
 
 export type SecondaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean;
+  shape?: 'pill' | 'rounded';
+  appearance?: 'peach' | 'outline';
 };
 
 /**
@@ -12,6 +14,8 @@ export type SecondaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
  */
 export function SecondaryButton({
   loading = false,
+  shape = 'pill',
+  appearance = 'peach',
   disabled = false,
   type = 'button',
   className,
@@ -25,8 +29,14 @@ export function SecondaryButton({
       disabled={locked}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-primary-disabled px-6 text-base font-bold text-ink transition-colors',
-        locked ? 'cursor-not-allowed opacity-70' : 'hover:bg-[#fbe0bb]',
+        cn(
+          'inline-flex min-h-12 h-12 w-full items-center justify-center gap-3 px-6 text-base font-medium text-ink transition-colors',
+          shape === 'pill' ? 'rounded-full' : 'rounded-button',
+          appearance === 'outline'
+            ? 'border border-solid  bg-white hover:bg-canvas'
+            : 'bg-primary-disabled hover:bg-[#fbe0bb]',
+        ),
+        locked ? 'cursor-not-allowed opacity-70' : null,
         className,
       )}
       {...rest}

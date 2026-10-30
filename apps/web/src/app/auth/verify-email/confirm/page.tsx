@@ -14,8 +14,10 @@ export const metadata: Metadata = {
  */
 export default function VerifyEmailConfirmPage() {
   return (
-    <Suspense>
-      <VerifyEmailConfirm />
-    </Suspense>
+    <div className="pt-15 w-full flex items-center justify-center">
+      <Suspense>
+        <VerifyEmailConfirm />
+      </Suspense>
+    </div>
   );
 }

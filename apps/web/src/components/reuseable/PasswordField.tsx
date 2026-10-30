@@ -79,7 +79,7 @@ export function PasswordField({
           disabled={disabled}
           className="shrink-0 rounded-full p-2 text-subtle hover:text-ink disabled:opacity-50"
         >
-          {visible ? <EyeOffIcon /> : <EyeIcon />}
+          {visible ? <EyeIcon /> : <EyeOffIcon />}
         </button>
       </div>
       {error ? <InlineError id={errorId}>{error}</InlineError> : null}

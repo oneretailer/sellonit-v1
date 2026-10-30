@@ -50,13 +50,13 @@ export type LoginResponse = {
   expiresIn: number;
 };
 
-/** POST /api/v1/auth/resend-verification — request body. */
+/** Legacy frontend shape; no matching route exists in the inspected backend. */
 export type ResendVerificationRequest = {
   /** Normalised (trimmed, lowercased) before sending. */
   email: string;
 };
 
-/** POST /api/v1/auth/resend-verification — 202 response (sent regardless of account existence). */
+/** Legacy response type; no matching route exists in the inspected backend. */
 export type ResendVerificationResponse = {
   data: {
     sent: boolean;
@@ -70,9 +70,8 @@ export type VerifyEmailRequest = {
 
 /** POST /auth/verify-email — 200 response. */
 export type VerifyEmailResponse = {
-  data: {
-    verified: boolean;
-  };
+  user: AuthUser;
+  expiresIn: number;
 };
 
 /** GET /auth/me — 200 response. */

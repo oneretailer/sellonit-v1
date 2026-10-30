@@ -77,5 +77,5 @@ export async function mockVerifyEmail(token: string): Promise<VerifyEmailRespons
       'Verification token is invalid or expired',
     );
   }
-  return { data: { verified: true } };
+  throw new Error('Mock verification success requires a backend user/session response.');
 }

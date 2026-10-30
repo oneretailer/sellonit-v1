@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AUTH_FLOW_STORAGE_KEY,
   clearAuthFlow,
+  clearOnboardingRole,
+  ONBOARDING_ROLE_STORAGE_KEY,
+  readOnboardingRole,
+  writeOnboardingRole,
   patchAuthFlow,
   readAuthFlow,
   writeAuthFlow,
@@ -48,6 +52,7 @@ describe('flowState with sessionStorage', () => {
 
   afterEach(() => {
     clearAuthFlow();
+    clearOnboardingRole();
     vi.unstubAllGlobals();
   });
 
@@ -85,11 +90,24 @@ describe('flowState with sessionStorage', () => {
     clearAuthFlow();
     expect(readAuthFlow()).toBeNull();
   });
+
+  it('persists only the role ID through the shared flow storage helper', () => {
+    writeOnboardingRole('entrepreneur');
+    expect(storage.data.get(ONBOARDING_ROLE_STORAGE_KEY)).toBe('entrepreneur');
+    expect(readOnboardingRole()).toBe('entrepreneur');
+  });
+
+  it('drops invalid role values', () => {
+    storage.data.set(ONBOARDING_ROLE_STORAGE_KEY, 'OWNER');
+    expect(readOnboardingRole()).toBeNull();
+    expect(storage.data.has(ONBOARDING_ROLE_STORAGE_KEY)).toBe(false);
+  });
 });
 
 describe('flowState when storage is unavailable', () => {
   afterEach(() => {
     clearAuthFlow();
+    clearOnboardingRole();
     vi.unstubAllGlobals();
   });
 

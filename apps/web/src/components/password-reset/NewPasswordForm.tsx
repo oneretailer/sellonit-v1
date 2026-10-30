@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { StepHeader } from '@/components/auth/StepHeader';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PasswordField } from '@/components/reuseable/PasswordField';
@@ -59,7 +60,6 @@ export function NewPasswordForm() {
   if (!flow || flow.purpose !== 'reset-password' || !token) {
     return null;
   }
-  const email = flow.identifier;
 
   const rulesMet = isPasswordValid(password);
   const canSubmit = rulesMet && isConfirmMatching(password, confirm);
@@ -76,7 +76,7 @@ export function NewPasswordForm() {
     setTokenExpired(false);
     try {
       // Password is sent exactly as typed (never trimmed).
-      await resetPassword({ resetToken: token, email, password });
+      await resetPassword({ resetToken: token, password });
       finishing.current = true;
       resetFlow?.setResetToken(null);
       resetFlow?.markCompleted();
@@ -99,7 +99,7 @@ export function NewPasswordForm() {
 
   return (
     <AuthCard gapClassName="gap-9">
-      <StepHeader title="Create a new password" align="left">
+      <StepHeader title="Create a new password" align="left" icon={<BagMark />}>
         Choose a new password for your sellonit account
       </StepHeader>
 

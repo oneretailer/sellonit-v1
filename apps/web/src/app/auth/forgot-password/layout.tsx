@@ -10,7 +10,7 @@ import { AuthPage } from '@/components/reuseable/AuthPage';
 export default function ForgotPasswordLayout({ children }: { children: ReactNode }) {
   return (
     <ForgotPasswordFlowProvider>
-      <AuthPage rightLink={{ label: 'Login', href: '/auth/login' }}>{children}</AuthPage>
+      <AuthPage rightLink={{ label: 'Account details', variant: 'text' }}>{children}</AuthPage>
     </ForgotPasswordFlowProvider>
   );
 }
