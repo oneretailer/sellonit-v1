@@ -77,7 +77,7 @@ export function NewPasswordForm() {
     setTokenExpired(false);
     try {
       // Password is sent exactly as typed (never trimmed).
-      await resetPassword({ resetToken: token,  password });
+      await resetPassword({ resetToken: token, password });
       finishing.current = true;
       resetFlow?.setResetToken(null);
       resetFlow?.markCompleted();
