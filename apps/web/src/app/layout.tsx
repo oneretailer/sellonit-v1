@@ -50,7 +50,7 @@ async function readInitialSession(): Promise<InitialAuthSession> {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const initialSession = await readInitialSession();
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="font-sans">
         <AuthSessionProvider initialSession={initialSession}>{children}</AuthSessionProvider>
       </body>
