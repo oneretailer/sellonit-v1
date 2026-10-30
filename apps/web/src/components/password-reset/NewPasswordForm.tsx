@@ -60,6 +60,7 @@ export function NewPasswordForm() {
   if (!flow || flow.purpose !== 'reset-password' || !token) {
     return null;
   }
+  const email = flow.identifier;
 
   const rulesMet = isPasswordValid(password);
   const canSubmit = rulesMet && isConfirmMatching(password, confirm);
@@ -76,7 +77,7 @@ export function NewPasswordForm() {
     setTokenExpired(false);
     try {
       // Password is sent exactly as typed (never trimmed).
-      await resetPassword({ resetToken: token, password });
+      await resetPassword({ resetToken: token, email, password });
       finishing.current = true;
       resetFlow?.setResetToken(null);
       resetFlow?.markCompleted();

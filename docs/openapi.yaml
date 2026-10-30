@@ -338,8 +338,45 @@ paths:
             schema:
               $ref: '#/components/schemas/ResetPasswordRequest'
       responses:
-        '204':
-          description: Password reset
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [message]
+                    properties:
+                      message: {type: string, example: Password reset successfully}
+
+  /auth/verification-codes/verify:
+    post:
+      tags: [Auth]
+      summary: Verify a password reset OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyPasswordResetCodeRequest'
+      responses:
+        '200':
+          description: OTP verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [verified]
+                    properties:
+                      verified: {type: boolean, example: true}
 
   /me:
     get:
@@ -352,6 +389,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponseUser'
+
+  /auth/business-intent:
+    put:
+      tags: [Auth]
+      summary: Save the authenticated user's business onboarding intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessType]
+              properties:
+                businessType:
+                  $ref: '#/components/schemas/BusinessType'
+      responses:
+        '200':
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUser'
+        '400':
+          $ref: '#/components/responses/ValidationError'
 
   /businesses:
     get:
@@ -1719,7 +1780,7 @@ components:
       enum: [OWNER, ADMIN, STAFF, SUPPLIER, RETAILER]
     BusinessType:
       type: string
-      enum: [SUPPLIER, ENTERPRISE, RETAILER]
+      enum: [RETAILER, ENTREPRENEUR, ENTERPRISE]
     UserStatus:
       type: string
       enum: [PENDING_VERIFICATION, ACTIVE, SUSPENDED, DEACTIVATED]
@@ -1808,6 +1869,9 @@ components:
         firstName: {type: string, maxLength: 80}
         lastName: {type: string, maxLength: 80}
         status: {$ref: '#/components/schemas/UserStatus'}
+        onboardingIntent:
+          type: [string, 'null']
+          $ref: '#/components/schemas/BusinessType'
         emailVerifiedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
@@ -2231,10 +2295,18 @@ components:
 
     ResetPasswordRequest:
       type: object
-      required: [token, password]
+      required: [email, code, password]
       properties:
-        token: {type: string}
+        email: {type: string, format: email}
+        code: {type: string, pattern: '^\\d{6}$'}
         password: {type: string, minLength: 8, maxLength: 128}
+
+    VerifyPasswordResetCodeRequest:
+      type: object
+      required: [identifier, code]
+      properties:
+        identifier: {type: string, format: email}
+        code: {type: string, pattern: '^\\d{6}$'}
 
     TokenResponse:
       type: object
