@@ -9,7 +9,7 @@ import { SuccessCheckIcon } from './SuccessCheckIcon';
 
 function SharedSizeBagMark() {
   return (
-    <span className={``}>
+    <span>
       <BagMark />
     </span>
   );
@@ -28,22 +28,17 @@ export function AccountCreatedSuccess() {
         <AuthCardHeader
           icon={<SharedSizeBagMark />}
           headingRef={headingRef}
-
-          title={
-            <>
-              <span aria-hidden="true"> Account successfully created </span>
-            </>
-          }
+          headingTabIndex={-1}
+          title="Account successfully created"
         />
-        <div className="flex items-cenetr justify-center w-full">
-          {' '}
+        <div className="flex items-center justify-center w-full">
           <SuccessCheckIcon />
         </div>
         <p className="mx-auto max-w-[360px] text-base font-medium text-ink md:text-lg xl:text-xl">
           Click on the button below to set up your business account
         </p>
         <PrimaryLinkButton href="/auth/role-selection" className="auth-button text-ink">
-          Set up your account
+          Set up your Business account
         </PrimaryLinkButton>
       </AuthCard>
     </div>
