@@ -4,8 +4,9 @@ import { useState, type FormEvent } from 'react';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PhoneField } from '@/components/reuseable/PhoneField';
 import { PrimaryButton, PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
-import { updatePhone } from '@/lib/auth/api';
-import { ApiError } from '@/lib/api-client';
+import { TextField } from '@/components/reuseable/TextField';
+import { sendPhoneVerification, updatePhone, verifyPhone } from '@/lib/auth/api';
+import { authErrorMessage } from '@/lib/auth/errors';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 import {
   formatPhoneDisplay,
@@ -20,6 +21,13 @@ export function AccountPanel() {
   const [phoneDraft, setPhoneDraft] = useState<{ userId: string; digits: string } | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [savingPhone, setSavingPhone] = useState(false);
+  /** Set once POST /auth/send-phone-verification succeeds, so the code field appears. */
+  const [codeSent, setCodeSent] = useState(false);
+  const [phoneCode, setPhoneCode] = useState('');
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [phoneNotice, setPhoneNotice] = useState<string | null>(null);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
   const phoneDigits = user
     ? phoneDraft?.userId === user.id
       ? phoneDraft.digits
@@ -82,10 +90,13 @@ export function AccountPanel() {
         digits: result.data.phone ? normalizePhoneInput(result.data.phone) : '',
       });
       acceptAuthenticatedUser(result.data);
+      // The number changed, so any code sent for the previous one no longer applies.
+      setCodeSent(false);
+      setPhoneCode('');
+      setPhoneNotice(null);
+      setCodeError(null);
     } catch (error: unknown) {
-      setPhoneError(
-        error instanceof ApiError ? error.message : 'We could not save your phone number.',
-      );
+      setPhoneError(authErrorMessage(error));
     } finally {
       setSavingPhone(false);
     }
@@ -94,6 +105,54 @@ export function AccountPanel() {
   function handlePhoneSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void savePhone();
+  }
+
+  /** POST /auth/send-phone-verification — SMS code to the number on the account. */
+  async function sendVerificationCode(): Promise<void> {
+    if (!user) {
+      return;
+    }
+    setSendingCode(true);
+    setPhoneError(null);
+    setPhoneNotice(null);
+    try {
+      await sendPhoneVerification(user.email);
+      setCodeSent(true);
+      setPhoneNotice(
+        `We sent a 6-digit code to ${formatPhoneDisplay(user.phone ?? '')}. It expires in 10 minutes.`,
+      );
+    } catch (error: unknown) {
+      setPhoneError(authErrorMessage(error));
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  /** POST /auth/verify-phone — `{ token }` is the 6-digit SMS code. */
+  async function handleVerifyPhone(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (!user) {
+      return;
+    }
+    if (!/^\d{6}$/.test(phoneCode)) {
+      setCodeError('Enter the 6-digit code we texted you.');
+      return;
+    }
+    setVerifyingPhone(true);
+    setCodeError(null);
+    setPhoneNotice(null);
+    try {
+      await verifyPhone(phoneCode);
+      // The endpoint returns `{ data: { verified } }`, not the user, so mirror it locally.
+      acceptAuthenticatedUser({ ...user, phoneVerifiedAt: new Date().toISOString() });
+      setCodeSent(false);
+      setPhoneCode('');
+      setPhoneNotice('Phone number verified.');
+    } catch (error: unknown) {
+      setCodeError(authErrorMessage(error));
+    } finally {
+      setVerifyingPhone(false);
+    }
   }
   return (
     <div className="flex flex-col gap-6">
@@ -125,7 +184,6 @@ export function AccountPanel() {
           error={phoneError !== null}
           disabled={savingPhone}
         />
-        {phoneError ? <InlineError id="account-phone-error">{phoneError}</InlineError> : null}
         <button
           type="submit"
           disabled={savingPhone}
@@ -134,6 +192,55 @@ export function AccountPanel() {
           {savingPhone ? 'Saving…' : user.phone ? 'Update phone' : 'Add phone'}
         </button>
       </form>
+      {user.phone && !user.phoneVerifiedAt ? (
+        <div className="flex flex-col gap-3 border-t border-line pt-5">
+          {codeSent ? (
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(event) => void handleVerifyPhone(event)}
+              noValidate
+            >
+              <TextField
+                id="phone-verification-code"
+                label="Verification code"
+                placeholder="6-digit code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={phoneCode}
+                onChange={(value) => {
+                  setPhoneCode(value.replace(/\D/g, '').slice(0, 6));
+                  setCodeError(null);
+                }}
+                error={codeError}
+                disabled={verifyingPhone}
+              />
+              <button
+                type="submit"
+                disabled={verifyingPhone || phoneCode.length !== 6}
+                className="self-start rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {verifyingPhone ? 'Verifying…' : 'Verify phone'}
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void sendVerificationCode()}
+              disabled={sendingCode || savingPhone}
+              className="self-start rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink disabled:opacity-60"
+            >
+              {sendingCode ? 'Sending…' : 'Send verification code'}
+            </button>
+          )}
+        </div>
+      ) : null}
+      {phoneError ? <InlineError>{phoneError}</InlineError> : null}
+      {phoneNotice ? (
+        <p aria-live="polite" className="text-sm text-success">
+          {phoneNotice}
+        </p>
+      ) : null}
       {!user.emailVerifiedAt ? (
         <p className="text-sm text-gray-500">
           Check your inbox for the verification link — you&apos;ll need it before you can log in.

@@ -29,18 +29,22 @@ function SessionSkeleton() {
 /** Shared guard for authenticated onboarding and success routes. */
 export function RequireAuthenticatedSession({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { status, refreshSession } = useAuthSession();
+  const { status, user, refreshSession } = useAuthSession();
   const role = useSyncExternalStore(subscribeWithoutRoleChanges, readOnboardingRole, () => null);
+  // The account's saved onboarding intent wins over this browser's local role.
+  const hasOnboardingChoice = Boolean(user?.onboardingIntent) || role !== null;
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/auth/login');
-    } else if (status === 'authenticated' && role) {
-      router.replace(getPostAuthDestination());
+    } else if (status === 'authenticated' && hasOnboardingChoice) {
+      router.replace(getPostAuthDestination(user));
     }
-  }, [role, router, status]);
+  }, [hasOnboardingChoice, router, status, user]);
 
-  if (status === 'unauthenticated' || (status === 'authenticated' && role)) return null;
+  if (status === 'unauthenticated' || (status === 'authenticated' && hasOnboardingChoice)) {
+    return null;
+  }
   if (status === 'error') {
     return (
       <AuthCard gapClassName="gap-4">

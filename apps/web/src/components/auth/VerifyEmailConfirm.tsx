@@ -92,7 +92,7 @@ export function VerifyEmailConfirm() {
                 acceptAuthenticatedUser(existing.data);
                 clearPendingVerificationEmail();
                 setStatus({ kind: 'verified' });
-                router.replace(getPostAuthDestination());
+                router.replace(getPostAuthDestination(existing.data));
                 return;
               }
             } catch {
@@ -104,7 +104,7 @@ export function VerifyEmailConfirm() {
           clearPendingVerificationEmail();
           setStatus({ kind: 'verified' });
           // The verification response establishes the cookie-backed session; use the same role route lookup as login.
-          router.replace(getPostAuthDestination());
+          router.replace(getPostAuthDestination(verified.user));
         } catch (error: unknown) {
           setStatus({
             kind: 'error',

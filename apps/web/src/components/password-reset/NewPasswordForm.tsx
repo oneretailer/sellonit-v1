@@ -23,26 +23,27 @@ import { useStoredAuthFlow } from './useStoredAuthFlow';
  * Create a new password (Figma: Create a new password, Password mismatch).
  *
  * Both passwords stay in component state only. Neither is stored, logged or
- * kept in the URL. The reset token is read from the in-memory flow context. If
- * it is missing (for example after a refresh), the user goes back to the code
+ * kept in the URL. The verified 6-digit code is read from the in-memory flow
+ * context and posted with the new password (the backend issues no reset token).
+ * If it is missing (for example after a refresh), the user goes back to the code
  * step with the identifier still filled in.
  */
 export function NewPasswordForm() {
   const router = useRouter();
   const resetFlow = useForgotPasswordFlow();
   const [flow, updateFlow] = useStoredAuthFlow();
-  const token = resetFlow?.resetToken ?? null;
+  const verifiedCode = resetFlow?.verifiedCode ?? null;
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-  const [tokenExpired, setTokenExpired] = useState(false);
+  const [codeExpired, setCodeExpired] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const inFlight = useRef(false);
   // Set just before a successful finish, so clearing the flow does not trigger the guard.
   const finishing = useRef(false);
 
-  // Guards: no saved flow → start over; no token in memory → back to the code step.
+  // Guards: no saved flow → start over; no verified code in memory → back to the code step.
   useEffect(() => {
     if (flow === undefined || finishing.current) {
       return;
@@ -51,15 +52,17 @@ export function NewPasswordForm() {
       router.replace('/auth/forgot-password');
       return;
     }
-    if (!token) {
+    if (!verifiedCode) {
       updateFlow({ step: 'verify' });
       router.replace('/auth/forgot-password/verify');
     }
-  }, [flow, token, router, updateFlow]);
+  }, [flow, verifiedCode, router, updateFlow]);
 
-  if (!flow || flow.purpose !== 'reset-password' || !token) {
+  if (!flow || flow.purpose !== 'reset-password' || !verifiedCode) {
     return null;
   }
+
+  const resetIdentifier = flow.identifier;
 
   const rulesMet = isPasswordValid(password);
   const canSubmit = rulesMet && isConfirmMatching(password, confirm);
@@ -67,18 +70,18 @@ export function NewPasswordForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (inFlight.current || !canSubmit || !token) {
+    if (inFlight.current || !canSubmit || !verifiedCode) {
       return;
     }
     inFlight.current = true;
     setSubmitting(true);
     setFormError(null);
-    setTokenExpired(false);
+    setCodeExpired(false);
     try {
       // Password is sent exactly as typed (never trimmed).
-      await resetPassword({ resetToken: token, password });
+      await resetPassword({ identifier: resetIdentifier, code: verifiedCode, password });
       finishing.current = true;
-      resetFlow?.setResetToken(null);
+      resetFlow?.setVerifiedCode(null);
       resetFlow?.markCompleted();
       clearAuthFlow();
       router.push('/auth/forgot-password/success');
@@ -86,13 +89,13 @@ export function NewPasswordForm() {
       inFlight.current = false;
       setSubmitting(false);
       const failure = mapResetPasswordError(error);
-      setTokenExpired(failure === 'token-expired');
+      setCodeExpired(failure === 'token-expired');
       setFormError(authMessageFor(failure));
     }
   }
 
   function requestNewCode() {
-    resetFlow?.setResetToken(null);
+    resetFlow?.setVerifiedCode(null);
     updateFlow({ step: 'verify' });
     router.push('/auth/forgot-password/verify');
   }
@@ -154,7 +157,7 @@ export function NewPasswordForm() {
         {formError ? (
           <div className="flex flex-col gap-2">
             <InlineError>{formError}</InlineError>
-            {tokenExpired ? (
+            {codeExpired ? (
               <button
                 type="button"
                 onClick={requestNewCode}

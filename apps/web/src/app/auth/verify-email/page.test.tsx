@@ -86,7 +86,7 @@ describe('check-your-email recovery', () => {
     expect(mocks.router.push).toHaveBeenCalledWith('/auth/login?email=jane%40example.com');
   });
 
-  it('offers resend on the recovery form and reports the missing backend capability politely', async () => {
+  it('offers resend on the recovery form and explains that resending is unavailable', async () => {
     const user = userEvent.setup();
     render(<VerifyEmailPage />);
     await user.type(
@@ -98,7 +98,7 @@ describe('check-your-email recovery', () => {
     await waitFor(() =>
       expect(mocks.resendVerification).toHaveBeenCalledWith({ email: 'jane@example.com' }),
     );
-    expect(await screen.findByText(/We couldn't send a verification link right now/)).toBeTruthy();
+    expect(await screen.findByText(/We can't resend the verification link yet/)).toBeTruthy();
     expect(localStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY)).toBeNull();
   });
 });

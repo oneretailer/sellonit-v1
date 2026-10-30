@@ -28,6 +28,7 @@ const validUser = {
   lastName: 'Lovelace',
   phone: null,
   status: 'ACTIVE',
+  onboardingIntent: null,
   emailVerifiedAt: '2026-10-26T00:00:00.000Z',
   phoneVerifiedAt: null,
   createdAt: '2026-10-26T00:00:00.000Z',

@@ -33,11 +33,11 @@ export function RedirectAuthenticatedUser({
   locationKey: string;
 }) {
   const router = useRouter();
-  const { status, refreshSession } = useAuthSession();
+  const { status, user, refreshSession } = useAuthSession();
 
   useEffect(() => {
-    if (status === 'authenticated') router.replace(getPostAuthDestination());
-  }, [locationKey, router, status]);
+    if (status === 'authenticated') router.replace(getPostAuthDestination(user));
+  }, [locationKey, router, status, user]);
 
   if (status === 'unauthenticated') return children;
   return <SessionGateShell retry={status === 'error' ? () => void refreshSession() : undefined} />;

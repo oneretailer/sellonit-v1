@@ -82,7 +82,8 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
       acceptAuthenticatedUser(response.user);
       clearPendingVerificationEmail();
       // Stays disabled while the app navigates through the onboarding gate.
-      router.replace(getPostAuthDestination());
+      // The saved onboarding intent from `user` wins over this browser's role.
+      router.replace(getPostAuthDestination(response.user));
     } catch (error) {
       inFlight.current = false;
       setSubmitting(false);
@@ -182,7 +183,7 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
                 className="flex items-center gap-1.5 self-start text-sm font-semibold text-subtle underline underline-offset-2 hover:text-ink disabled:opacity-60"
               >
                 <RefreshIcon />
-                Didn&apos;t get a code? Resend
+                Didn&apos;t get the email? Resend
               </button>
               {resendError ? <InlineError>{resendError}</InlineError> : null}
             </div>

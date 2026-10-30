@@ -119,8 +119,9 @@ export default function VerifyEmailPage() {
             {resendState === 'sent' ? <p className="text-base text-success">Link sent.</p> : null}
             {resendState === 'failed' ? (
               <InlineError className="text-base">
-                We couldn&apos;t send a verification link right now. Try again later, or log in once
-                you&apos;ve verified your email.
+                We can&apos;t resend the verification link yet. Check your inbox (and spam folder)
+                for the link we sent when you signed up, or log in once you&apos;ve verified your
+                email.
               </InlineError>
             ) : null}
           </div>
