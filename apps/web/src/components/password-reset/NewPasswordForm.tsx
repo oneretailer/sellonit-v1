@@ -60,7 +60,6 @@ export function NewPasswordForm() {
   if (!flow || flow.purpose !== 'reset-password' || !token) {
     return null;
   }
-  const email = flow.identifier;
 
   const rulesMet = isPasswordValid(password);
   const canSubmit = rulesMet && isConfirmMatching(password, confirm);
