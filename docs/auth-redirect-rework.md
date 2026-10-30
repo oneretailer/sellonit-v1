@@ -235,7 +235,7 @@ Onboarded = `onboardingIntent != null`; verified = `emailVerifiedAt != null`.
 | `npx prettier --check "apps/web/src/**/*.{ts,tsx}"`  | pass ("All matched files use Prettier code style!")                                                           |
 | `npx eslint apps/web/src`                            | pass, 0 problems                                                                                              |
 | `npx tsc --noEmit -p apps/web`                       | pass, 0 errors                                                                                                |
-| `npm run test -w @sellonit/web`                      | **25 files / 215 tests passed** (was 22 / 162)                                                                |
+| `npm run test -w @sellonit/web`                      | **25 files / 219 tests passed** (was 22 / 162)                                                                |
 | `npm run build -w @sellonit/web`                     | pass; `/_not-found` + `/dashboard/overview` + `/dashboard/[...section]` built (20 routes; `coming-soon` gone) |
 | `git diff \| grep -E '^(<<<<<<<\|=======\|>>>>>>>)'` | no merge markers                                                                                              |
 
@@ -335,3 +335,29 @@ Rewritten / updated:
 
 (The working tree also contains the earlier auth-contract sync from the previous
 task — see `docs/web-auth-sync.md`.)
+
+---
+
+## 10. Post-delivery fix: signed-out visitors were bounced to login
+
+Reported after delivery: `/` showed the login form instead of the sign-up
+chooser, and "Create an account" (`/auth/register`) snapped back to login.
+
+Cause (one line, shipped in the rework): `RedirectAuthenticatedUser` — the gate
+wraps `/`, `/auth/register`, `/auth/forgot-password`, … — rendered the public
+page for a signed-out visitor **and** still ran its redirect effect with
+`destination.path = /auth/login`, so every public page immediately replaced
+itself with login. The existing test only covered `/auth/login` itself, where
+`redirectTarget` returns `null` because the target equals the current page, so
+the bug passed CI.
+
+Fix: on this gate, `login` is not a redirect target at all — it only answers
+"is this page visible to the current visitor?". Signed-out visitors now stay on
+the page they asked for; signed-in visitors are still sent to their single
+resolved destination. Protected surfaces (`RequireAuthenticatedSession`,
+`DashboardRoute`) still redirect signed-out users to `/auth/login`.
+
+Regression tests added (4): a signed-out visitor on `/`, `/auth/register`,
+`/auth/register/account-details` and `/auth/forgot-password` sees the public
+content and `router.replace` is **never** called; the same is asserted for the
+verification callback.

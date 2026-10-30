@@ -40,7 +40,10 @@ export function RedirectAuthenticatedUser({
   const pathname = usePathname();
   const { status, user, refreshSession } = useAuthSession();
   const destination = resolveAuthDestination({ status, user });
-  const target = redirectTarget(destination, pathname);
+  // Public pages are FOR signed-out visitors: `login` is not a redirect target
+  // here, only the answer to "who is allowed to see this page". Redirecting on
+  // it bounced `/` and `/auth/register` straight back to `/auth/login`.
+  const target = destination.kind === 'login' ? null : redirectTarget(destination, pathname);
 
   useEffect(() => {
     if (target) router.replace(target);

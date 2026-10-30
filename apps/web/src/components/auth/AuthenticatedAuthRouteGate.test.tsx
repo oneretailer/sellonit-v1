@@ -128,12 +128,25 @@ describe('authenticated entry gates', () => {
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
+  it.each(['/', '/auth/register', '/auth/register/account-details', '/auth/forgot-password'])(
+    'never bounces a signed-out visitor from %s to login',
+    (pathname) => {
+      mocks.status = 'unauthenticated';
+      mocks.user = null;
+      mocks.pathname = pathname;
+      render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
+      expect(screen.getByText('Public auth content')).toBeTruthy();
+      expect(mocks.router.replace).not.toHaveBeenCalled();
+    },
+  );
+
   it('keeps the verification callback on its account-mismatch flow', () => {
     mocks.pathname = '/auth/verify-email/confirm';
     mocks.status = 'unauthenticated';
     mocks.user = null;
     render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
     expect(screen.getByText('Public auth content')).toBeTruthy();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
   it('keeps the check-your-email screen on its own session flow', () => {
