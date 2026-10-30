@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { AuthCardHeader } from '@/components/auth/StepHeader';
-import { BAG_MARK_SIZE_CLASS, BagMark } from '@/components/brand/BagMark';
+import { BagMark } from '@/components/brand/BagMark';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { PrimaryLinkButton } from '@/components/reuseable/PrimaryButton';
 import { SuccessCheckIcon } from './SuccessCheckIcon';
