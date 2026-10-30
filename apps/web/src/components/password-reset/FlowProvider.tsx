@@ -6,14 +6,16 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
  * In-memory state shared by the forgot-password screens. It lives in the
  * layout, so it survives client-side navigation between steps. It does NOT
  * survive a page refresh, by design:
- * - `resetToken` is never written to storage. After a refresh the
- *   new-password step sends the user back to the code step.
+ * - `verifiedCode` is the 6-digit code that POST /auth/verification-codes/verify
+ *   accepted. The backend issues no reset token, so this code is what
+ *   POST /auth/reset-password re-checks. It is never written to storage, so a
+ *   refresh sends the user back to the code step.
  * - `completed` is true only after a successful reset. The success screen
  *   checks it, so a refreshed success page cannot be reached directly.
  */
 type ForgotPasswordFlowValue = {
-  resetToken: string | null;
-  setResetToken: (token: string | null) => void;
+  verifiedCode: string | null;
+  setVerifiedCode: (code: string | null) => void;
   completed: boolean;
   markCompleted: () => void;
 };
@@ -21,12 +23,12 @@ type ForgotPasswordFlowValue = {
 const ForgotPasswordFlowContext = createContext<ForgotPasswordFlowValue | null>(null);
 
 export function ForgotPasswordFlowProvider({ children }: { children: ReactNode }) {
-  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [verifiedCode, setVerifiedCode] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const markCompleted = useCallback(() => setCompleted(true), []);
   const value = useMemo(
-    () => ({ resetToken, setResetToken, completed, markCompleted }),
-    [resetToken, completed, markCompleted],
+    () => ({ verifiedCode, setVerifiedCode, completed, markCompleted }),
+    [verifiedCode, completed, markCompleted],
   );
   return (
     <ForgotPasswordFlowContext.Provider value={value}>

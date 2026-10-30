@@ -1,44 +1,65 @@
+import { apiFetch } from '@/lib/api-client';
+import { AUTH_ENDPOINTS } from '@/lib/auth/authEndpoints';
+import type { AuthUser, BusinessType } from '@/lib/auth/types';
 import type { AccountRole } from './roles';
 
-export type RoleRecommendation = {
-  role: AccountRole;
-  track: AccountRole;
-  nextRoute: string;
+/**
+ * The onboarding choice is persisted on the account as `onboardingIntent`
+ * (PUT /auth/business-intent). The backend enum is
+ * RETAILER | ENTREPRENEUR | ENTERPRISE — "supplier" has no enum member, and
+ * ENTERPRISE is the supplier track (docs/v1.0.3-alignment.md: "Enterprise
+ * extends Supplier"), so it maps there.
+ */
+const BUSINESS_TYPE_BY_ROLE: Record<AccountRole, BusinessType> = {
+  entrepreneur: 'ENTREPRENEUR',
+  retailer: 'RETAILER',
+  supplier: 'ENTERPRISE',
+};
+
+const ROLE_BY_BUSINESS_TYPE: Record<BusinessType, AccountRole> = {
+  ENTREPRENEUR: 'entrepreneur',
+  RETAILER: 'retailer',
+  ENTERPRISE: 'supplier',
+};
+
+/** The value sent as `businessType` to PUT /auth/business-intent. */
+export function businessTypeForRole(role: AccountRole): BusinessType {
+  return BUSINESS_TYPE_BY_ROLE[role];
+}
+
+/** The onboarding role for a stored `onboardingIntent`. */
+export function roleForBusinessType(businessType: BusinessType): AccountRole {
+  return ROLE_BY_BUSINESS_TYPE[businessType];
+}
+
+export type SavedRole = {
+  /** The account as returned by the API, with `onboardingIntent` already set. */
+  user: AuthUser;
+  businessType: BusinessType;
 };
 
 export interface RoleApi {
-  saveRole(role: AccountRole): Promise<RoleRecommendation>;
-  getRecommendation(role: AccountRole): RoleRecommendation;
+  saveRole(role: AccountRole): Promise<SavedRole>;
 }
 
-type RecommendationTarget = Omit<RoleRecommendation, 'role'>;
-
-/** Local product routing until a backend role/onboarding contract is confirmed. */
-const RECOMMENDATIONS: Record<AccountRole, RecommendationTarget> = {
-  entrepreneur: { track: 'entrepreneur', nextRoute: '/dashboard/coming-soon' },
-  retailer: { track: 'retailer', nextRoute: '/dashboard/coming-soon' },
-  supplier: { track: 'supplier', nextRoute: '/dashboard/overview' },
-};
-
-function getLocalRecommendation(role: AccountRole): RoleRecommendation {
-  return { role, ...RECOMMENDATIONS[role] };
-}
-
-export const localRoleApi: RoleApi = {
-  saveRole(role) {
-    return Promise.resolve(getLocalRecommendation(role));
-  },
-  getRecommendation: getLocalRecommendation,
-};
-
-/** TODO(backend): replace with the agreed save-role endpoint and response contract. */
+/**
+ * Saves the onboarding role to the authenticated user.
+ *
+ * PUT /api/v1/auth/business-intent `{ businessType }` → 200 `{ data: user }`.
+ * Requires the session cookie (the role-selection route is behind
+ * RequireAuthenticatedSession). The response already carries the updated user,
+ * so the caller can refresh the in-memory session without another request.
+ */
 export const httpRoleApi: RoleApi = {
-  saveRole(_role) {
-    return Promise.reject(new Error('TODO(backend): no role-selection endpoint is confirmed yet.'));
+  async saveRole(role) {
+    const businessType = businessTypeForRole(role);
+    const response = await apiFetch<{ data: AuthUser }>(AUTH_ENDPOINTS.businessIntent, {
+      method: 'PUT',
+      body: JSON.stringify({ businessType }),
+    });
+    return { user: response.data, businessType };
   },
-  // The recommendation routes remain local until role-specific routes exist.
-  getRecommendation: getLocalRecommendation,
 };
 
-// Single place to switch implementations after the backend contract exists.
-export const roleApi: RoleApi = localRoleApi;
+/** Single place to switch implementations (e.g. an offline/demo adapter). */
+export const roleApi: RoleApi = httpRoleApi;

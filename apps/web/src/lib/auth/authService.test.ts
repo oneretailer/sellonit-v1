@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, NetworkError } from '@/lib/api-client';
 import { AUTH_ENDPOINTS } from './authEndpoints';
 import {
+  AUTH_MESSAGES,
+  EmailRequiredError,
+  ResendUnavailableError,
+  VerificationLinkRequiredError,
   authMessageFor,
   loginWithIdentifier,
   mapLoginError,
@@ -42,18 +46,35 @@ function stubNetworkDown(): void {
   vi.stubGlobal('fetch', () => Promise.reject(new TypeError('Failed to fetch')));
 }
 
+const emailIdentifier = { identifier: 'jane@example.com', identifierType: 'email' as const };
+const phoneIdentifier = { identifier: '08012345678', identifierType: 'phone' as const };
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('confirmed endpoint behavior', () => {
-  it('login posts to the confirmed route using the existing email field', async () => {
-    const { calls } = stubFetch(200, { user: {}, expiresIn: 60 });
-    await loginWithIdentifier({
-      identifier: 'jane@example.com',
-      identifierType: 'email',
-      password: 'secret',
+describe('endpoint paths match the backend router', () => {
+  it('lists exactly the auth routes the API mounts under /api/v1/auth', () => {
+    expect(AUTH_ENDPOINTS).toEqual({
+      register: '/auth/register',
+      login: '/auth/login',
+      me: '/auth/me',
+      verifyEmail: '/auth/verify-email',
+      verifyEmailAndLogin: '/auth/verify-email-and-login',
+      sendPhoneVerification: '/auth/send-phone-verification',
+      verifyPhone: '/auth/verify-phone',
+      forgotPassword: '/auth/forgot-password',
+      verifyResetCode: '/auth/verification-codes/verify',
+      resetPassword: '/auth/reset-password',
+      businessIntent: '/auth/business-intent',
     });
+  });
+});
+
+describe('login', () => {
+  it('posts to /auth/login with the existing email field', async () => {
+    const { calls } = stubFetch(200, { user: {}, expiresIn: 60 });
+    await loginWithIdentifier({ ...emailIdentifier, password: 'secret' });
     expect(calls[0]).toEqual({
       url: '/api/v1/auth/login',
       method: 'POST',
@@ -61,34 +82,97 @@ describe('confirmed endpoint behavior', () => {
     });
   });
 
-  it('does not call unsupported reset or verification-code routes', async () => {
+  it('refuses a phone identifier locally, because the API validates email only', async () => {
     const { calls } = stubFetch(200, {});
-    await expect(
-      sendResetCode({ identifier: 'jane@example.com', identifierType: 'email' }),
-    ).rejects.toThrow('not supported');
-    await expect(
-      resendCode({
-        identifier: 'jane@example.com',
-        identifierType: 'email',
-        purpose: 'verify-account',
-      }),
-    ).rejects.toThrow('not supported');
-    await expect(
-      verifyCode({
-        identifier: 'jane@example.com',
-        identifierType: 'email',
-        purpose: 'reset-password',
-        code: '123456',
-      }),
-    ).rejects.toThrow('not supported');
-    await expect(resetPassword({ resetToken: 'secret', password: 'secret' })).rejects.toThrow(
-      'not supported',
-    );
+    const error: unknown = await loginWithIdentifier({
+      ...phoneIdentifier,
+      password: 'secret',
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(EmailRequiredError);
+    expect(mapLoginError(error)).toBe('email-required');
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('forgot password (request → verify → reset)', () => {
+  it('sends the reset code to POST /auth/forgot-password', async () => {
+    const { calls } = stubFetch(202, { data: { sent: true } });
+    await sendResetCode(emailIdentifier);
+    expect(calls[0]).toEqual({
+      url: '/api/v1/auth/forgot-password',
+      method: 'POST',
+      body: { email: 'jane@example.com' },
+    });
+  });
+
+  it('re-sends the reset code through the same endpoint', async () => {
+    const { calls } = stubFetch(202, { data: { sent: true } });
+    await resendCode({ ...emailIdentifier, purpose: 'reset-password' });
+    expect(calls[0]?.url).toBe('/api/v1/auth/forgot-password');
+    expect(calls[0]?.body).toEqual({ email: 'jane@example.com' });
+  });
+
+  it('does not request a reset code for a phone number', async () => {
+    const { calls } = stubFetch(202, {});
+    const error: unknown = await sendResetCode(phoneIdentifier).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(EmailRequiredError);
+    expect(mapSendCodeError(error)).toBe('email-required');
     expect(calls).toHaveLength(0);
   });
 
-  it('only contains the confirmed login endpoint', () => {
-    expect(AUTH_ENDPOINTS).toEqual({ login: '/auth/login' });
+  it('verifies the code with POST /auth/verification-codes/verify and no reset token', async () => {
+    const { calls } = stubFetch(200, { data: { verified: true } });
+    const result = await verifyCode({
+      ...emailIdentifier,
+      purpose: 'reset-password',
+      code: '123456',
+    });
+    expect(calls[0]).toEqual({
+      url: '/api/v1/auth/verification-codes/verify',
+      method: 'POST',
+      body: { identifier: 'jane@example.com', code: '123456' },
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it('sets the new password with POST /auth/reset-password using email, code and password', async () => {
+    const { calls } = stubFetch(200, { data: { message: 'Password reset successfully' } });
+    await resetPassword({
+      identifier: 'jane@example.com',
+      code: '123456',
+      password: ' passw0rd ',
+    });
+    expect(calls[0]).toEqual({
+      url: '/api/v1/auth/reset-password',
+      method: 'POST',
+      body: { email: 'jane@example.com', code: '123456', password: ' passw0rd ' },
+    });
+  });
+});
+
+describe('flows with no backend route', () => {
+  it('does not call an unconfirmed account-verification resend route', async () => {
+    const { calls } = stubFetch(200, {});
+    const error: unknown = await resendCode({
+      ...emailIdentifier,
+      purpose: 'verify-account',
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ResendUnavailableError);
+    expect(mapResendCodeError(error)).toBe('resend-unavailable');
+    expect(authMessageFor('resend-unavailable')).toBe(AUTH_MESSAGES.resendUnavailable);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('does not verify an account with a code, because verification is link-based', async () => {
+    const { calls } = stubFetch(200, {});
+    const error: unknown = await verifyCode({
+      ...emailIdentifier,
+      purpose: 'verify-account',
+      code: '123456',
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(VerificationLinkRequiredError);
+    expect(mapVerifyCodeError(error)).toBe('verification-link-required');
+    expect(calls).toHaveLength(0);
   });
 });
 
@@ -107,6 +191,15 @@ describe('error mapping', () => {
     );
   });
 
+  it('login and forgot password: ACCOUNT_UNAVAILABLE is account-unavailable', () => {
+    expect(mapLoginError(new ApiError(403, 'ACCOUNT_UNAVAILABLE', 'x'))).toBe(
+      'account-unavailable',
+    );
+    expect(mapSendCodeError(new ApiError(403, 'ACCOUNT_UNAVAILABLE', 'x'))).toBe(
+      'account-unavailable',
+    );
+  });
+
   it('network, server and missing-endpoint failures are generic', () => {
     expect(mapLoginError(new NetworkError())).toBe('failed');
     expect(mapLoginError(new ApiError(500, 'INTERNAL_ERROR', 'x'))).toBe('failed');
@@ -118,12 +211,16 @@ describe('error mapping', () => {
 
   it('plain (non-API) errors are generic', () => {
     expect(mapLoginError(new Error('boom'))).toBe('failed');
-    expect(mapVerifyCodeError(new Error('Reset token missing'))).toBe('failed');
+    expect(mapVerifyCodeError(new Error('The reset flow is unavailable'))).toBe('failed');
   });
 
   it('send: USER_NOT_FOUND is account-not-found; other API errors are send-failed', () => {
     expect(mapSendCodeError(new ApiError(404, 'USER_NOT_FOUND', 'x'))).toBe('account-not-found');
     expect(mapSendCodeError(new ApiError(429, 'RATE_LIMITED', 'x'))).toBe('send-failed');
+    expect(mapSendCodeError(new ApiError(502, 'EMAIL_DELIVERY_FAILED', 'x'))).toBe('send-failed');
+    expect(mapSendCodeError(new ApiError(503, 'DATABASE_MIGRATION_REQUIRED', 'x'))).toBe(
+      'send-failed',
+    );
     expect(mapResendCodeError(new ApiError(429, 'RATE_LIMITED', 'x'))).toBe('send-failed');
   });
 
@@ -132,13 +229,9 @@ describe('error mapping', () => {
     expect(mapVerifyCodeError(new ApiError(400, null, 'x'))).toBe('wrong-code');
   });
 
-  it('reset: expired or invalid token is token-expired', () => {
-    expect(mapResetPasswordError(new ApiError(401, 'INVALID_RESET_TOKEN', 'x'))).toBe(
-      'token-expired',
-    );
-    expect(mapResetPasswordError(new ApiError(400, 'RESET_TOKEN_EXPIRED', 'x'))).toBe(
-      'token-expired',
-    );
+  it('reset: an invalid or expired code means the user must request a new one', () => {
+    expect(mapResetPasswordError(new ApiError(400, 'INVALID_CODE', 'x'))).toBe('token-expired');
+    expect(mapResetPasswordError(new ApiError(400, 'VALIDATION_ERROR', 'x'))).toBe('failed');
   });
 
   it('every outcome has a user-facing message, and failures use the generic copy', () => {
@@ -147,27 +240,28 @@ describe('error mapping', () => {
     expect(authMessageFor('account-not-found')).toBe('Account not found');
     expect(authMessageFor('wrong-code')).toBe('Wrong code');
     expect(authMessageFor('send-failed')).toBe("We couldn't send the code, please try again");
+    expect(authMessageFor('token-expired')).toBe(AUTH_MESSAGES.tokenExpired);
+    expect(authMessageFor('account-unavailable')).toBe(AUTH_MESSAGES.accountUnavailable);
+    expect(authMessageFor('email-required')).toBe(AUTH_MESSAGES.emailOnly);
+    expect(authMessageFor('verification-link-required')).toBe(
+      AUTH_MESSAGES.verificationLinkRequired,
+    );
   });
 });
 
 describe('a failed request reaches the UI as a rejected promise (never a hang)', () => {
   it('network failure rejects login', async () => {
     stubNetworkDown();
-    await expect(
-      loginWithIdentifier({
-        identifier: 'jane@example.com',
-        identifierType: 'email',
-        password: 'x',
-      }),
-    ).rejects.toBeInstanceOf(NetworkError);
+    await expect(loginWithIdentifier({ ...emailIdentifier, password: 'x' })).rejects.toBeInstanceOf(
+      NetworkError,
+    );
   });
 
-  it('a 404 from a not-yet-built endpoint rejects with an ApiError the mapper treats as failed', async () => {
+  it('an unknown route rejects with an ApiError the mapper treats as failed', async () => {
     stubFetch(404, null);
     const error: unknown = await verifyCode({
-      identifier: 'jane@example.com',
-      identifierType: 'email',
-      purpose: 'verify-account',
+      ...emailIdentifier,
+      purpose: 'reset-password',
       code: '123456',
     }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(Error);

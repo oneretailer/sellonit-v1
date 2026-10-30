@@ -125,12 +125,13 @@ export function fullNameError(value: string): string | null {
   return null;
 }
 
+/**
+ * Signup is email-only: the backend validates `email` as an address and sends
+ * the verification link there (there is no phone signup). Login and password
+ * reset still accept a phone in the UI, but the API rejects it too.
+ */
 export function emailError(value: string): string | null {
-  // Signup's combined identifier accepts email or Nigerian phone, matching login/reset.
-  if (value.includes('@'))
-    return isValidEmail(value) ? null : 'Enter a valid email or phone number';
-  const phone = value.trim().replace(/[\s\-()[\]]/g, '');
-  return /^(?:0\d{10}|\+?234\d{10})$/.test(phone) ? null : 'Enter a valid email or phone number';
+  return isValidEmail(value) ? null : FORM_ERRORS.emailInvalid;
 }
 
 /** Live confirm-password error: shown whenever confirm is non-empty and differs. */

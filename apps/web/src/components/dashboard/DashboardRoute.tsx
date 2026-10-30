@@ -1,22 +1,20 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { readOnboardingRole } from '@/lib/auth/flowState';
+import { useEffect, useState } from 'react';
+import { notFound, usePathname, useRouter } from 'next/navigation';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
+import { redirectTarget, resolveAuthDestination } from '@/lib/auth/authDestination';
 import type { AuthUser } from '@/lib/auth/types';
-import { roleApi } from '@/lib/onboarding/roleApi';
+import { roleForBusinessType } from '@/lib/onboarding/roleApi';
+import { isSupplierRole } from '@/lib/onboarding/roles';
 import { EMPTY_SUPPLIER_DASHBOARD } from '@/lib/dashboard/supplierDashboard';
 import { useSupplierDashboard } from '@/lib/dashboard/useSupplierDashboard';
 import { getDateRangeOptions, type DateRangeOption } from '@/lib/dashboard/dateRanges';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { DashboardShell } from './DashboardShell';
-import { ComingSoon } from './ComingSoon';
 import { SupplierDashboardOverview } from './SupplierDashboardOverview';
 
-const subscribeWithoutRoleChanges = () => () => {};
-
-export type DashboardRouteMode = 'overview' | 'coming-soon' | 'section';
+export type DashboardRouteMode = 'overview' | 'section';
 
 function DashboardSessionSkeleton({
   displayName,
@@ -120,38 +118,46 @@ function PlaceholderWorkspace({ user, pathname }: { user: AuthUser; pathname: st
   );
 }
 
+/**
+ * Every dashboard page resolves the session through the ONE destination
+ * function (authDestination.ts) instead of keeping its own role list, so a
+ * signed-in user can never be bounced between the dashboard and onboarding.
+ *
+ * Only the supplier workspace exists today: an onboarded Retailer or
+ * Entrepreneur account resolves to the dashboard destination but has no
+ * workspace, so the route calls `notFound()` and the custom
+ * `app/dashboard/not-found.tsx` boundary renders. The URL and the stored
+ * account choice stay intact (nothing is saved or re-asked here).
+ */
 export function DashboardRoute({ mode }: { mode: DashboardRouteMode }) {
   const router = useRouter();
   const pathname = usePathname() ?? '/dashboard/overview';
   const { status, user, cachedDisplayName, refreshSession } = useAuthSession();
-  const role = useSyncExternalStore(subscribeWithoutRoleChanges, readOnboardingRole, () => null);
-  const isSupplier = role === 'supplier';
-  const routeMatches =
-    mode === 'overview' ? isSupplier : mode === 'coming-soon' ? role !== 'supplier' : isSupplier;
+  const destination = resolveAuthDestination({ status, user });
+  const target = redirectTarget(destination, pathname);
+  const role = user?.onboardingIntent ? roleForBusinessType(user.onboardingIntent) : null;
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/auth/login');
-    } else if (status === 'authenticated' && role === null) {
-      router.replace('/auth/role-selection');
-    } else if (status === 'authenticated' && role && !routeMatches) {
-      router.replace(roleApi.getRecommendation(role).nextRoute);
-    }
-  }, [mode, pathname, role, routeMatches, router, status]);
+    if (target) router.replace(target);
+  }, [pathname, router, target]);
 
-  if (status === 'unauthenticated') return null;
-  if (status === 'error') {
+  // Unauthenticated: the redirect to /auth/login is in flight.
+  if (destination.kind === 'login') return null;
+
+  if (destination.kind !== 'dashboard' || !user) {
+    // Loading, a failed session check, or a redirect to verify-email /
+    // role-selection in flight: keep the dashboard skeleton, never a role UI.
     return (
       <DashboardSessionSkeleton
         displayName={cachedDisplayName}
-        onRetry={() => void refreshSession()}
+        onRetry={status === 'error' ? () => void refreshSession() : undefined}
       />
     );
   }
-  if (status !== 'authenticated' || !user || role === undefined || role === null || !routeMatches) {
-    return <DashboardSessionSkeleton displayName={cachedDisplayName} />;
-  }
-  if (mode === 'coming-soon') return <ComingSoon user={user} />;
+
+  // Retailer and Entrepreneur have no workspace yet → genuine 404 page.
+  if (!isSupplierRole(role)) notFound();
+
   if (mode === 'section') return <PlaceholderWorkspace user={user} pathname={pathname} />;
   return <OverviewWorkspace user={user} />;
 }

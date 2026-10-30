@@ -12,11 +12,12 @@ import {
 } from 'react';
 import { ApiError } from '@/lib/api-client';
 import { getMe } from './api';
+import type { AuthSessionStatus } from './authDestination';
 import type { AuthUser } from './types';
 
 const SESSION_HINT_KEY = 'sellonit.auth.session-hint';
 
-type AuthSessionStatus = 'checking' | 'authenticated' | 'unauthenticated' | 'error';
+export type { AuthSessionStatus };
 export type InitialAuthSession = {
   status: AuthSessionStatus;
   user: AuthUser | null;

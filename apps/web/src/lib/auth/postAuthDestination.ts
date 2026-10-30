@@ -1,11 +1,24 @@
-import { readOnboardingRole } from './flowState';
-import { roleApi } from '@/lib/onboarding/roleApi';
+import type { Route } from 'next';
+import { AUTH_ROUTE, resolveAuthDestination } from './authDestination';
+import type { AuthUser } from './types';
+
+/** The user fields the destination needs. */
+export type PostAuthUser =
+  Pick<AuthUser, 'emailVerifiedAt' | 'onboardingIntent'> | null | undefined;
 
 /**
- * The backend user contract has no onboarding role yet. Use the role saved in
- * this browser as an interim; a fresh browser intentionally returns to role selection.
+ * Where to send a user right after a call that establishes the session
+ * (login, email verification, password reset).
+ *
+ * Thin wrapper over `resolveAuthDestination` so success handlers and guards
+ * can never disagree. A user who onboarded on another browser already has
+ * `onboardingIntent` on the account and goes straight to the dashboard;
+ * sessionStorage is not consulted here.
  */
-export function getPostAuthDestination(): string {
-  const role = readOnboardingRole();
-  return role ? roleApi.getRecommendation(role).nextRoute : '/auth/role-selection';
+export function getPostAuthDestination(user?: PostAuthUser): Route {
+  const destination = resolveAuthDestination({
+    status: user ? 'authenticated' : 'unauthenticated',
+    user: user ?? null,
+  });
+  return destination.path ?? AUTH_ROUTE.login;
 }

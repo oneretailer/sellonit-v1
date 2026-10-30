@@ -1,15 +1,12 @@
 'use client';
 
-import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
-import { readOnboardingRole } from '@/lib/auth/flowState';
+import { useEffect, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { redirectTarget, resolveAuthDestination } from '@/lib/auth/authDestination';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
-
-const subscribeWithoutRoleChanges = () => () => {};
 
 function SessionSkeleton() {
   return (
@@ -26,21 +23,25 @@ function SessionSkeleton() {
   );
 }
 
-/** Shared guard for authenticated onboarding and success routes. */
+/**
+ * Guards the onboarding routes (role selection and the account-created success
+ * screen). It renders only while the resolved destination is the onboarding
+ * step; every other state is redirected through authDestination.ts. Loading is
+ * never treated as "not onboarded", so the guard cannot bounce a user who
+ * finished onboarding on another browser.
+ */
 export function RequireAuthenticatedSession({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { status, refreshSession } = useAuthSession();
-  const role = useSyncExternalStore(subscribeWithoutRoleChanges, readOnboardingRole, () => null);
+  const pathname = usePathname();
+  const { status, user, refreshSession } = useAuthSession();
+  const destination = resolveAuthDestination({ status, user });
+  const target = redirectTarget(destination, pathname);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/auth/login');
-    } else if (status === 'authenticated' && role) {
-      router.replace(getPostAuthDestination());
-    }
-  }, [role, router, status]);
+    if (target) router.replace(target);
+  }, [pathname, router, target]);
 
-  if (status === 'unauthenticated' || (status === 'authenticated' && role)) return null;
+  if (destination.kind === 'role-selection') return children;
   if (status === 'error') {
     return (
       <AuthCard gapClassName="gap-4">
@@ -51,6 +52,6 @@ export function RequireAuthenticatedSession({ children }: { children: ReactNode 
       </AuthCard>
     );
   }
-  if (status !== 'authenticated') return <SessionSkeleton />;
-  return children;
+  // loading, login-, verify-email- or dashboard-bound: show a skeleton only.
+  return <SessionSkeleton />;
 }

@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { BagMark } from '@/components/brand/BagMark';
 import { getMe, verifyEmail } from '@/lib/auth/api';
+import type { AuthUser } from '@/lib/auth/types';
 import { emailLinkErrorMessage, isRetryableAuthError } from '@/lib/auth/errors';
 import {
   clearPendingVerificationEmail,
@@ -19,6 +20,7 @@ import {
   subscribePendingVerificationEmail,
 } from '@/lib/auth/pendingVerification';
 import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
+import { broadcastEmailVerified } from '@/lib/auth/verificationSignal';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 
 type ConfirmStatus =
@@ -91,8 +93,9 @@ export function VerifyEmailConfirm() {
               if (existing.data.emailVerifiedAt) {
                 acceptAuthenticatedUser(existing.data);
                 clearPendingVerificationEmail();
+                broadcastEmailVerified();
                 setStatus({ kind: 'verified' });
-                router.replace(getPostAuthDestination());
+                router.replace(getPostAuthDestination(existing.data));
                 return;
               }
             } catch {
@@ -100,11 +103,19 @@ export function VerifyEmailConfirm() {
             }
           }
           const verified = await verifyEmail(value);
-          acceptAuthenticatedUser(verified.user);
+          // The call just verified this account, so it is verified even if the
+          // payload was built before the write (that would otherwise route the
+          // user straight back to /auth/verify-email).
+          const verifiedUser: AuthUser = verified.user.emailVerifiedAt
+            ? verified.user
+            : { ...verified.user, emailVerifiedAt: new Date().toISOString() };
+          acceptAuthenticatedUser(verifiedUser);
           clearPendingVerificationEmail();
+          // Tell any open "check your email" tab (same browser) to re-check now.
+          broadcastEmailVerified();
           setStatus({ kind: 'verified' });
           // The verification response establishes the cookie-backed session; use the same role route lookup as login.
-          router.replace(getPostAuthDestination());
+          router.replace(getPostAuthDestination(verifiedUser));
         } catch (error: unknown) {
           setStatus({
             kind: 'error',

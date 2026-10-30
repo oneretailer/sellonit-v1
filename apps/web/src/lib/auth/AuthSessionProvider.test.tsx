@@ -18,7 +18,10 @@ const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn() },
 }));
 
-vi.mock('next/navigation', () => ({ useRouter: () => mocks.router }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => mocks.router,
+  usePathname: () => '/auth/role-selection',
+}));
 vi.mock('./api', () => ({ getMe: mocks.getMe }));
 
 const validUser = {
@@ -28,6 +31,7 @@ const validUser = {
   lastName: 'Lovelace',
   phone: null,
   status: 'ACTIVE',
+  onboardingIntent: null,
   emailVerifiedAt: '2026-10-26T00:00:00.000Z',
   phoneVerifiedAt: null,
   createdAt: '2026-10-26T00:00:00.000Z',
