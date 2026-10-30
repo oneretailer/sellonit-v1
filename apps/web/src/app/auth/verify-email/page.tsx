@@ -69,86 +69,88 @@ export default function VerifyEmailPage() {
   }
 
   return (
-   <div className='pt-15 w-full flex items-center justify-center'>
-     <AuthCard gapClassName="gap-6 md:gap-9">
-      <AuthCardHeader icon={<BagMark />} title="Check your email">
-        {hasPendingEmail ? (
-          <>We sent a verification link to {email}. You can resend it below.</>
-        ) : (
-          <>Enter your email address to resend a verification link.</>
-        )}
-      </AuthCardHeader>
+    <div className="pt-15 w-full flex items-center justify-center">
+      <AuthCard gapClassName="gap-6 md:gap-9">
+        <AuthCardHeader icon={<BagMark />} title="Check your email">
+          {hasPendingEmail ? (
+            <>We sent a verification link to {email}. You can resend it below.</>
+          ) : (
+            <>Enter your email address to resend a verification link.</>
+          )}
+        </AuthCardHeader>
 
-      <div className="flex w-full flex-col gap-6 text-left">
-        <TextField
-          id="verification-email"
-          label="Email address"
-          type="email"
-          autoComplete="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          value={email}
-          onChange={(value) => {
-            if (hasPendingEmail && normalizeEmail(value) !== normalizeEmail(email)) {
-              clearPendingVerificationEmail();
-            }
-            setManualEmail(value);
-            setEmailError(value.trim() && !isEmail(value) ? 'Enter a valid email address.' : null);
-            setResendState('idle');
-          }}
-          error={emailError}
-          placeholder="Enter your email address"
-        />
+        <div className="flex w-full flex-col gap-6 text-left">
+          <TextField
+            id="verification-email"
+            label="Email address"
+            type="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={email}
+            onChange={(value) => {
+              if (hasPendingEmail && normalizeEmail(value) !== normalizeEmail(email)) {
+                clearPendingVerificationEmail();
+              }
+              setManualEmail(value);
+              setEmailError(
+                value.trim() && !isEmail(value) ? 'Enter a valid email address.' : null,
+              );
+              setResendState('idle');
+            }}
+            error={emailError}
+            placeholder="Enter your email address"
+          />
 
-        <div className="flex w-full flex-col items-center gap-4" aria-live="polite">
-          <PrimaryButton
+          <div className="flex w-full flex-col items-center gap-4" aria-live="polite">
+            <PrimaryButton
+              type="button"
+              disabled={!isEmail(normalizedEmail) || cooldown > 0 || resendState === 'sending'}
+              loading={resendState === 'sending'}
+              className="auth-button text-ink"
+              onClick={() => void handleResend()}
+            >
+              {resendState === 'sending'
+                ? 'Sending…'
+                : cooldown > 0
+                  ? `Resend verification link in ${cooldown}s`
+                  : 'Resend verification link'}
+            </PrimaryButton>
+            {resendState === 'sent' ? <p className="text-base text-success">Link sent.</p> : null}
+            {resendState === 'failed' ? (
+              <InlineError className="text-base">
+                We couldn&apos;t send a verification link right now. Try again later, or log in once
+                you&apos;ve verified your email.
+              </InlineError>
+            ) : null}
+          </div>
+
+          <SecondaryButton
             type="button"
-            disabled={!isEmail(normalizedEmail) || cooldown > 0 || resendState === 'sending'}
-            loading={resendState === 'sending'}
-            className="auth-button text-ink"
-            onClick={() => void handleResend()}
+            appearance="outline"
+            disabled={!isEmail(normalizedEmail)}
+            onClick={handleVerifiedLogin}
+            className=""
           >
-            {resendState === 'sending'
-              ? 'Sending…'
-              : cooldown > 0
-                ? `Resend verification link in ${cooldown}s`
-                : 'Resend verification link'}
-          </PrimaryButton>
-          {resendState === 'sent' ? <p className="text-base text-success">Link sent.</p> : null}
-          {resendState === 'failed' ? (
-            <InlineError className="text-base">
-              We couldn&apos;t send a verification link right now. Try again later, or log in once
-              you&apos;ve verified your email.
-            </InlineError>
-          ) : null}
+            I&apos;ve verified my email
+          </SecondaryButton>
+          <p className="text-center text-base text-subtle">
+            Ready to continue?{' '}
+            <Link href={loginHref} className="font-semibold text-ink underline underline-offset-2">
+              Log in
+            </Link>
+          </p>
+          <p className="text-center text-base text-subtle">
+            Need to use a different address?{' '}
+            <Link
+              href="/auth/register"
+              className="font-semibold text-ink underline underline-offset-2"
+            >
+              Create an account
+            </Link>
+          </p>
         </div>
-
-        <SecondaryButton
-          type="button"
-          appearance="outline"
-          disabled={!isEmail(normalizedEmail)}
-          onClick={handleVerifiedLogin}
-          className=''
-        >
-          I&apos;ve verified my email
-        </SecondaryButton>
-        <p className="text-center text-base text-subtle">
-          Ready to continue?{' '}
-          <Link href={loginHref} className="font-semibold text-ink underline underline-offset-2">
-            Log in
-          </Link>
-        </p>
-        <p className="text-center text-base text-subtle">
-          Need to use a different address?{' '}
-          <Link
-            href="/auth/register"
-            className="font-semibold text-ink underline underline-offset-2"
-          >
-            Create an account
-          </Link>
-        </p>
-      </div>
-    </AuthCard>
-   </div>
+      </AuthCard>
+    </div>
   );
 }

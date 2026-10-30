@@ -13,10 +13,10 @@ export const metadata: Metadata = {
  */
 export default function VerifyAccountPage() {
   return (
-    <div className='pt-15 w-full flex items-center justify-center'>
+    <div className="pt-15 w-full flex items-center justify-center">
       <AuthPage rightLink={{ label: 'Login', href: '/auth/login' }}>
-      <CodeForm purpose="verify-account" />
-    </AuthPage>
+        <CodeForm purpose="verify-account" />
+      </AuthPage>
     </div>
   );
 }

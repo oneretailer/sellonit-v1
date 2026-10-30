@@ -12,7 +12,7 @@ export type BagMarkProps = {
  * Brand bag mark. To change the artwork, replace public/shopping-bag.svg.
  * Size it with classes; the default is shared by every auth screen.
  */
-export function BagMark({  title }: BagMarkProps) {
+export function BagMark({ title }: BagMarkProps) {
   return (
     <Image
       src="/shopping-bag.svg"

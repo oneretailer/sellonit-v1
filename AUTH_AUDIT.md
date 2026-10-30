@@ -219,6 +219,7 @@ Invalid/expired/consumed tokens show the backend's invalid-token message and rec
 - Backend request: return the chosen role/onboarding status on the user object so any browser can skip role selection. Specifically, include the value in authenticated login and `/auth/me` responses. Until then, another browser has no role record and correctly starts at role selection.
 - Add an authenticated or privacy-preserving verification-status lookup so the check-email page can learn that a link was opened in a different browser and offer sign-in. No such endpoint was found; the client does not poll.
 - Add a supported email-verification resend contract. The current frontend `resendVerification` intentionally rejects locally because no email-resend endpoint exists in the inspected backend; the screen shows the recovery action and a polite failure if it is attempted. No speculative API URL is called.
+
 ## Supplier dashboard and session-flash update (2026-10-26)
 
 ### Routes and role destinations
