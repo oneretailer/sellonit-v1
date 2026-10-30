@@ -541,12 +541,64 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Password reset */
-                204: {
+                /** @description Password reset successfully */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @example Password reset successfully */
+                                message: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verification-codes/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify a password reset OTP */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyPasswordResetCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description OTP verified */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @example true */
+                                verified: boolean;
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -585,6 +637,49 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/business-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the authenticated user's business onboarding intent */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        businessType: components["schemas"]["BusinessType"];
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated user profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseUser"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -3315,7 +3410,7 @@ export interface components {
         /** @enum {string} */
         UserRole: "OWNER" | "ADMIN" | "STAFF" | "SUPPLIER" | "RETAILER";
         /** @enum {string} */
-        BusinessType: "SUPPLIER" | "ENTERPRISE" | "RETAILER";
+        BusinessType: "RETAILER" | "ENTREPRENEUR" | "ENTERPRISE";
         /** @enum {string} */
         UserStatus: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
         /** @enum {string} */
@@ -3379,6 +3474,7 @@ export interface components {
             firstName?: string;
             lastName?: string;
             status: components["schemas"]["UserStatus"];
+            onboardingIntent?: components["schemas"]["BusinessType"];
             /** Format: date-time */
             emailVerifiedAt?: string | null;
             /** Format: date-time */
@@ -3784,8 +3880,15 @@ export interface components {
             email: string;
         };
         ResetPasswordRequest: {
-            token: string;
+            /** Format: email */
+            email: string;
+            code: string;
             password: string;
+        };
+        VerifyPasswordResetCodeRequest: {
+            /** Format: email */
+            identifier: string;
+            code: string;
         };
         TokenResponse: {
             accessToken: string;

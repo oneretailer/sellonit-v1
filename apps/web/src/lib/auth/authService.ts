@@ -143,7 +143,7 @@ export async function verifyCode(
       code: input.code,
     }),
   });
-  return { resetToken: readResetToken(body) };
+  return { resetToken: readResetToken(body) ?? input.code };
 }
 
 function readResetToken(body: unknown): string | null {
@@ -161,11 +161,12 @@ function readResetToken(body: unknown): string | null {
 /** Sets the new password. Expects 204. The token comes from verifyCode. */
 export async function resetPassword(input: {
   resetToken: string;
+  email: string;
   password: string;
 }): Promise<void> {
   await apiFetch<unknown>(AUTH_ENDPOINTS.resetPassword, {
     method: 'POST',
-    body: JSON.stringify({ token: input.resetToken, password: input.password }),
+    body: JSON.stringify({ email: input.email, code: input.resetToken, password: input.password }),
   });
 }
 
