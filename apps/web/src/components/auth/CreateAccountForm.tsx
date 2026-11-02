@@ -80,13 +80,15 @@ function AlertCircleIcon() {
 
 /* ── Field chrome (Figma: pill input, 558 inner width, label above) ────── */
 
+/* `md:` values are the redesigned desktop look; everything below 768px is the
+   original pill styling and must stay untouched. */
 const pillFieldClass = (invalid = false) =>
-  `flex h-14 w-full items-center gap-3 rounded-xl border ${invalid ? 'border-danger' : 'border-line'} bg-surface px-5 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15 sm:h-[60px]`;
+  `flex h-14 w-full items-center gap-3 rounded-xl border ${invalid ? 'border-danger' : 'border-line'} bg-surface px-5 transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15 sm:h-[60px] md:h-12 md:px-4`;
 const pillInputClass =
-  'h-14 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-gray-500 sm:h-[60px] sm:text-lg lg:h-16 lg:text-xl';
-const fieldLabelClass = 'text-base font-medium text-ink sm:text-lg lg:text-xl';
-const helperTextClass = 'text-sm text-subtle lg:text-base';
-const errorTextClass = 'text-sm text-danger lg:text-base';
+  'h-14 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-gray-500 sm:h-[60px] sm:text-lg md:h-12 md:text-base';
+const fieldLabelClass = 'text-base font-medium text-ink sm:text-lg md:text-sm md:font-semibold';
+const helperTextClass = 'text-sm text-subtle';
+const errorTextClass = 'text-sm text-danger';
 
 type TextFieldProps = {
   id: string;
@@ -366,40 +368,42 @@ export function CreateAccountForm() {
         noValidate
         className="flex w-full  flex-col gap-0 text-left"
       >
-        {/* fields: vertical, gap 32 */}
-        <div className="mb-6 flex w-full flex-col gap-6 md:mb-12">
-          <PillTextField
-            id="firstName"
-            label="First name"
-            placeholder="Enter your first name"
-            value={firstName}
-            onChange={(value) => {
-              setFirstName(value);
-              setServerFieldErrors((current) => ({ ...current, firstName: undefined }));
-            }}
-            onBlur={() => setTouched((current) => ({ ...current, firstName: true }))}
-            error={resolvedFirstNameError}
-            autoComplete="given-name"
-            maxLength={NAME_MAX_LENGTH}
-            inputRef={firstNameRef}
-            disabled={isSubmitting}
-          />
-          <PillTextField
-            id="lastName"
-            label="Last name"
-            placeholder="Enter your last name"
-            value={lastName}
-            onChange={(value) => {
-              setLastName(value);
-              setServerFieldErrors((current) => ({ ...current, lastName: undefined }));
-            }}
-            onBlur={() => setTouched((current) => ({ ...current, lastName: true }))}
-            error={resolvedLastNameError}
-            autoComplete="family-name"
-            maxLength={NAME_MAX_LENGTH}
-            inputRef={lastNameRef}
-            disabled={isSubmitting}
-          />
+        {/* fields: stacked below md, paired rows from md up */}
+        <div className="mb-6 flex w-full flex-col gap-6 md:mb-9">
+          <div className="flex w-full flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-4">
+            <PillTextField
+              id="firstName"
+              label="First name"
+              placeholder="Enter your first name"
+              value={firstName}
+              onChange={(value) => {
+                setFirstName(value);
+                setServerFieldErrors((current) => ({ ...current, firstName: undefined }));
+              }}
+              onBlur={() => setTouched((current) => ({ ...current, firstName: true }))}
+              error={resolvedFirstNameError}
+              autoComplete="given-name"
+              maxLength={NAME_MAX_LENGTH}
+              inputRef={firstNameRef}
+              disabled={isSubmitting}
+            />
+            <PillTextField
+              id="lastName"
+              label="Last name"
+              placeholder="Enter your last name"
+              value={lastName}
+              onChange={(value) => {
+                setLastName(value);
+                setServerFieldErrors((current) => ({ ...current, lastName: undefined }));
+              }}
+              onBlur={() => setTouched((current) => ({ ...current, lastName: true }))}
+              error={resolvedLastNameError}
+              autoComplete="family-name"
+              maxLength={NAME_MAX_LENGTH}
+              inputRef={lastNameRef}
+              disabled={isSubmitting}
+            />
+          </div>
 
           <PillTextField
             id="email"
@@ -421,55 +425,57 @@ export function CreateAccountForm() {
             disabled={isSubmitting}
           />
 
-          <div className="flex w-full flex-col gap-2">
-            <PasswordField
-              id="password"
-              label="Password"
-              placeholder="Create password"
-              value={password}
-              onChange={(value) => {
-                setPassword(value);
-                clearServerErrors();
-              }}
-              visible={showPassword}
-              onToggleVisibility={() => setShowPassword((current) => !current)}
-              inputRef={passwordRef}
-              describedBy={
-                serverFieldErrors.password ? 'password-rules password-error' : 'password-rules'
-              }
-              invalid={Boolean(serverFieldErrors.password)}
-              disabled={isSubmitting}
-            />
-            <PasswordChecklist password={password} />
-            {serverFieldErrors.password ? (
-              <p id="password-error" className={errorTextClass}>
-                {serverFieldErrors.password}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex w-full flex-col gap-2">
-            <PasswordField
-              id="confirmPassword"
-              label="Confirm password"
-              placeholder="Confirm password"
-              value={confirm}
-              onChange={(value) => setConfirm(value)}
-              visible={showConfirm}
-              onToggleVisibility={() => setShowConfirm((current) => !current)}
-              inputRef={confirmRef}
-              describedBy={confirmMessage ? 'confirm-error' : undefined}
-              invalid={Boolean(confirmMessage)}
-              disabled={isSubmitting}
-            />
-            {/* mismatch error: live region, shown while confirm is non-empty and differs */}
-            <div aria-live="polite">
-              {confirmMessage ? (
-                <p id="confirm-error" className={cn('flex items-center gap-2', errorTextClass)}>
-                  <AlertCircleIcon />
-                  {confirmMessage}
+          <div className="flex w-full flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-x-4">
+            <div className="flex w-full flex-col gap-2">
+              <PasswordField
+                id="password"
+                label="Password"
+                placeholder="Create password"
+                value={password}
+                onChange={(value) => {
+                  setPassword(value);
+                  clearServerErrors();
+                }}
+                visible={showPassword}
+                onToggleVisibility={() => setShowPassword((current) => !current)}
+                inputRef={passwordRef}
+                describedBy={
+                  serverFieldErrors.password ? 'password-rules password-error' : 'password-rules'
+                }
+                invalid={Boolean(serverFieldErrors.password)}
+                disabled={isSubmitting}
+              />
+              <PasswordChecklist password={password} />
+              {serverFieldErrors.password ? (
+                <p id="password-error" className={errorTextClass}>
+                  {serverFieldErrors.password}
                 </p>
               ) : null}
+            </div>
+
+            <div className="flex w-full flex-col gap-2">
+              <PasswordField
+                id="confirmPassword"
+                label="Confirm password"
+                placeholder="Confirm password"
+                value={confirm}
+                onChange={(value) => setConfirm(value)}
+                visible={showConfirm}
+                onToggleVisibility={() => setShowConfirm((current) => !current)}
+                inputRef={confirmRef}
+                describedBy={confirmMessage ? 'confirm-error' : undefined}
+                invalid={Boolean(confirmMessage)}
+                disabled={isSubmitting}
+              />
+              {/* mismatch error: live region, shown while confirm is non-empty and differs */}
+              <div aria-live="polite">
+                {confirmMessage ? (
+                  <p id="confirm-error" className={cn('flex items-center gap-2', errorTextClass)}>
+                    <AlertCircleIcon />
+                    {confirmMessage}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -490,7 +496,7 @@ export function CreateAccountForm() {
               aria-describedby={termsError ? 'terms-error' : undefined}
               className="size-5 shrink-0 accent-primary"
             />
-            <span className="text-base text-ink lg:text-lg">I agree with the terms and policy</span>
+            <span className="text-base text-ink md:text-sm">I agree with the terms and policy</span>
           </label>
           {termsError ? (
             <p id="terms-error" className={errorTextClass}>
@@ -517,7 +523,7 @@ export function CreateAccountForm() {
             aria-disabled={!valid || isSubmitting}
             aria-busy={isSubmitting || undefined}
             className={cn(
-              'flex h-14 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-xl leading-7 font-semibold text-ink transition-colors sm:h-16 sm:text-2xl sm:leading-8 lg:h-[68px] lg:py-4 lg:text-[25px] lg:leading-9',
+              'flex h-14 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-xl leading-7 font-semibold text-ink transition-colors sm:h-16 sm:text-2xl sm:leading-8 md:h-12 md:rounded-xl md:py-2 md:text-base md:leading-6',
               isSubmitting
                 ? 'cursor-not-allowed bg-[#CC7000]'
                 : valid
@@ -529,11 +535,11 @@ export function CreateAccountForm() {
             {isSubmitting ? 'Creating account…' : 'Create Account'}
           </button>
 
-          <p className="text-center text-base text-subtle lg:text-lg">
+          <p className="text-center text-base text-subtle md:text-sm">
             Already have an account?{' '}
             <Link
               href="/auth/login"
-              className="font-semibold text-ink underline underline-offset-2"
+              className="font-semibold text-ink underline underline-offset-2 md:text-primary md:hover:text-primary-hover"
             >
               Log in here
             </Link>
