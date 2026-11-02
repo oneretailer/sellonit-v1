@@ -18,7 +18,7 @@ export const metadata: Metadata = {
  * and save it as public/signup-illustration.png. Until that file exists, a
  * dashed placeholder is shown instead of a broken image.
  */
-const ILLUSTRATION_SRC = '/signup-illustration.png';
+const ILLUSTRATION_SRC = '/createacc.png';
 const HAS_ILLUSTRATION = existsSync(path.join(process.cwd(), 'public', ILLUSTRATION_SRC));
 
 /*
@@ -62,14 +62,6 @@ function ShieldCheckIcon() {
   );
 }
 
-function BoltIcon() {
-  return (
-    <svg {...panelIconProps} className="size-5">
-      <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z" />
-    </svg>
-  );
-}
-
 function BarChartIcon() {
   return (
     <svg {...panelIconProps} className="size-5">
@@ -84,11 +76,7 @@ const FEATURES = [
     title: 'Secure & reliable',
     description: 'Your data is always protected.',
   },
-  {
-    icon: <BoltIcon />,
-    title: 'Quick setup',
-    description: 'Get started in just a few minutes.',
-  },
+
   {
     icon: <BarChartIcon />,
     title: 'Grow your business',
@@ -108,23 +96,30 @@ function SignupWelcomePanel() {
       {/* Soft curved shape in the top-right corner (swap for the exact Figma SVG if you have it). */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-28 -right-20 size-72 rounded-full bg-[#EEF0F7] xl:size-96"
+        className="pointer-events-none absolute -top-75 -right-50 size-72 rounded-full bg-[#EEF0F7] xl:size-96"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute 
+        -top-60 -right-65 size-72 rounded-full bg-[#EEF0F7] xl:size-96"
       />
 
-      <div className="relative flex flex-col gap-5 lg:gap-6">
+      <div className="relative flex flex-col items-start justify-start  gap-5 lg:gap-6">
         <Image
           src="/wordmark.svg"
           alt="Sellonit"
           width={160}
           height={36}
           priority
-          className="h-7 w-auto xl:h-10 [@media(max-height:820px)]:xl:h-8"
+          className="h-7 w-auto  xl:h-10 [@media(max-height:820px)]:xl:h-8"
         />
         <div className="flex flex-col items-start gap-2 lg:gap-3">
           <span className="text-primary">
             <UserPlusIcon />
           </span>
-          <h2 className="font-heading text-2xl font-bold tracking-tight text-ink lg:text-3xl xl:text-[40px] xl:leading-tight [@media(max-height:820px)]:xl:text-3xl">
+          <h2 className="font-heading text-2xl font-bold tracking-tight 
+          text-[#18325C] lg:text-3xl xl:text-[48px] xl:leading-tight
+           [@media(max-height:820px)]:xl:text-[48px]">
             Set up your account
           </h2>
           <p className="text-sm text-subtle lg:text-base xl:text-lg">
