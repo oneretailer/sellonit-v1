@@ -5,20 +5,41 @@
  *
  * Figma source of truth: the four Create account frames. Copy that is not in
  * those frames is listed in the deliverables under "Assumptions and additions".
+ *
+ * NOTE: everything here is UX-level validation. The API must enforce the same
+ * rules server-side, and the two should be kept in sync.
  */
 
 /* ── Full name ─────────────────────────────────────────────────────────── */
 
-/**
- * Unicode letters and marks, then letters, marks, spaces, apostrophes,
- * hyphens and periods (Figma placeholder "Ada Example"). The first
- * character must be a letter (or mark), so names cannot start with a
- * separator or symbol. Two words are NOT required (single-word names pass).
- */
-export const NAME_REGEX = /^[\p{L}\p{M}][\p{L}\p{M}\s'’.-]*$/u;
-
 export const NAME_MIN_LENGTH = 2;
 export const NAME_MAX_LENGTH = 80;
+
+/**
+ * Canonical form of a name: Unicode NFC (so "é" typed as one character or as
+ * "e" + accent is stored identically), every run of whitespace (tabs,
+ * newlines, non-breaking spaces, double spaces) collapsed to one ASCII space,
+ * and the ends trimmed. Validate AND submit this value, never the raw input.
+ */
+export function normalizeFullName(value: string): string {
+  return value.normalize('NFC').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Expects an already-normalised name (see `normalizeFullName`).
+ *
+ * Shape: one or more words made of letters (each optionally followed by up to
+ * four combining marks), joined by exactly ONE separator: a space, hyphen,
+ * apostrophe, or a period (optionally followed by a space, for initials like
+ * "J. R. R."). A single trailing period is allowed ("Jr."). This rejects
+ * leading/trailing/repeated separators ("Ada--", "'Ada", "A.....") and
+ * combining-mark stacking ("zalgo" text). Joiners U+200C/U+200D are allowed
+ * after a letter because Persian and several Indic scripts need them.
+ * The pattern is unambiguous (no overlapping quantifiers), so it runs in
+ * linear time.
+ */
+export const NAME_REGEX =
+  /^(?:\p{L}\p{M}{0,4})+(?:(?:\. ?|[ '’-])(?:\p{L}[\p{M}\u200C\u200D]{0,4})+)*\.?$/u;
 
 /* ── Email ─────────────────────────────────────────────────────────────── */
 
@@ -31,6 +52,8 @@ export const EMAIL_REGEX =
   /^[A-Za-z0-9_%+-]+(?:\.[A-Za-z0-9_%+-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/;
 
 export const EMAIL_MAX_LENGTH = 254;
+/** RFC 5321 limit for the part before the "@". */
+export const EMAIL_LOCAL_MAX_LENGTH = 64;
 
 /** Trimmed and lowercased — the only form that leaves the browser. */
 export function normalizeEmail(value: string): string {
@@ -39,7 +62,9 @@ export function normalizeEmail(value: string): string {
 
 export function isValidEmail(value: string): boolean {
   const trimmed = value.trim();
-  return trimmed.length > 0 && trimmed.length <= EMAIL_MAX_LENGTH && EMAIL_REGEX.test(trimmed);
+  if (trimmed.length === 0 || trimmed.length > EMAIL_MAX_LENGTH) return false;
+  if (!EMAIL_REGEX.test(trimmed)) return false;
+  return trimmed.indexOf('@') <= EMAIL_LOCAL_MAX_LENGTH;
 }
 
 /* ── Password ──────────────────────────────────────────────────────────── */
@@ -54,11 +79,17 @@ export type PasswordRule = {
 
 /**
  * The checklist next to the password field renders from this array, so the
- * UI and the validity check can never disagree. Passwords are never trimmed.
+ * UI and the validity check can never disagree. Passwords are never trimmed:
+ * spaces are allowed anywhere (passphrases are good passwords) and are part of
+ * the secret, so login must not trim either.
+ *
+ * - Length counts characters (code points), not UTF-16 units, so an emoji is 1.
+ * - "letter" accepts any script (`\p{L}`), not just A-Z, so passwords such as
+ *   "пароль12345" or "密码password1" are not wrongly rejected.
  */
 export const PASSWORD_RULES: readonly PasswordRule[] = [
-  { id: 'length', label: 'At least 8 characters', test: (password) => password.length >= 8 },
-  { id: 'letter', label: 'At least 1 letter', test: (password) => /[A-Za-z]/.test(password) },
+  { id: 'length', label: 'At least 8 characters', test: (password) => [...password].length >= 8 },
+  { id: 'letter', label: 'At least 1 letter', test: (password) => /\p{L}/u.test(password) },
   { id: 'number', label: 'At least 1 number', test: (password) => /\d/.test(password) },
 ];
 
@@ -76,6 +107,16 @@ export function passwordRuleMet(id: PasswordRuleId, password: string): boolean {
 /** All three checklist rules pass. */
 export function isPasswordValid(password: string): boolean {
   return PASSWORD_RULES.every((rule) => rule.test(password));
+}
+
+/**
+ * True when the password starts or ends with whitespace. Allowed, but almost
+ * always an accident (paste or autocorrect) that later looks like "my password
+ * doesn't work". Use it to show a soft warning, or to block submit if the
+ * product prefers.
+ */
+export function hasEdgeWhitespace(password: string): boolean {
+  return password.length > 0 && password.trim() !== password;
 }
 
 /** Strictly equal and non-empty (Figma: "Autodetect password confirmation"). */
@@ -98,10 +139,12 @@ export function isTermsAccepted(checked: boolean): boolean {
  */
 export const FORM_ERRORS = {
   fullNameRequired: 'Enter your full name.',
-  fullNameInvalid: 'Use letters, spaces, apostrophes, hyphens, or periods only.',
+  fullNameInvalid:
+    'Use letters, with single spaces, hyphens, apostrophes, or periods between them.',
   fullNameLength: `Full name must be between ${NAME_MIN_LENGTH} and ${NAME_MAX_LENGTH} characters.`,
   emailInvalid: 'Enter a valid email address.',
   passwordMismatch: 'Password mismatch',
+  passwordEdgeWhitespace: 'Your password starts or ends with a space.',
   termsRequired: 'Please agree to the terms and policy.',
   emailTaken: 'An account with this email already exists.',
   rateLimited: 'Too many attempts. Please try again later.',
@@ -112,14 +155,14 @@ export const FORM_ERRORS = {
 /* ── Per-field validators (message or null) ────────────────────────────── */
 
 export function fullNameError(value: string): string | null {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
+  const normalized = normalizeFullName(value);
+  if (normalized.length === 0) {
     return FORM_ERRORS.fullNameRequired;
   }
-  if (trimmed.length < NAME_MIN_LENGTH || trimmed.length > NAME_MAX_LENGTH) {
+  if (normalized.length < NAME_MIN_LENGTH || normalized.length > NAME_MAX_LENGTH) {
     return FORM_ERRORS.fullNameLength;
   }
-  if (!NAME_REGEX.test(trimmed)) {
+  if (!NAME_REGEX.test(normalized)) {
     return FORM_ERRORS.fullNameInvalid;
   }
   return null;
@@ -166,17 +209,19 @@ export function isRegisterFormValid(values: RegisterFormValues): boolean {
  * The pre-contract backend stores `firstName`/`lastName` and requires both.
  * `registerUser` derives them from `fullName` with this exact rule so the
  * legacy backend and the contract backend produce the same rows:
- * the first whitespace-separated token is `firstName`, the trimmed remainder
- * is `lastName`; a single-token name puts the same word in both fields.
+ * the first space-separated token is `firstName`, the remainder is
+ * `lastName`; a single-token name puts the same word in both fields.
+ * The name is normalised first, so the remainder never contains tabs,
+ * newlines, or repeated spaces.
  */
 export function splitFullName(fullName: string): { firstName: string; lastName: string } {
-  const trimmed = fullName.trim();
-  const firstSpace = trimmed.search(/\s/);
+  const normalized = normalizeFullName(fullName);
+  const firstSpace = normalized.indexOf(' ');
   if (firstSpace === -1) {
-    return { firstName: trimmed, lastName: trimmed };
+    return { firstName: normalized, lastName: normalized };
   }
   return {
-    firstName: trimmed.slice(0, firstSpace),
-    lastName: trimmed.slice(firstSpace + 1).trim(),
+    firstName: normalized.slice(0, firstSpace),
+    lastName: normalized.slice(firstSpace + 1),
   };
 }
