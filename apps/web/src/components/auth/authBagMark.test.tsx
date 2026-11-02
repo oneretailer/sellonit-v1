@@ -29,8 +29,8 @@ const controls = vi.hoisted(() => ({
     resendAvailableAt: null,
   },
   resetFlow: {
-    resetToken: 'reset-token',
-    setResetToken: vi.fn(),
+    verifiedCode: '123456',
+    setVerifiedCode: vi.fn(),
     completed: true,
     markCompleted: vi.fn(),
   },
@@ -116,8 +116,8 @@ describe('auth screen BagMark rendering', () => {
       resendAvailableAt: null,
     };
     controls.resetFlow = {
-      resetToken: 'reset-token',
-      setResetToken: vi.fn(),
+      verifiedCode: '123456',
+      setVerifiedCode: vi.fn(),
       completed: true,
       markCompleted: vi.fn(),
     };

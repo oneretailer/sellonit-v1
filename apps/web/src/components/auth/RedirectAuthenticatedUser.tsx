@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
-import { getPostAuthDestination } from '@/lib/auth/postAuthDestination';
+import { redirectTarget, resolveAuthDestination } from '@/lib/auth/authDestination';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { AuthPage } from '@/components/reuseable/AuthPage';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
@@ -24,7 +24,11 @@ function SessionGateShell({ retry }: { retry?: () => void }) {
   );
 }
 
-/** Keeps public auth pages hidden until the shared cookie-backed session resolves. */
+/**
+ * Keeps public auth pages hidden until the shared cookie-backed session
+ * resolves. Signed-in users are sent to their single resolved destination
+ * (see authDestination.ts); nothing is decided here.
+ */
 export function RedirectAuthenticatedUser({
   children,
   locationKey,
@@ -33,12 +37,19 @@ export function RedirectAuthenticatedUser({
   locationKey: string;
 }) {
   const router = useRouter();
-  const { status, refreshSession } = useAuthSession();
+  const pathname = usePathname();
+  const { status, user, refreshSession } = useAuthSession();
+  const destination = resolveAuthDestination({ status, user });
+  // Public pages are FOR signed-out visitors: `login` is not a redirect target
+  // here, only the answer to "who is allowed to see this page". Redirecting on
+  // it bounced `/` and `/auth/register` straight back to `/auth/login`.
+  const target = destination.kind === 'login' ? null : redirectTarget(destination, pathname);
 
   useEffect(() => {
-    if (status === 'authenticated') router.replace(getPostAuthDestination());
-  }, [locationKey, router, status]);
+    if (target) router.replace(target);
+  }, [locationKey, pathname, router, target]);
 
-  if (status === 'unauthenticated') return children;
+  if (destination.kind === 'login') return children;
+  // loading, or a redirect is in flight: never render the public form.
   return <SessionGateShell retry={status === 'error' ? () => void refreshSession() : undefined} />;
 }

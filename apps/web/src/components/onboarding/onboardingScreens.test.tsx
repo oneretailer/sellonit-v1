@@ -2,23 +2,33 @@
 
 import type { AnchorHTMLAttributes, ImgHTMLAttributes } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AccountWelcomePage from '@/app/auth/welcome/page';
 import { AccountCreatedSuccess } from './AccountCreatedSuccess';
 import RoleSelectionPage from '@/app/auth/role-selection/page';
 import { VerifyEmailConfirm } from '@/components/auth/VerifyEmailConfirm';
-import { ROLE_OPTIONS } from '@/lib/onboarding/roles';
+import { ROLE_OPTIONS, ROLE_RECOMMENDATIONS } from '@/lib/onboarding/roles';
 import { clearOnboardingRole, ONBOARDING_ROLE_STORAGE_KEY } from '@/lib/auth/flowState';
 import {
   getPendingVerificationEmail,
   setPendingVerificationEmail,
 } from '@/lib/auth/pendingVerification';
 
+const VERIFIED = '2026-10-26T00:00:00.000Z';
+
+type SessionUser = {
+  firstName: string;
+  lastName: string;
+  emailVerifiedAt: string | null;
+  onboardingIntent: string | null;
+};
+
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn(), back: vi.fn() },
   getMe: vi.fn(),
   sessionStatus: 'authenticated',
+  sessionUser: null as SessionUser | null,
   acceptAuthenticatedUser: vi.fn(),
   refreshSession: vi.fn(),
   verifyEmail: vi.fn(),
@@ -53,8 +63,7 @@ vi.mock('next/image', () => ({
 vi.mock('@/lib/auth/AuthSessionProvider', () => ({
   useAuthSession: () => ({
     status: mocks.sessionStatus,
-    user:
-      mocks.sessionStatus === 'authenticated' ? { firstName: 'Person', lastName: 'Example' } : null,
+    user: mocks.sessionStatus === 'authenticated' ? mocks.sessionUser : null,
     cachedDisplayName: 'Person Example',
     acceptAuthenticatedUser: mocks.acceptAuthenticatedUser,
     refreshSession: mocks.refreshSession,
@@ -68,14 +77,9 @@ vi.mock('@/lib/auth/api', () => ({
 }));
 
 vi.mock('@/lib/onboarding/roleApi', () => ({
-  roleApi: {
-    saveRole: mocks.saveRole,
-    getRecommendation: (role: string) => ({
-      role,
-      track: role,
-      nextRoute: role === 'supplier' ? '/dashboard/overview' : '/dashboard/coming-soon',
-    }),
-  },
+  roleApi: { saveRole: mocks.saveRole },
+  roleForBusinessType: (intent: string) =>
+    intent === 'ENTERPRISE' ? 'supplier' : intent === 'RETAILER' ? 'retailer' : 'entrepreneur',
 }));
 
 afterEach(() => cleanup());
@@ -86,6 +90,12 @@ beforeEach(() => {
   sessionStorage.clear();
   clearOnboardingRole();
   mocks.sessionStatus = 'authenticated';
+  mocks.sessionUser = {
+    firstName: 'Person',
+    lastName: 'Example',
+    emailVerifiedAt: VERIFIED,
+    onboardingIntent: null,
+  };
   mocks.token = 'email-token';
   mocks.refreshSession.mockResolvedValue({ email: 'person@example.com' });
   mocks.getMe.mockResolvedValue({ data: { email: 'person@example.com' } });
@@ -101,6 +111,14 @@ async function findRadio(label: string): Promise<HTMLInputElement> {
   const radio = await screen.findByRole('radio', { name: label });
   if (!(radio instanceof HTMLInputElement)) throw new Error('Expected a native radio input');
   return radio;
+}
+
+async function chooseRoleAndReview(optionIndex: number) {
+  const user = userEvent.setup();
+  render(<RoleSelectionPage />);
+  await user.click(await findRadio(ROLE_OPTIONS[optionIndex]!.label));
+  await user.click(screen.getByRole('button', { name: 'Continue' }));
+  return user;
 }
 
 describe('account-created success screen', () => {
@@ -146,6 +164,7 @@ describe('role selection screen', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toHaveProperty('disabled', true);
     expect(container.querySelector('img[src="/shopping-bag.svg"]')).toBeNull();
     expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/auth/welcome');
+    expect(mocks.saveRole).not.toHaveBeenCalled();
   });
 
   it('selection enables Continue, and native arrow-key navigation moves between radios', async () => {
@@ -163,51 +182,101 @@ describe('role selection screen', () => {
     await waitFor(() => expect(second.checked).toBe(true));
   });
 
-  it('saves the selected role and follows the returned recommendation route', async () => {
-    const user = userEvent.setup();
-    mocks.saveRole.mockResolvedValue({
-      role: 'supplier',
-      track: 'supplier',
-      nextRoute: '/dashboard/overview',
-    });
-    render(<RoleSelectionPage />);
+  it('shows the recommendation for the picked role without saving or navigating', async () => {
+    await chooseRoleAndReview(1);
 
-    await user.click(await screen.findByRole('radio', { name: ROLE_OPTIONS[2].label }));
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('heading', { name: 'Your Recommended Role' })).toBeTruthy();
+    const copy = ROLE_RECOMMENDATIONS.retailer;
+    expect(screen.getByText(copy.subtitle)).toBeTruthy();
+    expect(screen.getByText(copy.heading)).toBeTruthy();
+    copy.bullets.forEach((bullet) => expect(screen.getByText(bullet.text)).toBeTruthy());
+    expect(screen.getByText('Recommended')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue as a Retailer' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Go Back' })).toBeTruthy();
 
-    await waitFor(() => expect(mocks.saveRole).toHaveBeenCalledWith('supplier'));
-    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith('/dashboard/overview'));
-    expect(sessionStorage.getItem(ONBOARDING_ROLE_STORAGE_KEY)).toBe('supplier');
+    expect(mocks.saveRole).not.toHaveBeenCalled();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    // The selection is still the user's choice, remembered locally.
+    expect(sessionStorage.getItem(ONBOARDING_ROLE_STORAGE_KEY)).toBe('retailer');
   });
 
-  it('keeps the selection and re-enables Continue after save fails', async () => {
-    const user = userEvent.setup();
-    mocks.saveRole.mockRejectedValue(new Error('offline'));
-    render(<RoleSelectionPage />);
+  it('focuses the recommendation heading when the view switches', async () => {
+    await chooseRoleAndReview(1);
+    const heading = await screen.findByRole('heading', { name: 'Your Recommended Role' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
 
-    const radio = await findRadio(ROLE_OPTIONS[0].label);
-    await user.click(radio);
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+  it('saves the role on Continue, refreshes the session with the API user, then replaces to the dashboard', async () => {
+    const savedUser = {
+      id: 'user-1',
+      email: 'person@example.com',
+      firstName: 'Person',
+      lastName: 'Example',
+      emailVerifiedAt: VERIFIED,
+      onboardingIntent: 'RETAILER',
+    };
+    mocks.saveRole.mockResolvedValue({ user: savedUser, businessType: 'RETAILER' });
+    const user = await chooseRoleAndReview(1);
+
+    await user.click(screen.getByRole('button', { name: 'Continue as a Retailer' }));
+
+    await waitFor(() => expect(mocks.saveRole).toHaveBeenCalledWith('retailer'));
+    expect(mocks.acceptAuthenticatedUser).toHaveBeenCalledWith(savedUser);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the recommendation and re-enables Continue when saving fails', async () => {
+    mocks.saveRole.mockRejectedValue(new Error('offline'));
+    const user = await chooseRoleAndReview(1);
+
+    await user.click(screen.getByRole('button', { name: 'Continue as a Retailer' }));
 
     expect(
       await screen.findByText("We couldn't save your selection. Please try again."),
     ).toBeTruthy();
-    expect(radio.checked).toBe(true);
-    expect(screen.getByRole('button', { name: 'Continue' })).toHaveProperty('disabled', false);
+    expect(screen.getByRole('heading', { name: 'Your Recommended Role' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue as a Retailer' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
-  it('uses the saved role after a refresh-like remount without looping on role selection', async () => {
-    const { unmount } = render(<RoleSelectionPage />);
-    const radio = await screen.findByRole('radio', { name: ROLE_OPTIONS[1].label });
-    fireEvent.click(radio);
-    expect(sessionStorage.getItem(ONBOARDING_ROLE_STORAGE_KEY)).toBe('retailer');
+  it('Go Back returns to the choices with the previous selection kept', async () => {
+    const user = await chooseRoleAndReview(1);
+    await user.click(screen.getByRole('button', { name: 'Go Back' }));
 
-    unmount();
+    expect(await screen.findByRole('heading', { name: 'How will you use Sellonit?' })).toBeTruthy();
+    expect(getRadio(ROLE_OPTIONS[1].label).checked).toBe(true);
+    expect(screen.getByRole('button', { name: 'Continue' })).toHaveProperty('disabled', false);
+    expect(mocks.saveRole).not.toHaveBeenCalled();
+  });
+
+  it('redirects an onboarded user away from role selection exactly once', async () => {
+    mocks.sessionUser = {
+      firstName: 'Person',
+      lastName: 'Example',
+      emailVerifiedAt: VERIFIED,
+      onboardingIntent: 'ENTERPRISE',
+    };
     render(<RoleSelectionPage />);
-    await waitFor(() =>
-      expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/coming-soon'),
-    );
-    expect(sessionStorage.getItem(ONBOARDING_ROLE_STORAGE_KEY)).toBe('retailer');
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('heading', { name: 'How will you use Sellonit?' })).toBeNull();
+  });
+
+  it('redirects an unverified user to the verify-email step', async () => {
+    mocks.sessionUser = {
+      firstName: 'Person',
+      lastName: 'Example',
+      emailVerifiedAt: null,
+      onboardingIntent: null,
+    };
+    render(<RoleSelectionPage />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/verify-email'));
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
   });
 
   it('redirects unauthenticated visitors to Login', async () => {
@@ -218,9 +287,11 @@ describe('role selection screen', () => {
 });
 
 describe('verification success redirect', () => {
-  it('uses replace to reach success and clears pending email after session-establishing verification', async () => {
+  it('uses replace to continue onboarding and clears the pending email', async () => {
     setPendingVerificationEmail('person@example.com');
-    mocks.verifyEmail.mockResolvedValue({ user: { email: 'person@example.com', phone: null } });
+    mocks.verifyEmail.mockResolvedValue({
+      user: { email: 'person@example.com', phone: null, emailVerifiedAt: VERIFIED },
+    });
     render(<VerifyEmailConfirm />);
 
     await waitFor(() => expect(mocks.verifyEmail).toHaveBeenCalledWith('email-token'));
@@ -228,10 +299,24 @@ describe('verification success redirect', () => {
     expect(getPendingVerificationEmail()).toBeNull();
   });
 
-  it('sends an already-verified callback through the onboarding gate rather than /account by default', async () => {
+  it('treats a freshly verified account as verified even if the payload is stale', async () => {
+    setPendingVerificationEmail('person@example.com');
+    mocks.verifyEmail.mockResolvedValue({ user: { email: 'person@example.com', phone: null } });
+    render(<VerifyEmailConfirm />);
+
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
+    // Never bounces back to the page it just came from.
+    expect(mocks.router.replace).not.toHaveBeenCalledWith('/auth/verify-email');
+  });
+
+  it('sends an already-verified callback into the app rather than back to verify email', async () => {
     setPendingVerificationEmail('person@example.com');
     mocks.getMe.mockResolvedValue({
-      data: { email: 'person@example.com', emailVerifiedAt: '2026-10-21T00:00:00.000Z' },
+      data: {
+        email: 'person@example.com',
+        emailVerifiedAt: '2026-10-21T00:00:00.000Z',
+        onboardingIntent: null,
+      },
     });
     render(<VerifyEmailConfirm />);
 

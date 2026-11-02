@@ -53,6 +53,7 @@ export async function mockRegisterUser(input: RegisterUserRequest): Promise<Regi
       lastName,
       phone: null,
       status: 'ACTIVE',
+      onboardingIntent: null,
       emailVerifiedAt: null,
       phoneVerifiedAt: null,
       createdAt: new Date().toISOString(),

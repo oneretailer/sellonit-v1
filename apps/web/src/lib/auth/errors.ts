@@ -27,8 +27,14 @@ export function authErrorMessage(error: unknown): string {
         return 'An account with this email already exists. You can log in instead.';
       case 'INVALID_PHONE':
         return 'Enter a valid Nigerian phone number.';
+      case 'PHONE_NOT_SET':
+        return 'Add a phone number to your account before requesting a code.';
+      case 'PHONE_ALREADY_VERIFIED':
+        return 'This phone number is already verified.';
       case 'INVALID_VERIFICATION_TOKEN':
         return 'That verification code or link is invalid or has expired.';
+      case 'INVALID_CODE':
+        return 'That code is invalid or has expired. Request a new one.';
       case 'INVALID_CREDENTIALS':
         return 'Email or password is incorrect.';
       case 'EMAIL_NOT_VERIFIED':
@@ -41,6 +47,16 @@ export function authErrorMessage(error: unknown): string {
         return 'Your session has expired. Log in again to continue.';
       case 'USER_NOT_FOUND':
         return 'We could not find that account. Log in to continue.';
+      case 'SMS_NOT_CONFIGURED':
+        return 'Phone verification is unavailable right now. Please try again later.';
+      case 'TWILIO_TRIAL_RECIPIENT_NOT_VERIFIED':
+        return 'Text messages can currently only be sent to numbers verified with the SMS provider.';
+      case 'SMS_DELIVERY_FAILED':
+        return 'We could not send the text message. Please try again.';
+      case 'EMAIL_DELIVERY_FAILED':
+        return 'We could not send the email. Please try again in a moment.';
+      case 'DATABASE_MIGRATION_REQUIRED':
+        return 'Password reset is temporarily unavailable. Please try again later.';
       case 'INTERNAL_ERROR':
         return 'Something went wrong on our side. Your account may already exist, so try logging in with this email.';
       default:

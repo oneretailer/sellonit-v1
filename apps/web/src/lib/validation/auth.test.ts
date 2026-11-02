@@ -65,10 +65,10 @@ describe('email validation', () => {
     expect(isValidEmail(`${'a'.repeat(250)}@example.com`)).toBe(false); // > 254
   });
 
-  it('accepts normalized signup identifier emails and Nigerian phones with shared copy', () => {
-    expect(emailError('nope')).toBe('Enter a valid email or phone number');
-    expect(emailError('08012345678')).toBeNull();
-    expect(emailError('+2348012345678')).toBeNull();
+  it('rejects phone numbers for signup, which the API accepts as email only', () => {
+    expect(emailError('nope')).toBe('Enter a valid email address.');
+    expect(emailError('08012345678')).toBe('Enter a valid email address.');
+    expect(emailError('+2348012345678')).toBe('Enter a valid email address.');
   });
 });
 

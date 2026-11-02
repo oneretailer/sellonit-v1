@@ -5,17 +5,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { DashboardRoute } from './DashboardRoute';
 import { EMPTY_SUPPLIER_DASHBOARD } from '@/lib/dashboard/supplierDashboard';
+import type { AuthUser } from '@/lib/auth/types';
+
+const NOT_FOUND = 'NEXT_NOT_FOUND';
 
 const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn() },
+  notFound: vi.fn(),
   pathname: '/dashboard/overview',
   status: 'authenticated',
+  user: null as AuthUser | null,
   refreshSession: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => mocks.router,
   usePathname: () => mocks.pathname,
+  notFound: () => {
+    mocks.notFound();
+    throw new Error('NEXT_NOT_FOUND');
+  },
 }));
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
@@ -36,21 +45,7 @@ vi.mock('next/image', () => ({
 vi.mock('@/lib/auth/AuthSessionProvider', () => ({
   useAuthSession: () => ({
     status: mocks.status,
-    user:
-      mocks.status === 'authenticated'
-        ? {
-            id: 'user-1',
-            email: 'ada@example.com',
-            firstName: 'Ada',
-            lastName: 'Lovelace',
-            phone: null,
-            status: 'ACTIVE',
-            emailVerifiedAt: null,
-            phoneVerifiedAt: null,
-            createdAt: '2026-10-26T00:00:00.000Z',
-            updatedAt: '2026-10-26T00:00:00.000Z',
-          }
-        : null,
+    user: mocks.user,
     cachedDisplayName: 'Ada Lovelace',
     refreshSession: mocks.refreshSession,
   }),
@@ -64,6 +59,23 @@ vi.mock('@/lib/dashboard/useSupplierDashboard', () => ({
   }),
 }));
 
+function user(overrides: Partial<AuthUser> = {}): AuthUser {
+  return {
+    id: 'user-1',
+    email: 'ada@example.com',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+    phone: null,
+    status: 'ACTIVE',
+    emailVerifiedAt: '2026-10-26T00:00:00.000Z',
+    phoneVerifiedAt: null,
+    onboardingIntent: null,
+    createdAt: '2026-10-26T00:00:00.000Z',
+    updatedAt: '2026-10-26T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
 afterEach(() => cleanup());
 beforeEach(() => {
   vi.clearAllMocks();
@@ -71,81 +83,88 @@ beforeEach(() => {
   sessionStorage.clear();
   mocks.status = 'authenticated';
   mocks.pathname = '/dashboard/overview';
+  mocks.user = user({ onboardingIntent: 'ENTERPRISE' });
 });
 
-describe('dashboard role and session gates', () => {
-  it('routes an authenticated user with no local role to role selection', async () => {
-    render(<DashboardRoute mode="overview" />);
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
-    expect(screen.queryByRole('heading', { name: /Ada!/ })).toBeNull();
-  });
-
-  it.each(['entrepreneur', 'retailer'] as const)(
-    'routes a %s visiting supplier Overview to its recommendation without looping',
-    async (role) => {
-      sessionStorage.setItem('sellonit_onboarding_role', role);
-      render(<DashboardRoute mode="overview" />);
-      await waitFor(() =>
-        expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/coming-soon'),
-      );
-      expect(mocks.router.replace).not.toHaveBeenCalledWith('/auth/login');
-    },
-  );
-
-  it('shows supplier Overview with the authenticated name and local empty state', async () => {
-    sessionStorage.setItem('sellonit_onboarding_role', 'supplier');
+describe('dashboard destination guard', () => {
+  it('renders supplier Overview for a verified, onboarded supplier without redirecting', async () => {
     render(<DashboardRoute mode="overview" />);
     expect(await screen.findByRole('heading', { name: /Ada!/ })).toBeTruthy();
     expect(
       screen.getByText('No retailer orders yet. Orders from retailers will appear here.'),
     ).toBeTruthy();
     expect(mocks.router.replace).not.toHaveBeenCalled();
+    expect(mocks.notFound).not.toHaveBeenCalled();
   });
 
-  it('routes a supplier away from the coming-soon route to Overview', async () => {
-    sessionStorage.setItem('sellonit_onboarding_role', 'supplier');
-    mocks.pathname = '/dashboard/coming-soon';
-    render(<DashboardRoute mode="coming-soon" />);
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
-    expect(screen.queryByRole('heading', { name: 'Your dashboard is coming soon' })).toBeNull();
+  it('sends a verified user with no saved onboarding intent to role selection', async () => {
+    mocks.user = user({ emailVerifiedAt: '2026-10-26T00:00:00.000Z', onboardingIntent: null });
+    render(<DashboardRoute mode="overview" />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
+    expect(screen.queryByRole('heading', { name: /Ada!/ })).toBeNull();
+    expect(mocks.notFound).not.toHaveBeenCalled();
   });
 
-  it.each(['entrepreneur', 'retailer'] as const)(
-    'shows the shared coming-soon page for %s',
-    async (role) => {
-      sessionStorage.setItem('sellonit_onboarding_role', role);
-      mocks.pathname = '/dashboard/coming-soon';
-      render(<DashboardRoute mode="coming-soon" />);
-      expect(
-        await screen.findByRole('heading', { name: 'Your dashboard is coming soon' }),
-      ).toBeTruthy();
-      expect(
-        screen.getByText("We're building your workspace and we'll let you know when it's ready."),
-      ).toBeTruthy();
-      expect(
-        screen.getByRole('link', { name: 'Change how I use Sellonit' }).getAttribute('href'),
-      ).toBe('/auth/role-selection');
+  it('sends an unverified user to verify email instead of onboarding', async () => {
+    mocks.user = user({ emailVerifiedAt: null, onboardingIntent: null });
+    render(<DashboardRoute mode="overview" />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/verify-email'));
+    expect(mocks.router.replace).not.toHaveBeenCalledWith('/auth/role-selection');
+  });
+
+  it.each(['RETAILER', 'ENTREPRENEUR'] as const)(
+    'renders the custom 404 for an onboarded %s account instead of a dashboard',
+    (intent) => {
+      mocks.user = user({ onboardingIntent: intent });
+      expect(() => render(<DashboardRoute mode="overview" />)).toThrow(NOT_FOUND);
+      // React may retry the render once after a throw, so only "at least once".
+      expect(mocks.notFound).toHaveBeenCalled();
+      // Onboarded users are never sent back through onboarding, and no fake
+      // dashboard is rendered for a workspace that does not exist.
+      expect(mocks.router.replace).not.toHaveBeenCalled();
     },
   );
 
-  it('redirects an unauthenticated dashboard visitor to login without exposing content', async () => {
-    mocks.status = 'unauthenticated';
-    sessionStorage.setItem('sellonit_onboarding_role', 'supplier');
-    render(<DashboardRoute mode="overview" />);
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/login'));
-    expect(screen.queryByRole('heading', { name: /Ada!/ })).toBeNull();
+  it('renders the custom 404 for a retailer on a dashboard section too', () => {
+    mocks.user = user({ onboardingIntent: 'RETAILER' });
+    mocks.pathname = '/dashboard/products';
+    expect(() => render(<DashboardRoute mode="section" />)).toThrow(NOT_FOUND);
+    expect(mocks.notFound).toHaveBeenCalled();
   });
 
-  it('renders every sidebar destination inside the shared coming-soon panel', async () => {
-    sessionStorage.setItem('sellonit_onboarding_role', 'supplier');
+  it('keeps a supplier on a dashboard section (never bounces to Overview)', async () => {
     mocks.pathname = '/dashboard/products';
     render(<DashboardRoute mode="section" />);
     expect(
       await screen.findByRole('heading', { name: 'This section is coming soon' }),
     ).toBeTruthy();
-    expect(screen.getByText('Products is not available yet.')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Products' }).getAttribute('href')).toBe(
-      '/dashboard/products',
-    );
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
+  it('redirects an unauthenticated visitor to login without exposing content', async () => {
+    mocks.status = 'unauthenticated';
+    mocks.user = null;
+    const { container } = render(<DashboardRoute mode="overview" />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/login'));
+    expect(container.innerHTML).toBe('');
+    expect(mocks.notFound).not.toHaveBeenCalled();
+  });
+
+  it('shows only the skeleton while the session is loading', () => {
+    mocks.status = 'checking';
+    mocks.user = null;
+    render(<DashboardRoute mode="overview" />);
+    expect(screen.getByRole('status', { name: 'Loading workspace' })).toBeTruthy();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    expect(mocks.notFound).not.toHaveBeenCalled();
+  });
+
+  it('offers a retry when the session check failed', async () => {
+    mocks.status = 'error';
+    mocks.user = null;
+    render(<DashboardRoute mode="overview" />);
+    screen.getByRole('button', { name: 'Try again' }).click();
+    await waitFor(() => expect(mocks.refreshSession).toHaveBeenCalledTimes(1));
+    expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 });

@@ -77,10 +77,11 @@ function ResendCodeButton({
 /**
  * Enter verification code (Figma: Enter verification code, Wrong code). Used
  * for both purposes:
- * - reset-password: a verified code returns a reset token (held in memory)
- *   and the user moves to the new-password step.
- * - verify-account: a verified code finishes verification and routes through
- *   the shared post-auth onboarding gate.
+ * - reset-password: POST /auth/verification-codes/verify checks the code. The
+ *   backend issues no reset token, so the verified code is held in memory and
+ *   sent again with the new password.
+ * - verify-account: the backend only verifies accounts through the emailed
+ *   link, so this step explains that instead of calling a non-existent endpoint.
  *
  * The code is never stored. A refresh empties the input, as intended.
  */
@@ -139,18 +140,18 @@ export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
     setFormError(null);
     setNotice(null);
     try {
-      const result = await verifyCode({
+      await verifyCode({
         identifier: flow.identifier,
         identifierType: flow.identifierType,
         purpose,
         code,
       });
       if (purpose === 'reset-password') {
-        const token = result.resetToken;
-        if (!token || !resetFlow) {
-          throw new Error('Reset token missing from verification response');
+        if (!resetFlow) {
+          throw new Error('The reset flow is unavailable on this screen.');
         }
-        resetFlow.setResetToken(token);
+        // Held in memory only: POST /auth/reset-password re-checks this code.
+        resetFlow.setVerifiedCode(code);
         updateFlow({ step: 'new-password' });
         router.push('/auth/forgot-password/new-password');
       } else {
@@ -159,7 +160,7 @@ export function CodeForm({ purpose }: { purpose: AuthFlowPurpose }) {
         if (!authenticatedUser) throw new Error('Session was not established after verification.');
         finishing.current = true;
         clearAuthFlow();
-        router.replace(getPostAuthDestination());
+        router.replace(getPostAuthDestination(authenticatedUser));
       }
     } catch (error) {
       inFlight.current = false;

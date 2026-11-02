@@ -15,7 +15,9 @@ import { clearAuthFlow, resendAvailableAfterSend, writeAuthFlow } from '@/lib/au
 
 /**
  * Forgot password, step 1 (Figma: Reset your password). Sends a reset code to
- * the email or phone entered, then moves to the code step.
+ * the account email (POST /auth/forgot-password) and moves to the code step.
+ * The field still accepts a phone number for parity with login, but the API is
+ * email-only, so a phone is answered with an explicit explanation.
  */
 export function RequestCodeForm() {
   const router = useRouter();
@@ -69,8 +71,8 @@ export function RequestCodeForm() {
   return (
     <AuthCard gapClassName="gap-6 md:gap-9">
       <StepHeader title="Reset your password" align="center" icon={<BagMark />}>
-        Enter the phone number linked to your sellonit account and we will send you a verification
-        code
+        Enter the email address or phone number linked to your sellonit account and we will send you
+        a verification code
       </StepHeader>
 
       <form

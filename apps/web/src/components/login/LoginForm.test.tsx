@@ -89,11 +89,33 @@ describe('post-login onboarding destination', () => {
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
   });
 
-  it('routes a user with a saved role to that role recommendation', async () => {
-    writeOnboardingRole('supplier');
+  it('routes an onboarded user (choice saved on the account) straight to the dashboard', async () => {
+    mocks.loginWithIdentifier.mockResolvedValue({
+      user: {
+        id: 'user-1',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        phone: null,
+        status: 'ACTIVE',
+        emailVerifiedAt: '2026-10-26T00:00:00.000Z',
+        phoneVerifiedAt: null,
+        onboardingIntent: 'ENTERPRISE',
+        createdAt: '2026-10-26T00:00:00.000Z',
+        updatedAt: '2026-10-26T00:00:00.000Z',
+      },
+      expiresIn: 3600,
+    });
     await completeLogin();
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
     expect(mocks.acceptAuthenticatedUser).toHaveBeenCalled();
+  });
+
+  it('ignores a role remembered in this browser when the account has no choice saved', async () => {
+    writeOnboardingRole('supplier');
+    await completeLogin();
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/role-selection'));
+    expect(mocks.router.replace).not.toHaveBeenCalledWith('/dashboard/overview');
   });
 
   it('clears pending verification email after a successful login', async () => {

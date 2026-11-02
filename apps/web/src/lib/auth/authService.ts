@@ -5,9 +5,11 @@
  * - Every call goes through the project's API client (`apiFetch`), so it uses
  *   the same-origin `/api/v1` proxy and the same error handling as the rest of
  *   the app.
- * - Paths come from authEndpoints.ts.
- * - The identifier is sent as the normalized value from identifier.ts. Only
- *   the value changes; the field names of existing endpoints do not.
+ * - Paths come from authEndpoints.ts, which mirrors the backend router.
+ * - The identifier is sent as the normalized value from identifier.ts. The
+ *   backend validates every auth field as an email address, so a phone
+ *   identifier is refused locally with an explanatory message instead of
+ *   sending a request that can only fail.
  * - All API-error-to-UI mapping lives in this file: see the `map*Error`
  *   functions and `authMessageFor`. Adjust those to match backend responses.
  *
@@ -17,7 +19,15 @@ import { apiFetch, ApiError, NetworkError } from '@/lib/api-client';
 import { AUTH_ENDPOINTS } from './authEndpoints';
 import type { AuthFlowPurpose } from './flowState';
 import type { IdentifierType } from './identifier';
-import type { LoginResponse } from './types';
+import type {
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  LoginResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+  VerifyPasswordResetCodeRequest,
+  VerifyPasswordResetCodeResponse,
+} from './types';
 
 /* ── Messages ──────────────────────────────────────────────────────────── */
 
@@ -27,9 +37,15 @@ export const AUTH_MESSAGES = {
   wrongCredentials: 'Wrong password, please try again',
   accountNotVerified: "Your account isn't verified yet. Verify it to continue.",
   accountNotFound: 'Account not found',
+  accountUnavailable: "This account isn't active. Contact support if you think this is a mistake.",
+  emailOnly: "Enter your email address. Phone login and password reset aren't available yet.",
   wrongCode: 'Wrong code',
   sendFailed: "We couldn't send the code, please try again",
-  tokenExpired: 'This reset session has expired. Request a new code to continue.',
+  tokenExpired: 'This reset code has expired. Request a new code to continue.',
+  verificationLinkRequired:
+    'Account verification uses the link we emailed you. Open that link to verify your email.',
+  resendUnavailable:
+    "Resending verification emails isn't available yet. Check your inbox for the link.",
   codeRequired: 'Enter the 6-digit code',
 } as const;
 
@@ -42,9 +58,13 @@ export type AuthFailure =
   | 'wrong-credentials'
   | 'account-not-verified'
   | 'account-not-found'
+  | 'account-unavailable'
+  | 'email-required'
   | 'wrong-code'
   | 'send-failed'
   | 'token-expired'
+  | 'verification-link-required'
+  | 'resend-unavailable'
   | 'failed';
 
 /** The message for a failure. */
@@ -56,25 +76,65 @@ export function authMessageFor(failure: AuthFailure): string {
       return AUTH_MESSAGES.accountNotVerified;
     case 'account-not-found':
       return AUTH_MESSAGES.accountNotFound;
+    case 'account-unavailable':
+      return AUTH_MESSAGES.accountUnavailable;
+    case 'email-required':
+      return AUTH_MESSAGES.emailOnly;
     case 'wrong-code':
       return AUTH_MESSAGES.wrongCode;
     case 'send-failed':
       return AUTH_MESSAGES.sendFailed;
     case 'token-expired':
       return AUTH_MESSAGES.tokenExpired;
+    case 'verification-link-required':
+      return AUTH_MESSAGES.verificationLinkRequired;
+    case 'resend-unavailable':
+      return AUTH_MESSAGES.resendUnavailable;
     case 'failed':
       return AUTH_MESSAGES.failed;
+  }
+}
+
+/* ── Local failures for backend gaps ───────────────────────────────────── */
+
+/**
+ * The backend validates every auth identifier as an email address: it has no
+ * phone login and sends password-reset codes by email only. Thrown locally so
+ * a phone identifier gets an accurate message instead of a server 400.
+ */
+export class EmailRequiredError extends Error {
+  constructor() {
+    super('This endpoint accepts an email address only.');
+    this.name = 'EmailRequiredError';
+  }
+}
+
+/**
+ * Account verification is link-based (`POST /auth/verify-email-and-login`) and
+ * the backend exposes no OTP or resend endpoint for it.
+ */
+export class VerificationLinkRequiredError extends Error {
+  constructor() {
+    super('Account verification requires the emailed link.');
+    this.name = 'VerificationLinkRequiredError';
+  }
+}
+
+/** No `POST /auth/resend-verification` route exists yet (backend gap). */
+export class ResendUnavailableError extends Error {
+  constructor() {
+    super('Verification email resend is not available yet.');
+    this.name = 'ResendUnavailableError';
   }
 }
 
 /* ── Request functions ─────────────────────────────────────────────────── */
 
 /**
- * The body field that carries the identifier on the EXISTING login and
- * forgot-password endpoints. The name stays `email`; the value is the email or
- * the 11-digit phone.
+ * The body field that carries the identifier. The backend's login, forgot
+ * password and reset password handlers all read a field named `email`.
  */
-const EXISTING_IDENTIFIER_FIELD = 'email' as const;
+const IDENTIFIER_FIELD = 'email' as const;
 
 export type Identified = {
   identifier: string;
@@ -83,63 +143,98 @@ export type Identified = {
 
 /**
  * Login. On success the API sets the session cookie.
- * Note: the current backend (apps/api) only accepts an email here and rejects a
- * phone with 400 VALIDATION_ERROR. Phone login needs backend support.
+ * The backend rejects phone identifiers, so those fail here without a request.
  */
 export function loginWithIdentifier(
   input: Identified & { password: string },
 ): Promise<LoginResponse> {
-  // TODO(backend): accept phone identifiers (the legacy field remains `email` until the API contract is updated).
-  // TODO(backend): return ACCOUNT_NOT_VERIFIED for valid credentials on unverified accounts.
+  if (input.identifierType !== 'email') {
+    return Promise.reject(new EmailRequiredError());
+  }
   return apiFetch<LoginResponse>(AUTH_ENDPOINTS.login, {
     method: 'POST',
     body: JSON.stringify({
-      [EXISTING_IDENTIFIER_FIELD]: input.identifier,
+      [IDENTIFIER_FIELD]: input.identifier,
       password: input.password,
     }),
   });
 }
 
-/** Sends the password-reset code (existing endpoint). The response body is not used. */
+/**
+ * Sends the password-reset code: POST /auth/forgot-password → 202.
+ * The backend accepts an email address only; it answers 404 USER_NOT_FOUND for
+ * an unknown account and 403 ACCOUNT_UNAVAILABLE for an inactive one.
+ */
 export function sendResetCode(input: Identified): Promise<void> {
-  // Backend inventory confirms no forgot-password/code-send route exists. Keep the UI graceful without shipping a guessed endpoint.
-  void input;
-  return Promise.reject(new Error('Password reset sending is not supported by the current API.'));
+  if (input.identifierType !== 'email') {
+    return Promise.reject(new EmailRequiredError());
+  }
+  const body: ForgotPasswordRequest = { email: input.identifier };
+  return apiFetch<ForgotPasswordResponse>(AUTH_ENDPOINTS.forgotPassword, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }).then(() => undefined);
 }
 
 /**
  * Sends (or re-sends) a code for a purpose.
- * - reset-password: the existing forgot-password endpoint.
- * - verify-account: currently unsupported by the inspected backend; rejected locally.
+ * - reset-password: POST /auth/forgot-password, a fresh 6-digit code.
+ * - verify-account: the backend has no account-code or resend route
+ *   (`POST /auth/resend-verification` is still a contract gap), so this fails
+ *   locally with a message that points the user at the emailed link.
  */
 export async function resendCode(input: Identified & { purpose: AuthFlowPurpose }): Promise<void> {
   if (input.purpose === 'reset-password') {
     await sendResetCode(input);
     return;
   }
-  // Backend inventory confirms no account-code resend route. Do not issue a request to an unconfirmed endpoint.
-  void input;
-  throw new Error('Account verification-code resend is not supported by the current API.');
+  throw new ResendUnavailableError();
 }
 
 /**
- * Checks a six-digit code. For reset-password the response carries a reset
- * token, which the caller keeps in memory only. A response without the token
- * is treated as a failure by the caller.
+ * Checks the six-digit reset code: POST /auth/verification-codes/verify with
+ * `{ identifier, code }`. The backend verifies the code but returns no reset
+ * token, so the caller keeps the code in memory and sends it again with the new
+ * password (see `resetPassword`).
  */
-export function verifyCode(
+export async function verifyCode(
   input: Identified & { purpose: AuthFlowPurpose; code: string },
-): Promise<{ resetToken: string | null }> {
-  // Backend inventory confirms no generic verification-code endpoint. Do not ship an unconfirmed call.
-  void input;
-  return Promise.reject(new Error('Code verification is not supported by the current API.'));
+): Promise<void> {
+  if (input.purpose !== 'reset-password') {
+    throw new VerificationLinkRequiredError();
+  }
+  if (input.identifierType !== 'email') {
+    throw new EmailRequiredError();
+  }
+  const body: VerifyPasswordResetCodeRequest = {
+    identifier: input.identifier,
+    code: input.code,
+  };
+  await apiFetch<VerifyPasswordResetCodeResponse>(AUTH_ENDPOINTS.verifyResetCode, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
-/** Sets the new password. Expects 204. The token comes from verifyCode. */
-export function resetPassword(input: { resetToken: string; password: string }): Promise<void> {
-  // Backend inventory confirms there is no password-reset endpoint.
-  void input;
-  return Promise.reject(new Error('Password reset is not supported by the current API.'));
+/**
+ * Sets the new password: POST /auth/reset-password with `{ email, code, password }`.
+ * The code is the one verified in the previous step and is re-checked by the
+ * backend, which also revokes every existing session.
+ */
+export async function resetPassword(input: {
+  identifier: string;
+  code: string;
+  password: string;
+}): Promise<void> {
+  const body: ResetPasswordRequest = {
+    [IDENTIFIER_FIELD]: input.identifier,
+    code: input.code,
+    password: input.password,
+  };
+  await apiFetch<ResetPasswordResponse>(AUTH_ENDPOINTS.resetPassword, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 /* ── Error mapping: API error → AuthFailure (edit here to match the backend) ── */
@@ -157,16 +252,24 @@ function isTransportOrServerFailure(error: unknown): boolean {
 
 /**
  * Login.
- *   INVALID_CREDENTIALS or 401               → wrong-credentials
- *   ACCOUNT_NOT_VERIFIED or EMAIL_NOT_VERIFIED → account-not-verified
- *   anything else                            → failed
+ *   INVALID_CREDENTIALS or 401                → wrong-credentials
+ *   EMAIL_NOT_VERIFIED (403)                  → account-not-verified
+ *   ACCOUNT_UNAVAILABLE (403)                 → account-unavailable
+ *   phone identifier (no request is sent)     → email-required
+ *   anything else                             → failed
  */
 export function mapLoginError(error: unknown): AuthFailure {
+  if (error instanceof EmailRequiredError) {
+    return 'email-required';
+  }
   if (isTransportOrServerFailure(error) || !(error instanceof ApiError)) {
     return 'failed';
   }
   if (error.code === 'ACCOUNT_NOT_VERIFIED' || error.code === 'EMAIL_NOT_VERIFIED') {
     return 'account-not-verified';
+  }
+  if (error.code === 'ACCOUNT_UNAVAILABLE') {
+    return 'account-unavailable';
   }
   if (error.code === 'INVALID_CREDENTIALS' || error.status === 401) {
     return 'wrong-credentials';
@@ -176,28 +279,48 @@ export function mapLoginError(error: unknown): AuthFailure {
 
 /**
  * Forgot password (sending the reset code).
- *   USER_NOT_FOUND          → account-not-found
- *   other 4xx with an error → send-failed
- *   anything else           → failed
+ *   USER_NOT_FOUND (404)      → account-not-found
+ *   ACCOUNT_UNAVAILABLE (403) → account-unavailable
+ *   phone identifier          → email-required
+ *   other failures            → send-failed (429 / 502 / 503 included)
  */
 export function mapSendCodeError(error: unknown): AuthFailure {
+  if (error instanceof EmailRequiredError) {
+    return 'email-required';
+  }
   if (error instanceof ApiError && error.code === 'USER_NOT_FOUND') {
     return 'account-not-found';
+  }
+  if (error instanceof ApiError && error.code === 'ACCOUNT_UNAVAILABLE') {
+    return 'account-unavailable';
   }
   return 'send-failed';
 }
 
-/** Resending a code (either purpose). Any non-server API error is a send failure. */
-export function mapResendCodeError(_error: unknown): AuthFailure {
+/** Resending a code. The verify-account resend has no backend route yet. */
+export function mapResendCodeError(error: unknown): AuthFailure {
+  if (error instanceof ResendUnavailableError) {
+    return 'resend-unavailable';
+  }
+  if (error instanceof EmailRequiredError) {
+    return 'email-required';
+  }
   return 'send-failed';
 }
 
 /**
  * Checking a code.
  *   INVALID_CODE, or 400 with no error code → wrong-code
+ *   verify-account purpose (no route)       → verification-link-required
  *   anything else                           → failed
  */
 export function mapVerifyCodeError(error: unknown): AuthFailure {
+  if (error instanceof VerificationLinkRequiredError) {
+    return 'verification-link-required';
+  }
+  if (error instanceof EmailRequiredError) {
+    return 'email-required';
+  }
   if (isTransportOrServerFailure(error) || !(error instanceof ApiError)) {
     return 'failed';
   }
@@ -209,18 +332,14 @@ export function mapVerifyCodeError(error: unknown): AuthFailure {
 
 /**
  * Setting a new password.
- *   INVALID_RESET_TOKEN, RESET_TOKEN_EXPIRED or 401 → token-expired
- *   anything else                                    → failed
+ *   INVALID_CODE (the code is the only credential) → token-expired
+ *   anything else                                  → failed
  */
 export function mapResetPasswordError(error: unknown): AuthFailure {
   if (isTransportOrServerFailure(error) || !(error instanceof ApiError)) {
     return 'failed';
   }
-  if (
-    error.code === 'INVALID_RESET_TOKEN' ||
-    error.code === 'RESET_TOKEN_EXPIRED' ||
-    error.status === 401
-  ) {
+  if (error.code === 'INVALID_CODE') {
     return 'token-expired';
   }
   return 'failed';
