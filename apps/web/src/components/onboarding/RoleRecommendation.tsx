@@ -130,7 +130,7 @@ export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack
   return (
     <>
       {/* Header */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 ">
         <h1
           ref={titleRef}
           tabIndex={-1}
