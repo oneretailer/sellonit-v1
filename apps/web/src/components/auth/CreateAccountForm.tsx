@@ -369,8 +369,8 @@ export function CreateAccountForm() {
         className="flex w-full  flex-col gap-0 text-left"
       >
         {/* fields: stacked below md, paired rows from md up */}
-        <div className="mb-6 flex w-full flex-col gap-6 md:mb-9">
-          <div className="flex w-full flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-4">
+        <div className=" flex w-full flex-col gap-6 ">
+          <div className="flex w-full mb-5 md:mb-0  flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-4">
             <PillTextField
               id="firstName"
               label="First name"
@@ -425,7 +425,8 @@ export function CreateAccountForm() {
             disabled={isSubmitting}
           />
 
-          <div className="flex w-full flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-x-4">
+          <div className="flex w-full flex-col gap-6 md:grid md:grid-cols-2
+           md:items-start md:gap-x-4">
             <div className="flex w-full flex-col gap-2">
               <PasswordField
                 id="password"
@@ -481,8 +482,8 @@ export function CreateAccountForm() {
         </div>
 
         {/* terms checkbox: real input, whole row clickable */}
-        <div className="mb-6 flex w-full flex-col gap-2">
-          <label className="flex min-h-11 cursor-pointer items-center gap-3">
+        <div className=" flex w-full  flex-col gap-2">
+          <label className="flex min-h-11  cursor-pointer items-center gap-3">
             <input
               ref={termsRef}
               type="checkbox"
@@ -496,7 +497,9 @@ export function CreateAccountForm() {
               aria-describedby={termsError ? 'terms-error' : undefined}
               className="size-5 shrink-0 accent-primary"
             />
-            <span className="text-base text-ink md:text-sm">I agree with the terms and policy</span>
+            <span className="text-base mb-5 md:mb-0 text-ink md:text-[18px]">I agree with  {" "}
+              <span className='text-orange-400'>the terms of service </span> 
+              and  {" "} <span className='text-orange-400'>privacy policy</span> </span>
           </label>
           {termsError ? (
             <p id="terms-error" className={errorTextClass}>
@@ -506,7 +509,7 @@ export function CreateAccountForm() {
         </div>
 
         {/* button and footer: gap 24 */}
-        <div className="flex w-full flex-col gap-2 sm:gap-4">
+        <div className="flex w-full  flex-col gap-2 sm:gap-4">
           {/* form-level errors (rate limit, network, server) */}
           <div aria-live="polite">
             {formError ? (
@@ -523,7 +526,7 @@ export function CreateAccountForm() {
             aria-disabled={!valid || isSubmitting}
             aria-busy={isSubmitting || undefined}
             className={cn(
-              'flex h-14 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-xl leading-7 font-semibold text-ink transition-colors sm:h-16 sm:text-2xl sm:leading-8 md:h-12 md:rounded-xl md:py-2 md:text-base md:leading-6',
+              'flex h-14 w-full items-center mb-5 md:mb-0  justify-center gap-2 rounded-full px-6 py-3 text-xl leading-7 font-semibold text-ink transition-colors sm:h-16 sm:text-2xl sm:leading-8 md:h-12 md:rounded-xl md:py-2 md:text-base md:leading-6',
               isSubmitting
                 ? 'cursor-not-allowed bg-[#CC7000]'
                 : valid

@@ -134,7 +134,7 @@ export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack
         <h1
           ref={titleRef}
           tabIndex={-1}
-          className="text-[26px] font-bold leading-8 text-ink outline-none sm:text-[32px] sm:leading-10"
+          className="text-[20px] font-bold leading-8 text-ink outline-none sm:text-[32px] sm:leading-10"
         >
           Your Recommended Role
         </h1>
@@ -147,7 +147,7 @@ export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack
       <div className="flex w-full flex-col gap-5 rounded-[16px] border border-line bg-white p-6 text-left">
         <div className="flex items-center justify-between gap-3">
           <p className="text-xl font-bold text-ink sm:text-2xl">{content.name}</p>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[13px] font-semibold text-primary">
+          <span className="inline-flex shrink-0 hidden items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[13px] font-semibold text-primary">
             <CircleCheckIcon />
             Recommended
           </span>

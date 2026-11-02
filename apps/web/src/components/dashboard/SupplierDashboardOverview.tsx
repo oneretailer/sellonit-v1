@@ -20,6 +20,7 @@ const currencyFormat = new Intl.NumberFormat('en-NG', {
   minimumFractionDigits: 0,
 });
 const countFormat = new Intl.NumberFormat('en-NG', { maximumFractionDigits: 0 });
+const shortDateFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
 
 export function formatNaira(amount: number): string {
   return currencyFormat.format(amount);
@@ -180,12 +181,21 @@ function niceMaximum(value: number): number {
   return nice * magnitude;
 }
 
+/**
+ * Evenly spaced axis dates. On short ranges (1-4 days) several rounded day
+ * offsets collapse to the same value, so offsets are de-duplicated. This keeps
+ * React keys unique and avoids repeated labels such as "2 Nov, 2 Nov, 2 Nov".
+ */
 function chartDates(range: { from: string; to: string }, count = 5): Date[] {
   const from = new Date(`${range.from}T12:00:00`);
   const to = new Date(`${range.to}T12:00:00`);
   const span = Math.max(0, Math.round((to.getTime() - from.getTime()) / 86_400_000));
-  return Array.from({ length: count }, (_, index) => {
-    const dayOffset = count === 1 ? 0 : Math.round((span * index) / (count - 1));
+  const offsets = new Set(
+    Array.from({ length: count }, (_, index) =>
+      count === 1 ? 0 : Math.round((span * index) / (count - 1)),
+    ),
+  );
+  return [...offsets].map((dayOffset) => {
     const date = new Date(from);
     date.setDate(date.getDate() + dayOffset);
     return date;
@@ -233,9 +243,7 @@ function SalesTrendChart({
   const dates = chartDates(range);
   const ticks = Array.from({ length: 5 }, (_, index) => (maximum * index) / 4);
   const tooltipDate = activePoint
-    ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(
-        new Date(`${activePoint.date}T12:00:00`),
-      )
+    ? shortDateFormat.format(new Date(`${activePoint.date}T12:00:00`))
     : '';
 
   return (
@@ -263,7 +271,7 @@ function SalesTrendChart({
         {ticks.map((tick, index) => {
           const y = top + plotHeight - (tick / maximum) * plotHeight;
           return (
-            <g key={index}>
+            <g key={`tick-${index}`}>
               <line
                 x1={left}
                 x2={width - right}
@@ -287,44 +295,45 @@ function SalesTrendChart({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {points.map((point) => (
-          <circle
-            key={point.date}
-            cx={point.x}
-            cy={point.y}
-            r="4"
-            fill="#fff"
-            stroke="#ff8a00"
-            strokeWidth="2"
-            tabIndex={0}
-            role="img"
-            aria-label={`${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(`${point.date}T12:00:00`))} · ${formatNaira(point.value)}`}
-            onFocus={() =>
-              setActivePoint({ x: point.x, y: point.y, date: point.date, value: point.value })
-            }
-            onBlur={() => setActivePoint(null)}
-            onPointerEnter={() =>
-              setActivePoint({ x: point.x, y: point.y, date: point.date, value: point.value })
-            }
-          >
-            <title>{`${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(`${point.date}T12:00:00`))} · ${formatNaira(point.value)}`}</title>
-          </circle>
-        ))}
+        {points.map((point, index) => {
+          const label = `${shortDateFormat.format(new Date(`${point.date}T12:00:00`))} · ${formatNaira(point.value)}`;
+          return (
+            <circle
+              // Index suffix keeps keys unique even if the API returns repeated dates.
+              key={`${point.date}-${index}`}
+              cx={point.x}
+              cy={point.y}
+              r="4"
+              fill="#fff"
+              stroke="#ff8a00"
+              strokeWidth="2"
+              tabIndex={0}
+              role="img"
+              aria-label={label}
+              onFocus={() =>
+                setActivePoint({ x: point.x, y: point.y, date: point.date, value: point.value })
+              }
+              onBlur={() => setActivePoint(null)}
+              onPointerEnter={() =>
+                setActivePoint({ x: point.x, y: point.y, date: point.date, value: point.value })
+              }
+            >
+              <title>{label}</title>
+            </circle>
+          );
+        })}
         {dates.map((date, index) => {
           const x = left + (plotWidth * index) / Math.max(1, dates.length - 1);
-          const label = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(
-            date,
-          );
           return (
             <text
-              key={date.toISOString()}
+              key={`${index}-${date.toISOString()}`}
               x={x}
               y={height - 8}
               textAnchor="middle"
               fill="#6b7280"
               fontSize="11"
             >
-              {label}
+              {shortDateFormat.format(date)}
             </text>
           );
         })}
@@ -400,8 +409,11 @@ function StockNeedsAttention({ data }: { data: SupplierDashboardData }) {
       </div>
       {alerts.length ? (
         <ul className="mt-4 divide-y divide-line">
-          {alerts.map((alert) => (
-            <li key={alert.id} className="flex min-h-16 items-center justify-between gap-3 py-3">
+          {alerts.map((alert, index) => (
+            <li
+              key={`${alert.id}-${index}`}
+              className="flex min-h-16 items-center justify-between gap-3 py-3"
+            >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-ink">{alert.name}</p>
                 <p className="mt-1 truncate text-xs text-subtle">
@@ -508,8 +520,8 @@ function RecentOrders({ data }: { data: SupplierDashboardData }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {data.recentOrders.map((order) => (
-                  <tr key={order.id}>
+                {data.recentOrders.map((order, index) => (
+                  <tr key={`${order.id}-${index}`}>
                     <td className="whitespace-nowrap px-3 py-4 font-medium text-ink">{order.id}</td>
                     <td className="px-3 py-4">
                       <p className="font-medium text-ink">{order.retailerName}</p>
@@ -545,8 +557,8 @@ function RecentOrders({ data }: { data: SupplierDashboardData }) {
             </table>
           </div>
           <ul className="mt-4 flex flex-col gap-3 md:hidden">
-            {data.recentOrders.map((order) => (
-              <li key={order.id} className="rounded-2xl border border-line p-4">
+            {data.recentOrders.map((order, index) => (
+              <li key={`${order.id}-${index}`} className="rounded-2xl border border-line p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 truncate text-sm font-semibold text-ink">{order.id}</p>
                   <FulfilmentStatus status={order.status} />
