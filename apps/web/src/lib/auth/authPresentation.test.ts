@@ -43,7 +43,9 @@ describe('auth presentation contract', () => {
     expect(chooser).toContain("router.push('/auth/register/account-details')");
     expect(setup).toContain('BagMark');
     expect(layout).toContain("'Sign up'");
-    expect(layout).toContain("'Account details'");
+    // The account-details step owns its page shell (Navbar + label) since the
+    // md+ redesign, so the label lives with that screen rather than the layout.
+    expect(setup).toContain("'Account details'");
     expect(signup).toContain('placeholder="Enter your first name"');
     expect(signup).toContain('placeholder="Enter your last name"');
     expect(signup).toContain('placeholder="you@example.com"');
