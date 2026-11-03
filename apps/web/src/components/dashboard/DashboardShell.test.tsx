@@ -124,16 +124,41 @@ describe('supplier workspace shell', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  it('derives setup progress from known completion ids and ignores unknown ids', () => {
-    expect(getSetupProgress(EMPTY_SUPPLIER_DASHBOARD)).toEqual({
+  it('derives setup progress from the six-step checklist and the business draft', () => {
+    // No backend steps and no business draft yet → 0 of 6.
+    expect(getSetupProgress(EMPTY_SUPPLIER_DASHBOARD, null)).toEqual({
+      completed: 0,
+      total: 6,
+      percent: 0,
+    });
+    // A completed Create Business draft marks "Business information" done → 1 of 6.
+    const draft = {
+      name: 'Okechukwu Fashion',
+      phone: '08031234567',
+      email: 'hello@example.com',
+      description: 'Fashion retailer',
+      completedAt: '2026-10-26T00:00:00.000Z',
+    };
+    expect(getSetupProgress(EMPTY_SUPPLIER_DASHBOARD, draft)).toEqual({
       completed: 1,
-      total: 5,
-      percent: 20,
+      total: 6,
+      percent: 17,
     });
-    const progress = getSetupProgress({
-      ...EMPTY_SUPPLIER_DASHBOARD,
-      setup: { completedStepIds: ['account', 'account', 'not-a-step'] },
-    });
-    expect(progress).toEqual({ completed: 1, total: 5, percent: 20 });
+    // Backend ids are de-duplicated, unknown ids ignored, and merged with the draft.
+    const progress = getSetupProgress(
+      {
+        ...EMPTY_SUPPLIER_DASHBOARD,
+        setup: { completedStepIds: ['supplier-profile', 'supplier-profile', 'not-a-step'] },
+      },
+      draft,
+    );
+    expect(progress).toEqual({ completed: 2, total: 6, percent: 33 });
+  });
+
+  it('links the progress widget to the refresh-safe Supplier Setup route', () => {
+    renderShell();
+    const links = screen.getAllByRole('link', { name: /Complete setup/ });
+    expect(links.length).toBeGreaterThan(0);
+    links.forEach((link) => expect(link.getAttribute('href')).toBe('/dashboard/supplier-setup'));
   });
 });

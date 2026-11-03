@@ -13,9 +13,12 @@ export type AuthCardProps = {
 
 /**
  * The white card every auth step sits in: 36px radius, 1px border, soft shadow,
- * centred content. Full width on mobile, capped at 632px on desktop. Padding
- * shrinks on small screens (20px sides, 40px top/bottom), and is 36px sides
- * and 48px top/bottom from the `sm` breakpoint.
+ * centred content. Full width on mobile (capped at 416px), and from `md` up a
+ * fluid `w-full` card capped at a per-screen max width (632px by default; the
+ * create-business step widens it to 800px via `auth-card--business`). Height
+ * always hugs the content — there is no fixed height at any breakpoint, so the
+ * page scrolls instead of clipping on short laptops. Vertical padding and gaps
+ * scale with the viewport (see `.auth-card` in globals.css).
  */
 export function AuthCard({ children, className, gapClassName = 'gap-6 md:gap-12' }: AuthCardProps) {
   return (

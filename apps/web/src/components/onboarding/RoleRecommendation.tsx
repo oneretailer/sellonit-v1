@@ -112,10 +112,13 @@ export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack
     setError(null);
     try {
       const saved = await roleApi.saveRole(role);
-      // Refresh the in-memory session BEFORE navigating: the dashboard guard
-      // reads the server user, so it must already show onboardingIntent.
+      // Refresh the in-memory session BEFORE navigating: the next guard reads
+      // the server user, so it must already show onboardingIntent.
       acceptAuthenticatedUser(saved.user);
-      router.replace(AUTH_ROUTE.dashboard);
+      // Every role continues to Create Business immediately after the role is
+      // saved. Only the Supplier track can advance past it today (see
+      // businessApi.canCreateBusiness); other roles get a "coming soon" notice.
+      router.replace(AUTH_ROUTE.createBusiness);
     } catch (caught: unknown) {
       inFlight.current = false;
       setSaving(false);

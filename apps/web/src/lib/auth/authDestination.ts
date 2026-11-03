@@ -33,6 +33,7 @@ export const AUTH_ROUTE = {
   login: '/auth/login',
   verifyEmail: '/auth/verify-email',
   roleSelection: '/auth/role-selection',
+  createBusiness: '/auth/create-business',
   dashboard: '/dashboard/overview',
 } as const satisfies Record<string, Route>;
 

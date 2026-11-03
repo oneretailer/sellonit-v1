@@ -29,19 +29,32 @@ function SessionSkeleton() {
  * step; every other state is redirected through authDestination.ts. Loading is
  * never treated as "not onboarded", so the guard cannot bounce a user who
  * finished onboarding on another browser.
+ *
+ * `allowOnboarded` is for the Create Business step, which runs immediately after
+ * the role is saved — at that point the resolved destination is already the
+ * dashboard, so the guard must keep rendering instead of redirecting away.
  */
-export function RequireAuthenticatedSession({ children }: { children: ReactNode }) {
+export function RequireAuthenticatedSession({
+  children,
+  allowOnboarded = false,
+}: {
+  children: ReactNode;
+  allowOnboarded?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { status, user, refreshSession } = useAuthSession();
   const destination = resolveAuthDestination({ status, user });
-  const target = redirectTarget(destination, pathname);
+  const rendersHere = allowOnboarded
+    ? destination.kind === 'dashboard'
+    : destination.kind === 'role-selection';
+  const target = rendersHere ? null : redirectTarget(destination, pathname);
 
   useEffect(() => {
     if (target) router.replace(target);
   }, [pathname, router, target]);
 
-  if (destination.kind === 'role-selection') return children;
+  if (rendersHere) return children;
   if (status === 'error') {
     return (
       <AuthCard gapClassName="gap-4">

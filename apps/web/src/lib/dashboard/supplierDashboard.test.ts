@@ -11,7 +11,7 @@ describe('supplier dashboard API adapters', () => {
     expect(supplierDashboardApi).toBe(localSupplierDashboardApi);
   });
 
-  it('returns only empty summaries and lists, with account as the sole completed setup step', async () => {
+  it('returns only empty summaries and lists, with no backend-reported setup steps yet', async () => {
     const result = await localSupplierDashboardApi.getDashboard({
       from: '2026-10-01',
       to: '2026-10-26',
@@ -29,7 +29,9 @@ describe('supplier dashboard API adapters', () => {
     expect(result.salesTrend).toEqual([]);
     expect(result.stockAlerts).toEqual([]);
     expect(result.recentOrders).toEqual([]);
-    expect(result.setup.completedStepIds).toEqual(['account']);
+    // Business information is derived locally from the Create Business draft,
+    // not reported by the backend stub.
+    expect(result.setup.completedStepIds).toEqual([]);
   });
 
   it('keeps the future HTTP adapter inactive until a complete backend contract is implemented', async () => {

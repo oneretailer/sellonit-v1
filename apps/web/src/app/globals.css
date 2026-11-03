@@ -84,28 +84,32 @@
     }
   }
 
-  /* ---------- md: 768px+ ---------- */
+  /* ---------- md: 768px+ ----------
+     From md up the card is fluid (w-full up to a per-screen max width), hugs
+     its content height, and never clips: the page scrolls on short viewports.
+     Vertical padding and gaps use clamp() with vh so they compress gracefully
+     on small laptops / browser zoom. Mobile (above) is left untouched. */
   @media (min-width: 768px) {
     .auth-card {
-      --auth-w: 480px;
-      --auth-radius: 28px;
-      --auth-pad-y: 32px;
-      --auth-pad-x: 28px;
-      --auth-gap: 28px;
+      --auth-w: 100%;
+      --auth-max-w: 632px;
+      --auth-radius: 36px;
+      --auth-pad-y: clamp(20px, 4vh, 32px);
+      --auth-pad-x: clamp(24px, 4vw, 36px);
+      --auth-gap: clamp(20px, 3vh, 28px);
       --auth-heading-size: 28px;
       --auth-heading-lh: 34px;
-      border: 5px solid #e5e7eb;
+      max-width: var(--auth-max-w);
+      border: 1px solid var(--color-line);
     }
   }
 
   /* ---------- lg: 1024px+ ---------- */
   @media (min-width: 1024px) {
     .auth-card {
-      --auth-w: 520px;
-      --auth-radius: 30px;
-      --auth-pad-y: 36px;
-      --auth-pad-x: 32px;
-      --auth-gap: 32px;
+      --auth-pad-y: clamp(24px, 4vh, 36px);
+      --auth-pad-x: 36px;
+      --auth-gap: clamp(24px, 3vh, 32px);
       --auth-heading-size: 30px;
       --auth-heading-lh: 36px;
       --auth-field-h: 52px;
@@ -116,11 +120,8 @@
   /* ---------- xl: 1280px+ ---------- */
   @media (min-width: 1280px) {
     .auth-card {
-      --auth-w: 560px;
-      --auth-radius: 32px;
-      --auth-pad-y: 40px;
-      --auth-pad-x: 36px;
-      --auth-gap: 36px;
+      --auth-pad-y: clamp(28px, 4.5vh, 40px);
+      --auth-gap: clamp(28px, 3.5vh, 36px);
       --auth-heading-size: 32px;
       --auth-heading-lh: 40px;
       --auth-field-h: 56px;
@@ -131,11 +132,8 @@
   /* ---------- 2xl: 1536px+ (full Figma values) ---------- */
   @media (min-width: 1536px) {
     .auth-card {
-      --auth-w: 632px;
-      --auth-radius: 36px;
-      --auth-pad-y: 48px;
-      --auth-pad-x: 36px;
-      --auth-gap: 48px;
+      --auth-pad-y: clamp(32px, 5vh, 48px);
+      --auth-gap: clamp(32px, 4vh, 48px);
       --auth-heading-size: 36px;
       --auth-heading-lh: 44px;
       --auth-field-h: 60px;
@@ -143,15 +141,42 @@
     }
   }
 
-  /* ---------- Short laptop screens only (never affects phones in portrait) ---------- */
+  /* ---------- Short laptop screens only (never affects phones in portrait).
+     Padding/gaps already compress via the vh clamps above; here we only shrink
+     the heading and control heights so the card stays usable when zoomed. ---- */
   @media (min-width: 768px) and (max-height: 800px) {
     .auth-card {
-      --auth-pad-y: 28px;
-      --auth-gap: 24px;
       --auth-heading-size: 28px;
       --auth-heading-lh: 34px;
       --auth-field-h: 46px;
       --auth-btn-h: 50px;
+    }
+  }
+
+  /* ---------- Login card (md+): 632px max, 16px gap, 20px/36px padding,
+     ~56px fields and button. Everything clamps down on short viewports. ----- */
+  @media (min-width: 768px) {
+    .auth-card.auth-card--login {
+      --auth-max-w: 632px;
+      --auth-gap: clamp(12px, 2vh, 16px);
+      --auth-pad-y: clamp(12px, 2.5vh, 20px);
+      --auth-pad-x: 36px;
+      --auth-field-h: clamp(44px, 7vh, 56px);
+      --auth-btn-h: clamp(44px, 7vh, 56px);
+    }
+    .auth-card.auth-card--login .auth-heading {
+      font-weight: 700;
+    }
+  }
+
+  /* ---------- Create-business card (md+): 800px max, 24px gap, 24px/36px
+     padding. Hugs height and compresses on short viewports like the rest. --- */
+  @media (min-width: 768px) {
+    .auth-card.auth-card--business {
+      --auth-max-w: 800px;
+      --auth-gap: clamp(16px, 3vh, 24px);
+      --auth-pad-y: clamp(16px, 3vh, 24px);
+      --auth-pad-x: 36px;
     }
   }
 

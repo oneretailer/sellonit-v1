@@ -208,12 +208,20 @@ describe('supplier dashboard overview', () => {
     );
   });
 
-  it('derives setup completion from the typed setup list', () => {
-    expect(SETUP_STEPS).toHaveLength(5);
-    expect(getSetupProgress(EMPTY_SUPPLIER_DASHBOARD)).toEqual({
-      completed: 1,
-      total: 5,
-      percent: 20,
+  it('derives setup completion from the typed six-step setup list', () => {
+    expect(SETUP_STEPS).toHaveLength(6);
+    expect(SETUP_STEPS.map((step) => step.label)).toEqual([
+      'Business information',
+      'Supplier profile',
+      'Product catalogue',
+      'Inventory',
+      'Pricing',
+      'Website',
+    ]);
+    expect(getSetupProgress(EMPTY_SUPPLIER_DASHBOARD, null)).toEqual({
+      completed: 0,
+      total: 6,
+      percent: 0,
     });
   });
 });

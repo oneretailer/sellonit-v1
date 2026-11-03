@@ -168,4 +168,17 @@ describe('authenticated entry gates', () => {
     expect(screen.getByText('Public auth content')).toBeTruthy();
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
+
+  it('keeps Create Business on its own guard even though the user is already onboarded', () => {
+    mocks.pathname = '/auth/create-business';
+    mocks.user = {
+      firstName: 'Jane',
+      lastName: 'Doe',
+      emailVerifiedAt: VERIFIED,
+      onboardingIntent: 'ENTERPRISE',
+    };
+    render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
+    expect(screen.getByText('Public auth content')).toBeTruthy();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
 });

@@ -5,7 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { AuthUser } from '@/lib/auth/types';
-import { SETUP_STEPS, type SupplierDashboardData } from '@/lib/dashboard/supplierDashboard';
+import { readOnboardingBusiness, type OnboardingBusinessDraft } from '@/lib/auth/flowState';
+import type { SupplierDashboardData } from '@/lib/dashboard/supplierDashboard';
+import {
+  computeSupplierSetupProgress,
+  useSupplierSetupProgress,
+} from '@/lib/onboarding/supplierSetup';
 import { DashboardIcon } from './icons';
 import {
   DASHBOARD_NAV_GROUPS,
@@ -18,15 +23,24 @@ export function getUserFullName(user: Pick<AuthUser, 'firstName' | 'lastName'>):
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
 }
 
-export function getSetupProgress(data: SupplierDashboardData): {
+/**
+ * Pure progress helper (kept for tests / non-React callers). Delegates to the
+ * single source of truth and accounts for the locally stored business draft,
+ * which completes the "Business information" step.
+ */
+export function getSetupProgress(
+  data: SupplierDashboardData,
+  business: OnboardingBusinessDraft | null = readOnboardingBusiness(),
+): {
   completed: number;
   total: number;
   percent: number;
 } {
-  const knownIds = new Set<string>(SETUP_STEPS.map((step) => step.id));
-  const completed = new Set(data.setup.completedStepIds.filter((id) => knownIds.has(id))).size;
-  const total = SETUP_STEPS.length;
-  return { completed, total, percent: Math.round((completed / total) * 100) };
+  const { completed, total, percent } = computeSupplierSetupProgress(
+    data.setup.completedStepIds,
+    business,
+  );
+  return { completed, total, percent };
 }
 
 function SetupProgress({
@@ -36,21 +50,20 @@ function SetupProgress({
   data: SupplierDashboardData;
   compact?: boolean;
 }) {
-  const { percent } = getSetupProgress(data);
+  // Same source of truth as the Supplier Setup checklist and modal.
+  const { percent, completed, total } = useSupplierSetupProgress(data.setup.completedStepIds);
+  const subtitle =
+    completed === total ? 'Setup complete' : `${completed} of ${total} steps complete`;
   return (
     <Link
-      href="/dashboard/business-profile/setup"
-      prefetch={false}
-      aria-disabled="true"
-      onClick={(event) => event.preventDefault()}
-      className={`block rounded-2xl border border-primary/20 bg-orange-50 p-4 text-left ${compact ? 'min-h-11 p-3' : ''}`}
+      href="/dashboard/supplier-setup"
+      className={`block rounded-2xl border border-primary/20 bg-orange-50 p-4 text-left transition-colors hover:bg-orange-100 ${compact ? 'min-h-11 p-3' : ''}`}
     >
-      {/* TODO(profile-setup): keep this future link disabled until profile setup is designed and routed. */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-ink">Complete setup</span>
         <span className="font-heading text-sm font-semibold text-primary">{percent}%</span>
       </div>
-      <p className="mt-2 text-xs text-subtle">Supplier profile in progress</p>
+      <p className="mt-2 text-xs text-subtle">{subtitle}</p>
       <div
         className="mt-3 h-1.5 overflow-hidden rounded-full bg-orange-100"
         role="progressbar"

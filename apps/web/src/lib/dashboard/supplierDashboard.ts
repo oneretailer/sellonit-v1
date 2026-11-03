@@ -1,4 +1,5 @@
 import type { AccountRole } from '@/lib/onboarding/roles';
+import { SUPPLIER_SETUP_STEPS } from '@/lib/onboarding/supplierSetup';
 
 export type DateRange = { from: string; to: string };
 
@@ -35,13 +36,12 @@ export type SupplierDashboardData = {
 
 export type SetupStep = { id: string; label: string };
 
-export const SETUP_STEPS = [
-  { id: 'account', label: 'Account created' },
-  { id: 'business-profile', label: 'Business profile' },
-  { id: 'payout-details', label: 'Payout details' },
-  { id: 'first-product', label: 'First product' },
-  { id: 'verification', label: 'Verification' },
-] as const satisfies readonly SetupStep[];
+/**
+ * The supplier setup checklist. Re-exported from the single source of truth
+ * (lib/onboarding/supplierSetup.ts) so the dashboard widget, the Supplier Setup
+ * screen and any modal always agree. Six steps; progress is completed / 6.
+ */
+export const SETUP_STEPS = SUPPLIER_SETUP_STEPS;
 
 export const EMPTY_SUPPLIER_DASHBOARD: SupplierDashboardData = {
   summary: {
@@ -56,7 +56,10 @@ export const EMPTY_SUPPLIER_DASHBOARD: SupplierDashboardData = {
   salesTrend: [],
   stockAlerts: [],
   recentOrders: [],
-  setup: { completedStepIds: ['account'] },
+  // No step is reported complete by the backend yet. "Business information" is
+  // derived locally from the Create Business draft (see useSupplierSetupProgress).
+  // TODO(backend): return real completedStepIds once the dashboard endpoint exists.
+  setup: { completedStepIds: [] },
 };
 
 export interface SupplierDashboardApi {
@@ -71,7 +74,7 @@ export const localSupplierDashboardApi: SupplierDashboardApi = {
       salesTrend: [],
       stockAlerts: [],
       recentOrders: [],
-      setup: { completedStepIds: ['account'] },
+      setup: { completedStepIds: [] },
     });
   },
 };

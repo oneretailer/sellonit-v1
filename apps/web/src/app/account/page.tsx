@@ -12,7 +12,7 @@ export default function AccountPage() {
   return (
     <div className="">
       <AuthPage>
-        <div className="pt-15 w-full flex items-center justify-center">
+        <div className="pt-15 w-full flex items-center justify-center md:pt-0">
           <AuthCard className="items-stretch text-left">
             <AccountPanel />
           </AuthCard>
