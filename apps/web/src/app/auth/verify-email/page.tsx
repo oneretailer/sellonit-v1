@@ -254,20 +254,23 @@ export default function VerifyEmailPage() {
             </div>
 
             {/* Live verification status — this page watches the account itself. */}
-            <div className="rounded-xl border border-line bg-canvas px-4 py-3 text-center">
+            <div
+              className="rounded-xl hidden
+             border border-line bg-canvas px-4 py-3 text-center"
+            >
               {check === 'verified' ? (
                 <p className="text-base font-medium text-success">
                   Email verified. Taking you into Sellonit…
                 </p>
               ) : (
-                <p className="flex items-center justify-center gap-2 text-base text-subtle">
+                <p className="flex items-center hidden justify-center gap-2 text-base text-subtle">
                   <Spinner />
                   {check === 'timed-out'
                     ? 'Still waiting for confirmation.'
                     : 'Waiting for you to verify your email…'}
                 </p>
               )}
-              <p className="mt-1 text-sm text-subtle">
+              <p className="mt-1 text-sm hidden text-subtle">
                 {check === 'timed-out'
                   ? 'Open the link in your inbox, then press “I’ve verified my email”.'
                   : 'We check automatically — this page updates the moment it’s confirmed.'}

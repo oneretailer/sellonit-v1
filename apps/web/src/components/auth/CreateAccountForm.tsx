@@ -425,8 +425,10 @@ export function CreateAccountForm() {
             disabled={isSubmitting}
           />
 
-          <div className="flex w-full flex-col gap-6 md:grid md:grid-cols-2
-           md:items-start md:gap-x-4">
+          <div
+            className="flex w-full flex-col gap-6 md:grid md:grid-cols-2
+           md:items-start md:gap-x-4"
+          >
             <div className="flex w-full flex-col gap-2">
               <PasswordField
                 id="password"
@@ -497,9 +499,10 @@ export function CreateAccountForm() {
               aria-describedby={termsError ? 'terms-error' : undefined}
               className="size-5 shrink-0 accent-primary"
             />
-            <span className="text-base mb-5 md:mb-0 text-ink md:text-[18px]">I agree with  {" "}
-              <span className='text-orange-400'>the terms of service </span> 
-              and  {" "} <span className='text-orange-400'>privacy policy</span> </span>
+            <span className="text-base mb-5 md:mb-0 text-ink md:text-[18px]">
+              I agree with <span className="text-orange-400">the terms of service </span>
+              and <span className="text-orange-400">privacy policy</span>{' '}
+            </span>
           </label>
           {termsError ? (
             <p id="terms-error" className={errorTextClass}>

@@ -117,9 +117,11 @@ function SignupWelcomePanel() {
           <span className="text-primary">
             <UserPlusIcon />
           </span>
-          <h2 className="font-heading text-2xl font-bold tracking-tight 
+          <h2
+            className="font-heading text-2xl font-bold tracking-tight 
           text-[#18325C] lg:text-3xl xl:text-[48px] xl:leading-tight
-           [@media(max-height:820px)]:xl:text-[48px]">
+           [@media(max-height:820px)]:xl:text-[48px]"
+          >
             Set up your account
           </h2>
           <p className="text-sm text-subtle lg:text-base xl:text-lg">
@@ -145,7 +147,9 @@ function SignupWelcomePanel() {
             className="flex aspect-[480/400] max-h-[38vh] w-full max-w-[480px] flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-primary/40 bg-white/60 px-6 text-center"
           >
             <span className="text-sm font-medium text-subtle">Illustration placeholder</span>
-            <span className="text-xs text-subtle">Save the Figma export as public/signup-illustration.png</span>
+            <span className="text-xs text-subtle">
+              Save the Figma export as public/signup-illustration.png
+            </span>
           </div>
         )}
       </div>
