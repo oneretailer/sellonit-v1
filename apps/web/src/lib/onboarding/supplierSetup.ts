@@ -5,12 +5,16 @@
  * derive from `SUPPLIER_SETUP_STEPS` + `computeSupplierSetupProgress`, so they
  * can never disagree. Progress is `completed steps / total steps` (6).
  *
- * "Business information" is completed by the Create Business onboarding step
- * (its draft lives in the shared onboarding state, see flowState.ts). The other
- * steps are completed inside the dashboard. Where the backend cannot yet report
- * a step's status we derive it from local state and leave a TODO.
+ * Server-backed steps:
+ * - Step 1 (`business-information`): complete when an active `SUPPLIER` business
+ *   exists on `GET /businesses` (with local Create Business draft fallback).
+ * - Step 2 (`supplier-profile`): complete when `GET /supplier/:businessId/profile`
+ *   reports `PENDING_REVIEW` or `APPROVED`.
+ * - Steps 3–6 (`product-catalogue`, `inventory`, `pricing`, `website`):
+ *   TODO(BE-002, BE-003, BE-012) — merged from `backendCompletedStepIds` once
+ *   the supplier dashboard / products / inventory / pricing endpoints exist.
  */
-import { useMemo, useSyncExternalStore } from 'react';
+import { useContext, useMemo, useSyncExternalStore } from 'react';
 import type { Route } from 'next';
 import {
   parseOnboardingBusiness,
@@ -18,6 +22,12 @@ import {
   subscribeOnboardingBusiness,
   type OnboardingBusinessDraft,
 } from '@/lib/auth/flowState';
+import { BusinessContext } from '@/lib/business/BusinessContext';
+import {
+  isSupplierProfileStepComplete,
+  useOptionalSupplierProfile,
+  type SupplierProfileRecord,
+} from '@/lib/supplier/supplierProfileApi';
 
 export type SupplierSetupStepId =
   | 'business-information'
@@ -41,8 +51,7 @@ export const SUPPLIER_SETUP_STEPS = [
   { id: 'product-catalogue', label: 'Product catalogue', href: '/dashboard/products' },
   { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory' },
   { id: 'pricing', label: 'Pricing', href: '/dashboard/pricing' },
-  // TODO(backend): there is no Website workspace section yet; the dashboard
-  // catch-all renders a "coming soon" placeholder until one is built.
+  // TODO(BE-012): Website / B2C storefront section is not yet implemented on the backend.
   { id: 'website', label: 'Website', href: '/dashboard/website' },
 ] as const satisfies readonly SupplierSetupStep[];
 
@@ -61,18 +70,27 @@ export type SupplierSetupProgress = {
   nextStep: SupplierSetupStepStatus | null;
 };
 
+export type SupplierSetupSources = {
+  hasServerSupplierBusiness?: boolean;
+  supplierProfile?: SupplierProfileRecord | null;
+};
+
 /**
- * Pure progress math. `backendCompletedStepIds` is whatever the API reports
- * (unknown ids are ignored); a completed business draft marks the first step.
+ * Pure progress math. Merges `backendCompletedStepIds` with server-confirmed
+ * business + supplier-profile state (and the Create Business draft fallback).
  */
 export function computeSupplierSetupProgress(
   backendCompletedStepIds: readonly string[],
   business: OnboardingBusinessDraft | null,
+  sources: SupplierSetupSources = {},
 ): SupplierSetupProgress {
   const known = new Set<string>(SUPPLIER_SETUP_STEP_IDS);
   const completedIds = new Set<string>(backendCompletedStepIds.filter((id) => known.has(id)));
-  if (business) {
+  if (business || sources.hasServerSupplierBusiness) {
     completedIds.add('business-information');
+  }
+  if (isSupplierProfileStepComplete(sources.supplierProfile)) {
+    completedIds.add('supplier-profile');
   }
   const steps: SupplierSetupStepStatus[] = SUPPLIER_SETUP_STEPS.map((step) => ({
     ...step,
@@ -91,26 +109,40 @@ export function computeSupplierSetupProgress(
 }
 
 /**
- * Reactive progress for React components. Merges the backend-reported step ids
- * with the locally stored business draft (the Create Business step).
+ * Reactive progress for React components. Reads the active business from
+ * `BusinessProvider` (`GET /businesses`), the business's `SupplierProfile`
+ * (`GET /supplier/:businessId/profile`), and any backend-reported step IDs.
  *
- * TODO(backend): once GET supplier-dashboard returns real `setup.completedStepIds`
- * for every step, pass them in here; until then only Business information can be
- * derived locally and the rest stay incomplete.
+ * TODO(BE-003): once `GET /supplier/dashboard` returns `setup.completedStepIds`
+ * for Steps 3–6, they merge automatically through `backendCompletedStepIds`.
  */
 export function useSupplierSetupProgress(
   backendCompletedStepIds: readonly string[] = [],
 ): SupplierSetupProgress {
+  const businessContext = useContext(BusinessContext);
+  const activeBusiness = businessContext?.activeBusiness ?? null;
+  const supplierBusinessId =
+    activeBusiness?.type === 'SUPPLIER' ? activeBusiness.id : null;
+  const supplierProfile = useOptionalSupplierProfile(supplierBusinessId);
+
   const raw = useSyncExternalStore(
     subscribeOnboardingBusiness,
     readOnboardingBusinessRaw,
     () => null,
   );
-  const business = useMemo(() => parseOnboardingBusiness(raw), [raw]);
-  // The ids array identity can change each render; join to a stable key.
+  const draft = useMemo(() => parseOnboardingBusiness(raw), [raw]);
+  // If BusinessProvider is mounted and has finished loading, trust the active
+  // server business rather than a stale sessionStorage draft from another business.
+  const effectiveDraft = businessContext && !businessContext.isLoading ? null : draft;
+  const hasServerSupplierBusiness = Boolean(supplierBusinessId);
+
   const idsKey = backendCompletedStepIds.join('|');
   return useMemo(
-    () => computeSupplierSetupProgress(idsKey.length ? idsKey.split('|') : [], business),
-    [idsKey, business],
+    () =>
+      computeSupplierSetupProgress(idsKey.length ? idsKey.split('|') : [], effectiveDraft, {
+        hasServerSupplierBusiness,
+        supplierProfile,
+      }),
+    [effectiveDraft, hasServerSupplierBusiness, idsKey, supplierProfile],
   );
 }

@@ -59,26 +59,25 @@ export const EMPTY_SUPPLIER_DASHBOARD: SupplierDashboardData = {
   salesTrend: [],
   stockAlerts: [],
   recentOrders: [],
-  // No step is reported complete by the backend yet. "Business information" is
-  // derived locally from the Create Business draft (see useSupplierSetupProgress).
-  // TODO(backend): return real completedStepIds once the dashboard endpoint exists.
+  // Steps 1 and 2 are resolved from GET /businesses and GET /supplier/:businessId/profile
+  // (see useSupplierSetupProgress). TODO(BE-003): return Steps 3–6 in completedStepIds
+  // once GET /supplier/dashboard is implemented.
   setup: { completedStepIds: [] },
 };
 
 export interface SupplierDashboardApi {
-  getDashboard(range: DateRange): Promise<SupplierDashboardData>;
+  getDashboard(range: DateRange, businessId?: string | null): Promise<SupplierDashboardData>;
 }
 
 /**
- * Real HTTP adapter. TODO(backend): GET /supplier/dashboard is not implemented
- * yet (the OpenAPI document only sketches per-business analytics). Until it
- * exists the Overview shows its load-error + Retry state — no mock data.
- * Expected response: `{ data: SupplierDashboardData }` with money in kobo and
- * `setup.completedStepIds` from the shared six-step checklist.
+ * Real HTTP adapter. TODO(BE-003): GET /supplier/dashboard is not implemented
+ * yet on the backend (see docs/backend-handoff.md). Until BE-003 lands, Overview
+ * surfaces an honest unavailable banner — never mock data.
  */
 export const httpSupplierDashboardApi: SupplierDashboardApi = {
-  async getDashboard(range) {
+  async getDashboard(range, businessId) {
     const search = new URLSearchParams({ from: range.from, to: range.to });
+    if (businessId) search.set('businessId', businessId);
     const response = await apiFetch<{ data: SupplierDashboardData }>(
       `/supplier/dashboard?${search.toString()}`,
       { method: 'GET' },

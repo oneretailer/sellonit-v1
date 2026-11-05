@@ -85,6 +85,7 @@ function OverviewWorkspace({ user }: { user: AuthUser }) {
         data={dashboard.data}
         isLoading={dashboard.isLoading}
         error={dashboard.error}
+        unavailable={dashboard.unavailable}
         retry={dashboard.retry}
         selectedRange={selected}
         rangeOptions={options}

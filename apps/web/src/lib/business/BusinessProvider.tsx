@@ -11,32 +11,19 @@
  * TODO(backend): role-based permissions. For now a supplier Owner can do
  * everything; `can` is the single helper to tighten once grants exist.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
 import { getActiveBusinessId, setActiveBusinessId } from './activeBusiness';
-import { listBusinesses, type SwitcherBusiness } from './businessesApi';
+import {
+  BusinessContext,
+  type BusinessContextValue,
+  type BusinessPermission,
+} from './BusinessContext';
+import { listBusinesses } from './businessesApi';
 
-export type BusinessPermission =
-  | 'product:read'
-  | 'product:write'
-  | 'product:publish'
-  | 'product:delete';
-
-type BusinessContextValue = {
-  businesses: SwitcherBusiness[];
-  activeBusiness: SwitcherBusiness | null;
-  isLoading: boolean;
-  error: unknown;
-  refetch: () => void;
-  switchBusiness: (id: string) => void;
-  switcherOpen: boolean;
-  setSwitcherOpen: (open: boolean) => void;
-  can: (permission: BusinessPermission) => boolean;
-};
-
-const BusinessContext = createContext<BusinessContextValue | null>(null);
+export type { BusinessContextValue, BusinessPermission };
 
 export const businessKeys = {
   all: ['businesses'] as const,

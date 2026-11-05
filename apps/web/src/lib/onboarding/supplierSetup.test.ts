@@ -35,6 +35,30 @@ describe('supplier setup checklist', () => {
     expect(progress.steps.every((step) => !step.complete)).toBe(true);
   });
 
+  it('marks Business information complete from server supplier business even when sessionStorage draft is empty', () => {
+    const progress = computeSupplierSetupProgress([], null, {
+      hasServerSupplierBusiness: true,
+      supplierProfile: { businessId: 'biz-1', status: 'DRAFT' },
+    });
+    expect(progress.completed).toBe(1);
+    expect(progress.percent).toBe(17);
+    expect(progress.steps[0]!.complete).toBe(true);
+    expect(progress.steps[1]!.complete).toBe(false);
+    expect(progress.nextStep?.id).toBe('supplier-profile');
+  });
+
+  it('marks Supplier profile complete once submitted (PENDING_REVIEW or APPROVED → 2 of 6 = 33%)', () => {
+    const progress = computeSupplierSetupProgress([], null, {
+      hasServerSupplierBusiness: true,
+      supplierProfile: { businessId: 'biz-1', status: 'PENDING_REVIEW' },
+    });
+    expect(progress.completed).toBe(2);
+    expect(progress.percent).toBe(33);
+    expect(progress.steps[0]!.complete).toBe(true);
+    expect(progress.steps[1]!.complete).toBe(true);
+    expect(progress.nextStep?.id).toBe('product-catalogue');
+  });
+
   it('marks Business information complete from the Create Business draft (1 of 6 ≈ 17%)', () => {
     const progress = computeSupplierSetupProgress([], draft);
     expect(progress.completed).toBe(1);
