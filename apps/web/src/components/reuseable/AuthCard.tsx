@@ -22,7 +22,8 @@ export type AuthCardProps = {
  */
 export function AuthCard({ children, className, gapClassName = 'gap-6 md:gap-12' }: AuthCardProps) {
   return (
-    <section
+   <div className=' w-full flex items-center justify-center mt-10'>
+     <section
       className={cn(
         'auth-card flex w-full max-w-card flex-col items-stretch shadow-lg shadow-Gray/100 rounded-card border border-line bg-surface px-[18px] py-6 text-center  md:px-9 ',
         gapClassName,
@@ -31,5 +32,6 @@ export function AuthCard({ children, className, gapClassName = 'gap-6 md:gap-12'
     >
       {children}
     </section>
+   </div>
   );
 }
