@@ -126,7 +126,7 @@ function bodyField(req: Request, key: string): unknown {
 }
 
 function businessTypeField(value: unknown): value is BusinessType {
-  return value === 'RETAILER' || value === 'ENTREPRENEUR' || value === 'ENTERPRISE';
+  return value === 'RETAILER' || value === 'SUPPLIER';
 }
 
 export async function registerHandler(req: Request, res: Response): Promise<void> {
@@ -215,7 +215,7 @@ export async function setBusinessIntentHandler(req: Request, res: Response): Pro
       res,
       new AuthError(
         'VALIDATION_ERROR',
-        'Business type must be RETAILER, ENTREPRENEUR, or ENTERPRISE',
+        'Business type must be RETAILER or SUPPLIER',
         400,
       ),
     );
