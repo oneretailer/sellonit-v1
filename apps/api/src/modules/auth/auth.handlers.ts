@@ -213,11 +213,7 @@ export async function setBusinessIntentHandler(req: Request, res: Response): Pro
     sendError(
       req,
       res,
-      new AuthError(
-        'VALIDATION_ERROR',
-        'Business type must be RETAILER or SUPPLIER',
-        400,
-      ),
+      new AuthError('VALIDATION_ERROR', 'Business type must be RETAILER or SUPPLIER', 400),
     );
     return;
   }

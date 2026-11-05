@@ -75,9 +75,7 @@ async function main(): Promise<void> {
     });
     planRecords.set(key, record);
   }
-  for (const [from, to] of [
-    ['ENTERPRISE', 'ENTERPRISE_PLUS'],
-  ] as const) {
+  for (const [from, to] of [['ENTERPRISE', 'ENTERPRISE_PLUS']] as const) {
     await prisma.planTransition.upsert({
       where: {
         fromPlanId_toPlanId: {

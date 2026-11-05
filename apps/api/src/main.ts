@@ -18,8 +18,6 @@ app.get('/api/v1/me', requireAuth, meHandler);
 app.use('/api/v1/businesses', BusinessRouter);
 app.use('/api/v1/supplier', SupplierRouter);
 
-
-
 const host = process.env.API_HOST ?? '0.0.0.0';
 const port = Number(process.env.API_PORT);
 
