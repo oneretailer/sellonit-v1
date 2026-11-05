@@ -22,7 +22,8 @@ function profileData(body: Record<string, unknown>) {
   }
   if (
     data.retailerAccess !== undefined &&
-    !['OPEN', 'APPROVAL_REQUIRED', 'PRIVATE'].includes(String(data.retailerAccess))
+    (typeof data.retailerAccess !== 'string' ||
+      !['OPEN', 'APPROVAL_REQUIRED', 'PRIVATE'].includes(data.retailerAccess))
   ) {
     throw new AuthError('VALIDATION_ERROR', 'Invalid retailer access value', 400);
   }

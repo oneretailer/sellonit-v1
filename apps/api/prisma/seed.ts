@@ -115,7 +115,7 @@ async function main(): Promise<void> {
     });
   }
 
-  console.log(`Seeded admin ${email}`);
+  console.warn(`Seeded admin ${email}`);
 }
 
 main()
