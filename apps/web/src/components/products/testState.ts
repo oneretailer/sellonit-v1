@@ -23,8 +23,8 @@ export const businessMocks = {
   isLoading: false,
   error: null as unknown,
   businesses: [
-    { id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE', role: 'OWNER' },
-    { id: 'biz-2', name: 'Lagos Fabrics', type: 'ENTERPRISE', role: 'ADMIN' },
+    { id: 'biz-1', name: 'Okechukwu Fashion', type: 'SUPPLIER', status: 'ACTIVE', role: 'OWNER', plan: null },
+    { id: 'biz-2', name: 'Lagos Fabrics', type: 'SUPPLIER', status: 'ACTIVE', role: 'MANAGER', plan: null },
   ] as SwitcherBusiness[],
   activeIndex: 0,
 };

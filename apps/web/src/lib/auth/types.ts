@@ -1,23 +1,30 @@
 /**
  * Frontend types for the Sellonit auth API.
  *
- * Shapes mirror the live backend (`apps/api/src/modules/auth/*` and
- * `apps/api/src/http/routes/auth.routes.ts`) and reuse the generated OpenAPI
- * types from @sellonit/shared where they match. No fields are invented.
+ * Shapes reuse the generated OpenAPI schemas from `@sellonit/shared` where
+ * aligned, and mirror the live backend (`apps/api/src/modules/auth/*`) where
+ * `docs/openapi.yaml` has documented drift (see `BE-007` in
+ * `docs/backend-handoff.md`).
  */
 import type { components } from '@sellonit/shared';
 
-/** Onboarding business type stored on the user by PUT /auth/business-intent. */
-export type BusinessType = components['schemas']['BusinessType'];
+type Schemas = components['schemas'];
 
-/** Public user shape as returned by the API (see `publicUserSelect` in the backend). */
+/** Onboarding business type stored on the user by PUT /auth/business-intent. */
+export type BusinessType = Schemas['BusinessType'];
+
+/**
+ * Public user shape returned by `publicUserSelect` (`auth.service.ts:14-26`).
+ * Extends the generated `User` schema with `phone` and `phoneVerifiedAt`, which
+ * the live handler returns today (`BE-007`).
+ */
 export type AuthUser = {
-  id: string;
-  email: string;
+  id: NonNullable<Schemas['User']['id']>;
+  email: NonNullable<Schemas['User']['email']>;
   firstName: string;
   lastName: string;
   phone: string | null;
-  status: components['schemas']['UserStatus'];
+  status: Schemas['UserStatus'];
   /** Saved onboarding role (from PUT /auth/business-intent), null until chosen. */
   onboardingIntent: BusinessType | null;
   emailVerifiedAt: string | null;
@@ -27,19 +34,16 @@ export type AuthUser = {
 };
 
 /**
- * POST /api/v1/auth/register — request body.
- *
- * The contract (docs/auth-registration-contract.md) asks for `fullName`; the
- * live backend reads `firstName`/`lastName`. The client sends both so either
- * implementation works.
+ * POST /api/v1/auth/register — UI input shape.
+ * `registerUser` derives `{ firstName, lastName }` matching `Schemas['RegisterRequest']`.
  */
 export type RegisterUserRequest = {
-  /** Full name as typed (2-80 chars). The API derives firstName/lastName from it. */
+  /** Full name as typed (2-80 chars). The client derives firstName/lastName from it. */
   fullName: string;
   /** Trimmed and lowercased before sending. The backend accepts email only. */
-  email: string;
+  email: Schemas['RegisterRequest']['email'];
   /** Sent exactly as typed — never trimmed. */
-  password: string;
+  password: Schemas['RegisterRequest']['password'];
 };
 
 /** POST /api/v1/auth/register — 201 response. */
@@ -49,86 +53,62 @@ export type RegisterUserResponse = {
   emailVerificationToken?: string;
 };
 
-/** POST /api/v1/auth/login — request body (matches `LoginRequest`). */
-export type LoginRequest = {
-  email: string;
-  password: string;
-};
+/** POST /api/v1/auth/login — request body from `@sellonit/shared`. */
+export type LoginRequest = Schemas['LoginRequest'];
 
-/** POST /auth/login — 200 response. The session cookie is set by the API. */
+/**
+ * POST /auth/login — 200 response. The session cookie is set by the API;
+ * `accessToken` is omitted from JSON by `loginHandler` (`BE-007`).
+ */
 export type LoginResponse = {
   user: AuthUser;
-  /** Session lifetime in seconds. */
-  expiresIn: number;
+  expiresIn: Schemas['AuthResponse']['expiresIn'];
 };
 
 /**
- * POST /auth/resend-verification — request body.
- * The endpoint is specified in docs/auth-registration-contract.md §4 but is not
- * implemented by the backend, so the app never sends it.
+ * POST /auth/resend-verification — request body (`TODO(BE-008)`: unimplemented).
  */
-export type ResendVerificationRequest = {
-  email: string;
-};
+export type ResendVerificationRequest = Pick<Schemas['ForgotPasswordRequest'], 'email'>;
 
-/** Response shape the resend endpoint will return once it exists. */
+/** Response shape the resend endpoint will return once `BE-008` is implemented. */
 export type ResendVerificationResponse = {
   data: {
     sent: boolean;
   };
 };
 
-/**
- * POST /api/v1/auth/verify-email-and-login — request body. `token` is the
- * 64-character hex token from the `/auth/verify-email/confirm?token=` link.
- */
-export type VerifyEmailRequest = {
-  token: string;
-};
+/** POST /api/v1/auth/verify-email-and-login — request body from `@sellonit/shared`. */
+export type VerifyEmailRequest = Schemas['VerifyEmailRequest'];
 
 /** POST /auth/verify-email-and-login — 200 response (sets the session cookie). */
-export type VerifyEmailResponse = {
-  user: AuthUser;
-  expiresIn: number;
-};
+export type VerifyEmailResponse = LoginResponse;
 
 /** GET /auth/me — 200 response. */
 export type MeResponse = {
   data: AuthUser;
 };
 
-/** PATCH /auth/me — request body. The API normalises the phone number. */
-export type UpdatePhoneRequest = {
-  phone: string;
-};
+/** PATCH /auth/me — request body from `@sellonit/shared`. */
+export type UpdatePhoneRequest = Schemas['UpdatePhoneRequest'];
 
-/** POST /auth/forgot-password — request body. The backend accepts email only. */
-export type ForgotPasswordRequest = {
-  email: string;
-};
+/** POST /auth/forgot-password — request body from `@sellonit/shared`. */
+export type ForgotPasswordRequest = Schemas['ForgotPasswordRequest'];
 
-/** POST /auth/forgot-password — 202 response. The body is not relied on. */
+/** POST /auth/forgot-password — 202 response. */
 export type ForgotPasswordResponse = {
   data: { sent: boolean };
 };
 
-/** POST /auth/verification-codes/verify — request body (`identifier` is an email). */
-export type VerifyPasswordResetCodeRequest = {
-  identifier: string;
-  code: string;
-};
+/** POST /auth/verification-codes/verify — request body from `@sellonit/shared`. */
+export type VerifyPasswordResetCodeRequest = Schemas['VerifyPasswordResetCodeRequest'];
 
-/** POST /auth/verification-codes/verify — 200 response. It carries no reset token. */
+/** POST /auth/verification-codes/verify — 200 response. */
 export type VerifyPasswordResetCodeResponse = {
   data: { verified: boolean };
 };
 
-/** POST /auth/reset-password — request body. The code is re-checked server-side. */
-export type ResetPasswordRequest = {
-  email: string;
-  code: string;
-  password: string;
-};
+/** POST /auth/reset-password — request body from `@sellonit/shared`. */
+export type ResetPasswordRequest = Schemas['ResetPasswordRequest'];
 
 /** POST /auth/reset-password — 200 response. */
 export type ResetPasswordResponse = {
@@ -136,19 +116,15 @@ export type ResetPasswordResponse = {
 };
 
 /** POST /auth/send-phone-verification — request body. */
-export type SendPhoneVerificationRequest = {
-  email: string;
-};
+export type SendPhoneVerificationRequest = Pick<Schemas['ForgotPasswordRequest'], 'email'>;
 
 /** POST /auth/send-phone-verification — 200 response. */
 export type SendPhoneVerificationResponse = {
   data: { sent: boolean };
 };
 
-/** POST /auth/verify-phone — request body. `token` is the 6-digit SMS code. */
-export type VerifyPhoneRequest = {
-  token: string;
-};
+/** POST /auth/verify-phone — request body (`token` is the 6-digit SMS code). */
+export type VerifyPhoneRequest = Schemas['VerifyEmailRequest'];
 
 /** POST /auth/verify-phone — 200 response. */
 export type VerifyPhoneResponse = {

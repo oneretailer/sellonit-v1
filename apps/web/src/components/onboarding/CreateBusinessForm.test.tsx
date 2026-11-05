@@ -5,19 +5,24 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateBusinessForm } from './CreateBusinessForm';
 import { clearOnboardingBusiness, clearOnboardingRole } from '@/lib/auth/flowState';
+import { getActiveBusinessId } from '@/lib/business/activeBusiness';
+import type { SwitcherBusiness } from '@/lib/business/businessesApi';
 import { businessApi } from '@/lib/onboarding/businessApi';
 
 const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn(), push: vi.fn() },
   createBusiness: vi.fn(),
-  user: null as { firstName: string; onboardingIntent: string | null } | null,
-  context: vi.fn(),
+  user: null as { id?: string; firstName: string; onboardingIntent: string | null } | null,
+  listBusinesses: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => mocks.router }));
-vi.mock('@/lib/workspace/api', () => ({ confirmIdentity: vi.fn().mockResolvedValue(true), getSessionContext: () => mocks.context() as Promise<{ businesses: { id: string }[] }> }));
+vi.mock('@/lib/workspace/api', () => ({ confirmIdentity: vi.fn().mockResolvedValue(true) }));
+vi.mock('@/lib/business/businessesApi', () => ({
+  listBusinesses: () => mocks.listBusinesses() as Promise<SwitcherBusiness[]>,
+}));
 vi.mock('@/lib/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({ user: mocks.user, refreshWorkspace: vi.fn().mockResolvedValue(null) }),
+  useAuthSession: () => ({ user: mocks.user }),
 }));
 
 afterEach(() => {
@@ -26,19 +31,20 @@ afterEach(() => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   sessionStorage.clear();
   clearOnboardingRole();
   clearOnboardingBusiness();
-  mocks.user = { firstName: 'Ada', onboardingIntent: 'ENTERPRISE' };
-  mocks.context.mockResolvedValue({ businesses: [] });
+  mocks.user = { id: 'user-1', firstName: 'Ada', onboardingIntent: 'SUPPLIER' };
+  mocks.listBusinesses.mockResolvedValue([]);
   // Keep the real feature flag / canCreateBusiness; only stub the adapter method.
   vi.spyOn(businessApi, 'createBusiness').mockImplementation(mocks.createBusiness);
-  mocks.createBusiness.mockResolvedValue({ id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE' });
+  mocks.createBusiness.mockResolvedValue({ id: 'biz-1', name: 'Okechukwu Fashion', type: 'SUPPLIER' });
 });
 
-async function fillValidForm() {
+async function fillValidForm(props: { mode?: 'onboarding' | 'add' } = {}) {
   const user = userEvent.setup();
-  render(<CreateBusinessForm />);
+  render(<CreateBusinessForm {...props} />);
   await user.type(screen.getByLabelText('Business name'), 'Okechukwu Fashion');
   await user.type(screen.getByLabelText('Business phone number'), '08031234567');
   await user.type(screen.getByLabelText('Business email'), 'hello@example.com');
@@ -61,7 +67,7 @@ describe('Create Business screen', () => {
   it('greets with the backend first name and falls back to nothing when absent', () => {
     const { rerender } = render(<CreateBusinessForm />);
     expect(screen.getByText('Welcome, Ada')).toBeTruthy();
-    mocks.user = { firstName: '   ', onboardingIntent: 'ENTERPRISE' };
+    mocks.user = { id: 'user-1', firstName: '   ', onboardingIntent: 'SUPPLIER' };
     rerender(<CreateBusinessForm />);
     expect(screen.queryByText(/Welcome,/)).toBeNull();
   });
@@ -71,7 +77,6 @@ describe('Create Business screen', () => {
     render(<CreateBusinessForm />);
     const phone = screen.getByLabelText('Business phone number');
     await user.type(phone, '12345');
-    // Not validated while typing (before blur).
     expect(screen.queryByText('Invalid phone number')).toBeNull();
     await user.tab();
     expect(screen.getByText('Invalid phone number')).toBeTruthy();
@@ -93,7 +98,7 @@ describe('Create Business screen', () => {
     expect(screen.queryByText('Invalid phone number')).toBeNull();
   });
 
-  it('lets a supplier submit and advance to the dashboard', async () => {
+  it('lets a supplier submit, sets active business, and advances to dashboard overview', async () => {
     const user = await fillValidForm();
     const submit = screen.getByRole('button', { name: 'Create Business' });
     expect(submit).toHaveProperty('disabled', false);
@@ -105,15 +110,30 @@ describe('Create Business screen', () => {
       email: 'hello@example.com',
       role: 'supplier',
     });
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard'));
+    expect(getActiveBusinessId()).toBe('biz-1');
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
   });
 
-  it('preflights existing membership and skips duplicate signup submission', async () => {
-    mocks.context.mockResolvedValue({ businesses: [{ id: 'existing-business' }] });
+  it('preflights existing membership via GET /businesses and skips duplicate initial signup', async () => {
+    mocks.listBusinesses.mockResolvedValue([
+      { id: 'existing-business', name: 'Existing', type: 'SUPPLIER', status: 'ACTIVE', role: 'OWNER', plan: null },
+    ]);
     const user = await fillValidForm();
     await user.click(screen.getByRole('button', { name: 'Create Business' }));
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
     expect(mocks.createBusiness).not.toHaveBeenCalled();
+  });
+
+  it('creates an additional business in mode="add" even when businesses already exist', async () => {
+    mocks.listBusinesses.mockResolvedValue([
+      { id: 'existing-business', name: 'Existing', type: 'SUPPLIER', status: 'ACTIVE', role: 'OWNER', plan: null },
+    ]);
+    mocks.createBusiness.mockResolvedValue({ id: 'biz-2', name: 'Second Co', type: 'SUPPLIER' });
+    const user = await fillValidForm({ mode: 'add' });
+    await user.click(screen.getByRole('button', { name: 'Create Business' }));
+    await waitFor(() => expect(mocks.createBusiness).toHaveBeenCalledTimes(1));
+    expect(getActiveBusinessId()).toBe('biz-2');
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
   });
 
   it('reuses the same idempotency key when retrying a failed submit', async () => {
@@ -128,7 +148,7 @@ describe('Create Business screen', () => {
   });
 
   it('shows a non-blocking coming-soon notice for non-supplier roles and does not advance', async () => {
-    mocks.user = { firstName: 'Ada', onboardingIntent: 'RETAILER' };
+    mocks.user = { id: 'user-1', firstName: 'Ada', onboardingIntent: 'RETAILER' };
     const user = await fillValidForm();
     await user.click(screen.getByRole('button', { name: 'Create Business' }));
     expect(await screen.findByRole('status')).toBeTruthy();

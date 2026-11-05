@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
 import { DashboardIcon } from './icons';
 import { useBusiness } from '@/lib/business/BusinessProvider';
-import { businessRoleLabel, businessTypeLabel } from '@/lib/business/businessesApi';
+import { businessPlanLabel, businessRoleLabel, businessTypeLabel } from '@/lib/business/businessesApi';
 import { useOptionalNavigationGuard } from '@/components/workspace/NavigationGuard';
 
 const FALLBACK_BUSINESS_NAME = 'Your business';
@@ -89,8 +89,9 @@ export function BusinessSwitcher() {
 
   function addBusiness() {
     setSwitcherOpen(false);
-    if (guard) guard.navigate('/auth/create-business');
-    else router.push('/auth/create-business');
+    const target = '/auth/create-business?mode=add';
+    if (guard) guard.navigate(target);
+    else router.push(target);
   }
 
   return (
@@ -139,7 +140,11 @@ export function BusinessSwitcher() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-ink">{business.name}</span>
-                      <span className="block truncate text-xs text-subtle">{businessTypeLabel(business.type)} · {businessRoleLabel(business.role)}</span>
+                      <span className="block truncate text-xs text-subtle">
+                        {businessTypeLabel(business.type)} · {businessRoleLabel(business.role)}
+                        {businessPlanLabel(business.plan) ? ` · ${businessPlanLabel(business.plan)}` : ''}
+                        {business.status === 'SUSPENDED' ? ' · Suspended' : ''}
+                      </span>
                     </span>
                     {active ? (
                       <span aria-hidden="true" className="text-primary"><DashboardIcon name="check-circle" className="size-5" /></span>

@@ -49,6 +49,7 @@ export const BUSINESS_SCOPED_CACHE_PREFIXES = [
   ['product-summary'],
   ['product-categories'],
   ['supplier-dashboard'],
+  ['supplier-profile'],
   ['workspace'],
 ] as const;
 
@@ -69,7 +70,16 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
 
   const activeBusiness = useMemo(() => {
     if (businesses.length === 0) return null;
-    return businesses.find((business) => business.id === activeId) ?? businesses[0] ?? null;
+    if (activeId) {
+      const matched = businesses.find((business) => business.id === activeId);
+      if (matched) return matched;
+    }
+    return (
+      businesses.find((business) => business.type === 'SUPPLIER' && business.status === 'ACTIVE') ??
+      businesses.find((business) => business.type === 'SUPPLIER') ??
+      businesses[0] ??
+      null
+    );
   }, [activeId, businesses]);
 
   // Keep the transport scope aligned with the resolved active business.
@@ -92,10 +102,15 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
     if (pathname !== '/dashboard/overview') router.push('/dashboard/overview');
   }, [activeBusiness?.id, pathname, queryClient, router]);
 
-  const can = useCallback((_permission: BusinessPermission) => {
-    // TODO(backend): replace with server-resolved grants per role. Owners may
-    // do everything today; other roles fail closed until grants exist.
-    return activeBusiness?.role === 'OWNER';
+  const can = useCallback((permission: BusinessPermission) => {
+    // TODO(BE-005): replace with server-resolved permission grants once exposed.
+    // Mirrors backend `requireOwnedBusiness` (`OWNER | MANAGER`) for management
+    // actions, restricts destructive deletes to `OWNER`, and keeps `STAFF` read-only.
+    const role = activeBusiness?.role;
+    if (role === 'OWNER') return true;
+    if (role === 'MANAGER') return permission !== 'product:delete';
+    if (role === 'STAFF') return permission === 'product:read';
+    return false;
   }, [activeBusiness?.role]);
 
   const refetch = useCallback(() => { void query.refetch(); }, [query]);
@@ -119,4 +134,8 @@ export function useBusiness(): BusinessContextValue {
   const context = useContext(BusinessContext);
   if (!context) throw new Error('useBusiness must be used within BusinessProvider.');
   return context;
+}
+
+export function useOptionalBusiness(): BusinessContextValue | null {
+  return useContext(BusinessContext);
 }

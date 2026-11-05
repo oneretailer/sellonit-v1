@@ -71,7 +71,8 @@ vi.mock('@/lib/auth/AuthSessionProvider', () => ({
   }),
 }));
 
-vi.mock('@/lib/workspace/api', () => ({ confirmIdentity: vi.fn().mockResolvedValue(true), getSessionContext: vi.fn().mockResolvedValue({ businesses: [] }) }));
+vi.mock('@/lib/workspace/api', () => ({ confirmIdentity: vi.fn().mockResolvedValue(true) }));
+vi.mock('@/lib/business/businessesApi', () => ({ listBusinesses: vi.fn().mockResolvedValue([]) }));
 
 vi.mock('@/lib/auth/api', () => ({
   getMe: mocks.getMe,

@@ -39,8 +39,17 @@ describe('business switcher', () => {
     expect(within(active).getByText('Supplier · Owner')).toBeTruthy();
     const other = within(menu).getByRole('menuitem', { name: /Lagos Fabrics/ });
     expect(other.getAttribute('aria-current')).toBeNull();
-    expect(within(other).getByText('Supplier · Admin')).toBeTruthy();
+    expect(within(other).getByText('Supplier · Manager')).toBeTruthy();
     expect(within(menu).getByRole('menuitem', { name: 'Add business' })).toBeTruthy();
+  });
+
+  it('navigates to /auth/create-business?mode=add when Add business is clicked', async () => {
+    const userEventSession = userEvent.setup();
+    businessMocks.switcherOpen = true;
+    const { navMocks } = await import('@/components/products/testState');
+    renderProducts(<BusinessSwitcher />);
+    await userEventSession.click(screen.getByRole('menuitem', { name: 'Add business' }));
+    expect(navMocks.push).toHaveBeenCalledWith('/auth/create-business?mode=add');
   });
 
   it('switches business centrally when another row is selected', async () => {

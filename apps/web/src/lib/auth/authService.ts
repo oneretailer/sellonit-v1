@@ -15,7 +15,7 @@
  *
  * There is no mock or simulated data in this module.
  */
-import { apiFetch, ApiError, NetworkError } from '@/lib/api-client';
+import { apiFetch, ApiError, isEndpointNotImplemented, NetworkError } from '@/lib/api-client';
 import { AUTH_ENDPOINTS } from './authEndpoints';
 import type { AuthFlowPurpose } from './flowState';
 import type { IdentifierType } from './identifier';
@@ -132,11 +132,10 @@ export class ResendUnavailableError extends Error {
 
 /**
  * POST /auth/logout — revokes the current session cookie.
- * TODO(backend): the route is documented in docs/openapi.yaml but not yet
- * mounted. A 401 (already expired) is "nothing left to revoke"; every other
- * failure — including 404 while the endpoint is absent — throws, because the
- * httpOnly cookie can only be cleared server-side and clearing local state
- * anyway would bounce the user straight back into the dashboard.
+ * TODO(BE-001): the route is documented in docs/openapi.yaml but not yet
+ * mounted in auth.routes.ts. A 401 (already expired) is "nothing left to
+ * revoke"; every other failure — including 404 while the endpoint is absent —
+ * throws, because the HttpOnly cookie can only be cleared server-side.
  */
 export async function logout(): Promise<void> {
   try {
@@ -256,9 +255,9 @@ export async function resetPassword(input: {
 
 /* ── Error mapping: API error → AuthFailure (edit here to match the backend) ── */
 
-/** Network failure, server error (5xx), or a missing endpoint (404 without a code). */
+/** Network failure, server error (5xx), or a missing endpoint (404 without a domain code). */
 function isTransportOrServerFailure(error: unknown): boolean {
-  if (error instanceof NetworkError) {
+  if (error instanceof NetworkError || isEndpointNotImplemented(error)) {
     return true;
   }
   return (

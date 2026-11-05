@@ -6,8 +6,8 @@
  * this contract. To change a path, edit one line here.
  *
  * Not listed because the backend does not implement them:
- * - `POST /auth/resend-verification` (docs/auth-registration-contract.md §4)
- * - `POST /auth/refresh` (documented in docs/openapi.yaml but not mounted)
+ * - `POST /auth/resend-verification` (TODO(BE-008): see docs/backend-handoff.md)
+ * - `POST /auth/refresh` (TODO(BE-008): documented in docs/openapi.yaml, not mounted)
  */
 export const AUTH_ENDPOINTS = {
   /** POST `{ email, password, firstName, lastName }` → 201 `{ data: user }`. */
@@ -38,8 +38,8 @@ export const AUTH_ENDPOINTS = {
   businessIntent: '/auth/business-intent',
   /**
    * POST → 204, revokes the session and clears the cookie. Documented in
-   * docs/openapi.yaml. TODO(backend): not yet mounted in auth.routes.ts; the
-   * client treats 404 as "endpoint absent" and still clears the local session.
+   * docs/openapi.yaml. TODO(BE-001): not yet mounted in auth.routes.ts; 404
+   * throws so the UI never fakes sign-out while the HttpOnly cookie remains active.
    */
   logout: '/auth/logout',
 } as const;

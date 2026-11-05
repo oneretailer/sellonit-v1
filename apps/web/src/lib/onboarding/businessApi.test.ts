@@ -5,6 +5,7 @@ import {
   clearOnboardingBusiness,
   readOnboardingBusiness,
 } from '@/lib/auth/flowState';
+import { getActiveBusinessId } from '@/lib/business/activeBusiness';
 import {
   NON_SUPPLIER_BUSINESS_CREATION_ENABLED,
   businessApi,
@@ -13,19 +14,28 @@ import {
 } from './businessApi';
 
 const post = vi.hoisted(() => vi.fn());
+const apiFetchMock = vi.hoisted(() => vi.fn());
+
 vi.mock('@/lib/api', () => ({
   api: { POST: post },
   newIdempotencyKey: () => 'idem-test',
-  unwrap: (result: Promise<{ data?: unknown; error?: unknown }>) => result.then((body) => {
-    if (body.error || body.data === undefined) throw new Error('request failed');
-    return body.data;
-  }),
+  unwrap: (result: Promise<{ data?: unknown; error?: unknown }>) =>
+    result.then((body) => {
+      if (body.error || body.data === undefined) throw new Error('request failed');
+      return body.data;
+    }),
+}));
+
+vi.mock('@/lib/api-client', () => ({
+  apiFetch: (...args: unknown[]) => apiFetchMock(...args) as Promise<unknown>,
 }));
 
 beforeEach(() => {
+  localStorage.clear();
   sessionStorage.clear();
   clearOnboardingBusiness();
   post.mockReset();
+  apiFetchMock.mockReset();
 });
 
 describe('business creation feature flag', () => {
@@ -43,32 +53,73 @@ describe('business creation feature flag', () => {
 });
 
 describe('HTTP business adapter', () => {
-  it('posts the full payload and only writes the local draft after server success', async () => {
-    post.mockResolvedValue({ data: { data: { id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE' } } });
-    const created = await httpBusinessApi.createBusiness({
-      name: '  Okechukwu Fashion  ',
-      phone: '08031234567',
-      email: 'Hello@Example.com',
-      description: '  Fashion retailer  ',
-      role: 'supplier',
-    }, 'idem-1');
+  it('creates via POST /businesses, persists supplier profile via PUT /supplier/:businessId/profile, sets active business, and writes draft', async () => {
+    post.mockResolvedValue({
+      data: {
+        data: { id: 'biz-1', name: 'Okechukwu Fashion', slug: 'okechukwu-fashion-1234', type: 'SUPPLIER' },
+      },
+    });
+    apiFetchMock.mockResolvedValue({ data: { id: 'prof-1', businessId: 'biz-1', status: 'DRAFT' } });
 
-    expect(created).toEqual({ id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE' });
-    expect(post).toHaveBeenCalledWith('/onboarding/businesses', expect.objectContaining({
-      params: { header: { 'Idempotency-Key': 'idem-1' } },
-      body: { name: 'Okechukwu Fashion', phone: '08031234567', email: 'Hello@Example.com', description: 'Fashion retailer', accountType: 'supplier' },
-    }));
+    const created = await httpBusinessApi.createBusiness(
+      {
+        name: '  Okechukwu Fashion  ',
+        phone: '08031234567',
+        email: 'hello@example.com',
+        description: '  Wholesale fashion supplier  ',
+        role: 'supplier',
+      },
+      'idem-1',
+    );
+
+    expect(created).toEqual({
+      id: 'biz-1',
+      name: 'Okechukwu Fashion',
+      slug: 'okechukwu-fashion-1234',
+      type: 'SUPPLIER',
+    });
+    expect(post).toHaveBeenCalledWith(
+      '/businesses',
+      expect.objectContaining({
+        headers: { 'Idempotency-Key': 'idem-1' },
+        body: {
+          name: 'Okechukwu Fashion',
+          type: 'SUPPLIER',
+          phone: '08031234567',
+          email: 'hello@example.com',
+        },
+      }),
+    );
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/supplier/biz-1/profile',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          businessId: 'biz-1',
+          legalName: 'Okechukwu Fashion',
+          contactPhone: '08031234567',
+          description: 'Wholesale fashion supplier',
+        }),
+      }),
+    );
+    expect(getActiveBusinessId()).toBe('biz-1');
     const draft = readOnboardingBusiness();
     expect(draft?.name).toBe('Okechukwu Fashion');
-    expect(draft?.phone).toBe('08031234567');
-    expect(draft?.email).toBe('Hello@Example.com');
+    expect(draft?.description).toBe('Wholesale fashion supplier');
   });
 
-  it('does not write a local draft when the server rejects', async () => {
+  it('does not write a local draft when POST /businesses rejects', async () => {
     post.mockResolvedValue({ error: { code: 'VALIDATION_ERROR' } });
-    await expect(httpBusinessApi.createBusiness({
-      name: 'Okechukwu Fashion', phone: '08031234567', email: 'hello@example.com', description: '', role: 'supplier',
-    })).rejects.toThrow();
+    await expect(
+      httpBusinessApi.createBusiness({
+        name: 'Okechukwu Fashion',
+        phone: '08031234567',
+        email: 'hello@example.com',
+        description: '',
+        role: 'supplier',
+      }),
+    ).rejects.toThrow();
+    expect(apiFetchMock).not.toHaveBeenCalled();
     expect(readOnboardingBusiness()).toBeNull();
   });
 });

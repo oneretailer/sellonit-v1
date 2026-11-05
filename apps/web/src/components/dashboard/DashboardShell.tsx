@@ -18,6 +18,7 @@ import {
 import type { OnboardingBusinessDraft } from '@/lib/auth/flowState';
 import { useSession } from '@/lib/auth/AuthSessionProvider';
 import type { AuthUser } from '@/lib/auth/types';
+import { isEndpointNotImplemented } from '@/lib/api-client';
 import { AUTH_ROUTE } from '@/lib/auth/authDestination';
 import { useBusiness } from '@/lib/business/BusinessProvider';
 import { useOptionalNavigationGuard } from '@/components/workspace/NavigationGuard';
@@ -219,8 +220,13 @@ function ProfileMenu() {
     try {
       await signOut();
       window.location.assign(AUTH_ROUTE.login);
-    } catch {
-      setError('Could not sign out. Try again.');
+    } catch (caught) {
+      // TODO(BE-001): POST /auth/logout is not yet mounted in apps/api; explain clearly without faking sign-out.
+      setError(
+        isEndpointNotImplemented(caught)
+          ? 'Sign-out is not available on the server yet.'
+          : 'Could not sign out. Try again.',
+      );
       setSigningOut(false);
     }
   }
@@ -254,6 +260,51 @@ function ProfileMenu() {
             <DashboardIcon name="logout" className="size-4 text-subtle" />
             {signingOut ? 'Signing out…' : 'Log out'}
           </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function NotificationsMenu() {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  // TODO(BE-010): wire GET /notifications and unread badge once implemented on the backend.
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        aria-label="Notifications"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="relative flex size-11 shrink-0 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-50 hover:text-ink"
+      >
+        <DashboardIcon name="bell" className="size-5" />
+      </button>
+      {open ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-3 text-xs text-subtle shadow-lg"
+        >
+          Notifications are coming soon.
         </div>
       ) : null}
     </div>
@@ -399,14 +450,7 @@ export function DashboardShell({
                 Sellonit platform
               </span>
             )}
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative flex size-11 shrink-0 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-50 hover:text-ink"
-            >
-              <DashboardIcon name="bell" className="size-5" />
-              <span aria-hidden="true" className="absolute right-2.5 top-2.5 size-2 rounded-full bg-primary" />
-            </button>
+            <NotificationsMenu />
             <ProfileMenu />
           </div>
         </div>

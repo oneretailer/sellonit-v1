@@ -231,8 +231,7 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
 
         {formError ? <InlineError>{formError}</InlineError> : null}
 
-        {/* TODO(google-auth): supply OAuth handler/redirect before enabling provider controls. */}
-        {/* TODO(apple-auth): supply OAuth handler/redirect before enabling provider controls. */}
+        {/* TODO(BE-013): wire Google and Apple OAuth redirect/callback routes once implemented on the backend. */}
         <div className="flex w-full flex-col gap-4">
           <PrimaryButton type="submit" loading={submitting} className={loginButtonClass}>
             {submitting ? 'Logging in…' : 'Log In'}

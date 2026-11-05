@@ -11,6 +11,7 @@
 import { ACTIVE_BUSINESS_HEADER, getActiveBusinessId } from '@/lib/business/activeBusiness';
 
 export const API_BASE_PATH = '/api/v1';
+export const ENDPOINT_NOT_IMPLEMENTED_CODE = 'ENDPOINT_NOT_IMPLEMENTED';
 
 /** A non-successful API response. `code` is the backend's stable error code. */
 export class ApiError extends Error {
@@ -34,6 +35,10 @@ export class ApiError extends Error {
     this.requestId = requestId;
     this.fields = fields;
   }
+}
+
+export function isEndpointNotImplemented(error: unknown): boolean {
+  return error instanceof ApiError && error.code === ENDPOINT_NOT_IMPLEMENTED_CODE;
 }
 
 /** The API could not be reached at all (offline, proxy down, ...). */
@@ -89,6 +94,20 @@ async function readErrorBody(response: Response): Promise<ApiError> {
     } catch {
       // Malformed error body — fall through to the generic message.
     }
+  } else if (response.status === 404 && contentType.includes('text/html')) {
+    // TODO(BE-007): Express returns text/html `Cannot <METHOD> /api/v1/...` for
+    // unmounted routes because apps/api/src/main.ts has no JSON 404 catch-all.
+    // Tag these so UI screens show an honest "not available yet" state instead
+    // of mistaking an unimplemented endpoint for a deleted domain record.
+    try {
+      const text = await response.text();
+      if (/Cannot\s+(GET|POST|PUT|PATCH|DELETE)\s+/i.test(text)) {
+        code = ENDPOINT_NOT_IMPLEMENTED_CODE;
+        message = 'This feature is not available on the server yet.';
+      }
+    } catch {
+      // Ignore unreadable body and fall through to generic message.
+    }
   }
   if (!message) {
     message =
@@ -111,7 +130,8 @@ export async function apiFetchResponse(path: string, init: RequestInit = {}): Pr
     // Headers instance (openapi-fetch supplies Headers; spreading one loses all entries).
     const headers = new Headers(init.headers);
     if (init.body !== undefined && !headers.has('content-type')) headers.set('content-type', 'application/json');
-    // TODO(backend): confirm active-business transport (header vs path). One place.
+    // TODO(BE-004): Live backend supplier routes resolve tenancy via `:businessId`
+    // path/body; keep X-Business-Id attached for forward compatibility.
     const businessId = getActiveBusinessId();
     if (businessId && !headers.has(ACTIVE_BUSINESS_HEADER)) headers.set(ACTIVE_BUSINESS_HEADER, businessId);
     response = await fetch(`${API_BASE_PATH}${path}`, {

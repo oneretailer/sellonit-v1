@@ -39,6 +39,7 @@ type AuthSessionContextValue = {
   workspaceError: unknown;
   can: (permission: Permission) => boolean;
   hasFeature: (feature: Feature) => boolean;
+  enableWorkspaceContext: () => void;
   refreshWorkspace: () => Promise<SessionContext | null>;
   /** Revokes the session (best effort) and clears all local session state. */
   signOut: () => Promise<void>;
@@ -133,18 +134,31 @@ export function AuthSessionProvider({
 }) {
   const [status, setStatus] = useState<AuthSessionStatus>(initialSession.status);
   const [user, setUser] = useState<AuthUser | null>(initialSession.user);
+  // TODO(BE-005): GET /session/context is not yet implemented on the backend.
+  // Only enable the query when a WorkspaceRoute/PermissionGuard consumer opts in,
+  // so standard auth/onboarding/dashboard pages do not fire a guaranteed 404.
+  const [workspaceRequested, setWorkspaceRequested] = useState(false);
   const queryClient = useQueryClient();
   const contextQuery = useQuery({
     queryKey: workspaceKeys.session(user?.id ?? null),
     queryFn: ({ signal }) => getSessionContext(signal),
-    enabled: status === 'authenticated' && user !== null,
+    enabled: workspaceRequested && status === 'authenticated' && user !== null,
   });
   const workspace = contextQuery.data ?? null;
-  const workspaceStatus: AuthSessionContextValue['workspaceStatus'] = status !== 'authenticated' ? 'idle' : contextQuery.isError ? 'error' : workspace ? 'ready' : 'loading';
+  const workspaceStatus: AuthSessionContextValue['workspaceStatus'] =
+    status !== 'authenticated' || !workspaceRequested
+      ? 'idle'
+      : contextQuery.isError
+        ? 'error'
+        : workspace
+          ? 'ready'
+          : 'loading';
   const can = useCallback((permission: Permission) => workspace?.permissions.includes(permission) ?? false, [workspace]);
   const hasFeature = useCallback((feature: Feature) => workspace?.features.includes(feature) ?? false, [workspace]);
+  const enableWorkspaceContext = useCallback(() => setWorkspaceRequested(true), []);
   const { refetch: refetchWorkspace } = contextQuery;
   const refreshWorkspace = useCallback(async () => {
+    setWorkspaceRequested(true);
     const result = await refetchWorkspace();
     return result.data ?? null;
   }, [refetchWorkspace]);
@@ -204,8 +218,8 @@ export function AuthSessionProvider({
   }, [initialSession, refreshSession]);
 
   const value = useMemo(
-    () => ({ status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, workspaceError: contextQuery.error, can, hasFeature, refreshWorkspace, signOut }),
-    [status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, contextQuery.error, can, hasFeature, refreshWorkspace, signOut],
+    () => ({ status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, workspaceError: contextQuery.error, can, hasFeature, enableWorkspaceContext, refreshWorkspace, signOut }),
+    [status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, contextQuery.error, can, hasFeature, enableWorkspaceContext, refreshWorkspace, signOut],
   );
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
 }

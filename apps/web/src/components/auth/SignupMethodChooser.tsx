@@ -19,8 +19,7 @@ export function SignupMethodChooser() {
         </AuthCardHeader>
 
         <div className="flex w-full flex-col  text-left">
-          {/* TODO(google-auth): provide a provider handler or OAuth redirect URL. */}
-          {/* TODO(apple-auth): provide a provider handler or OAuth redirect URL. */}
+          {/* TODO(BE-013): wire Google and Apple OAuth redirect/callback routes once implemented on the backend. */}
           <div className="flex w-full flex-col gap-4">
             <SecondaryButton
               shape="rounded"

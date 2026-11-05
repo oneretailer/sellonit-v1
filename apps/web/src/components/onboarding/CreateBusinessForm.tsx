@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
+import { useContext, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
+import { QueryClientContext } from '@tanstack/react-query';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
@@ -11,6 +12,8 @@ import {
   subscribeOnboardingRole,
 } from '@/lib/auth/flowState';
 import { normalizePhone } from '@/lib/auth/identifier';
+import { setActiveBusinessId } from '@/lib/business/activeBusiness';
+import { businessKeys } from '@/lib/business/BusinessProvider';
 import { businessApi, canCreateBusiness } from '@/lib/onboarding/businessApi';
 import { roleForBusinessType } from '@/lib/onboarding/roleApi';
 import type { AccountRole } from '@/lib/onboarding/roles';
@@ -52,9 +55,10 @@ function emailError(value: string): string | null {
  * server success for setup progress. Errors show on blur or submit, never on
  * each keystroke.
  */
-export function CreateBusinessForm() {
-  const { user, refreshWorkspace } = useAuthSession();
-  const completion = useSignupCompletion();
+export function CreateBusinessForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 'add' } = {}) {
+  const { user } = useAuthSession();
+  const queryClient = useContext(QueryClientContext);
+  const completion = useSignupCompletion({ mode, userId: user?.id ?? null });
   const storedRole = useSyncExternalStore(
     subscribeOnboardingRole,
     readOnboardingRole,
@@ -130,7 +134,7 @@ export function CreateBusinessForm() {
         setNotice(COMING_SOON_MESSAGE); inFlight.current = false; setSubmitting(false); return;
       }
       idempotencyKey.current ??= newIdempotencyKey();
-      await businessApi.createBusiness({
+      const created = await businessApi.createBusiness({
         name: name.trim(),
         phone: normalizePhone(phone) ?? phone.trim(),
         email: normalizeEmail(email),
@@ -138,8 +142,8 @@ export function CreateBusinessForm() {
         role: role ?? 'supplier',
       }, idempotencyKey.current);
       if (canCreateBusiness(role)) {
-        // Refresh persisted membership before the dashboard guard reads it.
-        await refreshWorkspace();
+        setActiveBusinessId(created.id);
+        await queryClient?.invalidateQueries({ queryKey: businessKeys.all });
         // Stays disabled while the app navigates to the dashboard.
         completion.complete(role ?? 'supplier');
       } else {
@@ -269,7 +273,7 @@ export function CreateBusinessForm() {
 
       <p className="text-center text-sm text-subtle">
         Own a business?{' '}
-        {/* TODO(join-business): no route exists yet — placeholder only, do not build the flow. */}
+        {/* TODO(BE-009): wire business member invitations / self-join once implemented on the backend. */}
         <button
           type="button"
           onClick={() => {

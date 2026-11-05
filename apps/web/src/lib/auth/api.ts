@@ -65,10 +65,8 @@ export async function registerUser(input: RegisterUserRequest): Promise<Register
 /**
  * Asks for a new verification email.
  *
- * BACKEND GAP: docs/auth-registration-contract.md §4 specifies
- * `POST /auth/resend-verification` (202, rate limited), but the route is not
- * implemented. The app therefore makes no request and reports a clear,
- * non-enumerating message; it will be wired here once the endpoint exists.
+ * TODO(BE-008): `POST /auth/resend-verification` is not yet implemented on the
+ * backend (see docs/backend-handoff.md). Rejects locally without faking success.
  */
 export function resendVerification(
   _input: ResendVerificationRequest,

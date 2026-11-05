@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { cookies } from 'next/headers';
 import './globals.css';
-import { AuthSessionProvider, type InitialAuthSession } from '@/lib/auth/AuthSessionProvider';
-import type { AuthUser } from '@/lib/auth/types';
+import { AuthSessionProvider } from '@/lib/auth/AuthSessionProvider';
+import { readInitialSession } from '@/lib/auth/serverSession';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { BusinessProvider } from '@/lib/business/BusinessProvider';
 import { NavigationGuardProvider } from '@/components/workspace/NavigationGuard';
@@ -22,34 +21,6 @@ export const metadata: Metadata = {
   },
   description: 'Sellonit — virtual-inventory commerce and supply-chain platform.',
 };
-
-const ACCESS_COOKIE = 'sellonit_access_token';
-
-async function readInitialSession(): Promise<InitialAuthSession> {
-  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
-  if (!token) return { status: 'unauthenticated', user: null };
-
-  const configuredUrl = (process.env.API_INTERNAL_URL ?? 'http://localhost:4000').replace(
-    /\/+$/,
-    '',
-  );
-  const apiRoot = configuredUrl.endsWith('/api') ? configuredUrl : `${configuredUrl}/api`;
-  try {
-    const response = await fetch(`${apiRoot}/v1/auth/me`, {
-      headers: { cookie: `${ACCESS_COOKIE}=${token}` },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(1800),
-    });
-    if (response.status === 401) return { status: 'unauthenticated', user: null };
-    if (!response.ok) return { status: 'checking', user: null };
-    const body = (await response.json()) as { data?: AuthUser };
-    if (!body.data) return { status: 'checking', user: null };
-    return { status: 'authenticated', user: body.data };
-  } catch {
-    // A tab-scoped display hint can keep the shell calm while the client retries.
-    return { status: 'checking', user: null };
-  }
-}
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const initialSession = await readInitialSession();

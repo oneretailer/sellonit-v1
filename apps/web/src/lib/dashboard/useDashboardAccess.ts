@@ -23,7 +23,9 @@ export function useDashboardAccess(permission?: BusinessPermission): DashboardAc
   if (isLoading) state = 'loading';
   else if (error) state = mapDashboardError(error);
   else if (businesses.length === 0) state = 'no-business';
-  else if (permission && activeBusiness && !can(permission)) state = 'page-forbidden';
+  else if (activeBusiness?.status === 'SUSPENDED' || (activeBusiness && activeBusiness.type !== 'SUPPLIER')) {
+    state = 'business-unavailable';
+  } else if (permission && activeBusiness && !can(permission)) state = 'page-forbidden';
 
   // 401: reuse the app's existing session recovery (refresh → login redirect).
   useEffect(() => {

@@ -13,12 +13,18 @@ export const metadata: Metadata = {
  * role is already saved at this point, so the guard allows onboarded users
  * (`allowOnboarded`) instead of bouncing them to the dashboard.
  */
-export default function CreateBusinessPage() {
+export default async function CreateBusinessPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ mode?: string }>;
+}) {
+  const resolved = searchParams ? await searchParams : undefined;
+  const mode = resolved?.mode === 'add' ? 'add' : 'onboarding';
   return (
     <AuthPage rightLink={{ label: 'Account details', variant: 'text' }}>
       <div className="flex w-full items-center justify-center pt-15 md:pt-0">
         <RequireAuthenticatedSession allowOnboarded>
-          <CreateBusinessForm />
+          <CreateBusinessForm mode={mode} />
         </RequireAuthenticatedSession>
       </div>
     </AuthPage>
