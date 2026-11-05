@@ -11,7 +11,7 @@ import {
   resetProductsMocks,
 } from './testSupport';
 import { productsApi } from '@/lib/products/productsApi';
-import { ApiError } from '@/lib/api-client';
+import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE } from '@/lib/api-client';
 import type { Product } from '@/lib/products/types';
 
 vi.mock('next/navigation', async () => (await import('./testState')).navigationMockFactory());
@@ -170,5 +170,37 @@ describe('add product form', () => {
     await userEventSession.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(navMocks.push).toHaveBeenCalledWith('/dashboard/products');
+  });
+
+  it('distinguishes unimplemented product endpoints from a deleted 404 product on edit', async () => {
+    vi.spyOn(productsApi, 'get').mockRejectedValueOnce(
+      new ApiError(404, ENDPOINT_NOT_IMPLEMENTED_CODE, 'Not implemented'),
+    );
+    const { unmount } = renderProducts(<ProductFormPage productId="prod-1" />);
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Product catalogue is coming soon' })).toBeTruthy(),
+    );
+    expect(screen.queryByRole('heading', { name: 'Product not found' })).toBeNull();
+    unmount();
+
+    vi.spyOn(productsApi, 'get').mockRejectedValueOnce(
+      new ApiError(404, 'NOT_FOUND', 'Deleted'),
+    );
+    renderProducts(<ProductFormPage productId="prod-1" />);
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Product not found' })).toBeTruthy(),
+    );
+  });
+
+  it('disables saving with an honest notice on /new when categories return ENDPOINT_NOT_IMPLEMENTED', async () => {
+    vi.spyOn(productsApi, 'getCategories').mockRejectedValue(
+      new ApiError(404, ENDPOINT_NOT_IMPLEMENTED_CODE, 'Not implemented'),
+    );
+    renderProducts(<ProductFormPage />);
+    await waitFor(() =>
+      expect(screen.getByText(/Product catalogue endpoints are not available on the server yet/)).toBeTruthy(),
+    );
+    expect(screen.getByRole('button', { name: 'Publish product' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Save draft' })).toHaveProperty('disabled', true);
   });
 });

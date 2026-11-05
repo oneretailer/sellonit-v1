@@ -7,6 +7,8 @@
  * uppercase ProductStatus enum in one place (productsApi.ts).
  */
 
+import type { components } from '@sellonit/shared';
+
 export type ProductStatus = 'draft' | 'published';
 
 export type ProductImage = {
@@ -52,12 +54,7 @@ export type ProductListParams = {
 
 export type Paginated<T> = {
   data: T[];
-  meta: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
+  meta: components['schemas']['PaginationMeta'];
 };
 
 export type UploadedImage = {

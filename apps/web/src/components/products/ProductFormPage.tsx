@@ -24,7 +24,7 @@ import { useToast } from '@/components/workspace/ToastProvider';
 import { Spinner } from '@/components/reuseable/Spinner';
 import { cn } from '@/lib/cn';
 import { formatNaira, koboToNaira, nairaToKobo } from '@/lib/money';
-import { ApiError } from '@/lib/api-client';
+import { ApiError, isEndpointNotImplemented } from '@/lib/api-client';
 import {
   useCreateProduct,
   useInvalidateProducts,
@@ -171,6 +171,20 @@ export function ProductFormPage({ productId }: { productId?: string }) {
     );
   }
   if (isEdit && productQuery.isError) {
+    // TODO(BE-002): distinguish unmounted product API routes from a deleted product record.
+    if (isEndpointNotImplemented(productQuery.error)) {
+      return (
+        <StatePanel
+          icon="products"
+          tone="cream"
+          title="Product catalogue is coming soon"
+          description="Editing products is not available on the server yet."
+          actions={
+            <button type="button" onClick={() => router.push(PRODUCT_ROUTES.list)} className="min-h-11 rounded-xl border border-line bg-white px-6 text-sm font-semibold text-ink transition-colors hover:bg-gray-50">Back to products</button>
+          }
+        />
+      );
+    }
     const notFound = productQuery.error instanceof ApiError && productQuery.error.status === 404;
     return (
       <StatePanel
@@ -222,6 +236,7 @@ function ProductForm({
   useEffect(() => { imagesRef.current = images; }, [images]);
 
   const categories = useProductCategories();
+  const catalogueUnavailable = categories.isError && isEndpointNotImplemented(categories.error);
   const create = useCreateProduct();
   const update = useUpdateProduct();
   const invalidate = useInvalidateProducts();
@@ -229,6 +244,7 @@ function ProductForm({
   const uploadedImages = images.filter((image) => image.status === 'uploaded');
   const uploading = images.some((image) => image.status === 'uploading');
   const busy = submitting !== null;
+  const formDisabled = busy || catalogueUnavailable;
   const alreadyPublished = product?.status === 'published';
 
   const isDirty = formState.isDirty || images.length !== initialImages.length
@@ -310,7 +326,7 @@ function ProductForm({
   }
 
   function handleSave(intent: ProductFormIntent) {
-    if (busy || uploading) return;
+    if (formDisabled || uploading) return;
     setAlertMessage(null);
     const errors = validateProduct(getValues(), uploadedImages.length, intent);
     if (Object.keys(errors).length > 0) {
@@ -423,6 +439,13 @@ function ProductForm({
         <p className="text-sm text-subtle">{isEdit ? 'Update the details, price and stock for this product.' : 'Add the details retailers need to buy this product.'}</p>
       </div>
 
+      {catalogueUnavailable ? (
+        // TODO(BE-002): remove once /api/v1/supplier/categories and /api/v1/supplier/products* exist.
+        <p role="status" className="rounded-2xl border border-primary/30 bg-orange-50 px-4 py-3 text-sm text-ink">
+          Product catalogue endpoints are not available on the server yet. Saving and photo uploads will unlock once the backend product API is deployed.
+        </p>
+      ) : null}
+
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,22.5rem)]">
         <div className="flex min-w-0 flex-col gap-6">
           <div id="product-photos" tabIndex={-1} className="outline-none">
@@ -431,7 +454,7 @@ function ProductForm({
                 value={images}
                 onChange={setImages}
                 uploadFn={(file, options) => productsApi.uploadImage(file, options)}
-                disabled={busy}
+                disabled={formDisabled}
                 error={fieldError('images')}
               />
             </Card>
@@ -473,7 +496,7 @@ function ProductForm({
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </Select>
-                {categories.isError ? (
+                {categories.isError && !catalogueUnavailable ? (
                   <p className="text-xs text-danger">
                     Couldn&apos;t load categories.{' '}
                     <button type="button" onClick={() => void categories.refetch()} className="font-semibold underline underline-offset-2">Retry</button>
@@ -554,7 +577,7 @@ function ProductForm({
             <div className="mt-4 flex flex-col gap-3">
               <button
                 type="button"
-                disabled={busy || uploading}
+                disabled={formDisabled || uploading}
                 onClick={() => handleSave('publish')}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-ink transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-primary-disabled"
               >
@@ -564,7 +587,7 @@ function ProductForm({
               {!alreadyPublished ? (
                 <button
                   type="button"
-                  disabled={busy || uploading}
+                  disabled={formDisabled || uploading}
                   onClick={() => handleSave('draft')}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >

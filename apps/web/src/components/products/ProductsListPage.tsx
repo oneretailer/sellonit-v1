@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/workspace/ConfirmDialog';
 import { StatePanel } from '@/components/workspace/StatePanel';
 import { useToast } from '@/components/workspace/ToastProvider';
 import { Select } from '@/components/workspace/Field';
+import { isEndpointNotImplemented } from '@/lib/api-client';
 import { cn } from '@/lib/cn';
 import { formatNaira } from '@/lib/money';
 import { useBusiness } from '@/lib/business/BusinessProvider';
@@ -75,6 +76,7 @@ export function ProductsListPage() {
   const from = total === 0 ? 0 : (page - 1) * PRODUCTS_PAGE_SIZE + 1;
   const to = Math.min(page * PRODUCTS_PAGE_SIZE, total);
   const isLoading = list.isPending;
+  const apiUnavailable = list.isError && isEndpointNotImplemented(list.error);
   const isTrueEmpty = !isLoading && !list.isError && total === 0 && !hasActiveFilters;
   const isFilterEmpty = !isLoading && !list.isError && rows.length === 0 && hasActiveFilters;
 
@@ -118,7 +120,7 @@ export function ProductsListPage() {
           <h1 className="font-heading text-2xl font-semibold text-ink md:text-[28px]">Products</h1>
           <p className="mt-1 text-sm text-subtle">Manage your catalogue, prices and stock.</p>
         </div>
-        {canWrite ? (
+        {canWrite && !apiUnavailable ? (
           <Link href={PRODUCT_ROUTES.new} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-ink transition-colors hover:bg-primary-hover">
             <DashboardIcon name="plus" className="size-4" />
             Add product
@@ -226,6 +228,17 @@ export function ProductsListPage() {
         <div aria-busy={isLoading} aria-live="polite">
           {isLoading ? (
             <ProductsTableSkeleton />
+          ) : apiUnavailable ? (
+            // TODO(BE-002): remove once /api/v1/supplier/products* is mounted on the backend.
+            <div className="p-4 sm:p-6">
+              <StatePanel
+                icon="products"
+                tone="cream"
+                title="Product catalogue is coming soon"
+                description="Supplier product management is not available on the server yet. Complete your business profile while the catalogue API is being deployed."
+                className="min-h-[40vh] border-0"
+              />
+            </div>
           ) : list.isError ? (
             <div className="p-4 sm:p-6">
               <StatePanel

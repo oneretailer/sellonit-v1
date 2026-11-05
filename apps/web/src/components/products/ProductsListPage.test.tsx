@@ -11,7 +11,7 @@ import {
   resetProductsMocks,
 } from './testSupport';
 import { productsApi } from '@/lib/products/productsApi';
-import { NetworkError } from '@/lib/api-client';
+import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, NetworkError } from '@/lib/api-client';
 import type { Paginated, Product, ProductSummary } from '@/lib/products/types';
 
 vi.mock('next/navigation', async () => (await import('./testState')).navigationMockFactory());
@@ -164,5 +164,17 @@ describe('products list', () => {
     const edits = screen.getAllByRole('link', { name: 'Edit' });
     expect(views[0]?.getAttribute('href')).toBe('/dashboard/products/prod-1/edit');
     expect(edits[0]?.getAttribute('href')).toBe('/dashboard/products/prod-1/edit');
+  });
+
+  it('shows an honest coming-soon state without fake retry when the products endpoint is not implemented', async () => {
+    vi.spyOn(productsApi, 'list').mockRejectedValue(
+      new ApiError(404, ENDPOINT_NOT_IMPLEMENTED_CODE, 'Not available yet'),
+    );
+    renderProducts(<ProductsListPage />);
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Product catalogue is coming soon' })).toBeTruthy(),
+    );
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Add product' })).toBeNull();
   });
 });
