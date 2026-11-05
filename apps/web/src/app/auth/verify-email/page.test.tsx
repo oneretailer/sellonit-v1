@@ -198,7 +198,7 @@ describe('check-your-email verification watching', () => {
       data: {
         email: 'jane@example.com',
         emailVerifiedAt: VERIFIED,
-        onboardingIntent: 'ENTERPRISE',
+        onboardingIntent: 'SUPPLIER',
       },
     });
     await user.click(screen.getByRole('button', { name: "I've verified my email" }));

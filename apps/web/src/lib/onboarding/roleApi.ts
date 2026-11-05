@@ -5,21 +5,19 @@ import type { AccountRole } from './roles';
 
 /**
  * The onboarding choice is persisted on the account as `onboardingIntent`
- * (PUT /auth/business-intent). The backend enum is
- * RETAILER | ENTREPRENEUR | ENTERPRISE — "supplier" has no enum member, and
- * ENTERPRISE is the supplier track (docs/v1.0.3-alignment.md: "Enterprise
- * extends Supplier"), so it maps there.
+ * (PUT /auth/business-intent). The backend enum is RETAILER | SUPPLIER.
+ * Entrepreneur is an onboarding presentation choice that uses the retailer
+ * business type until a separate business type exists for it.
  */
 const BUSINESS_TYPE_BY_ROLE: Record<AccountRole, BusinessType> = {
-  entrepreneur: 'ENTREPRENEUR',
+  entrepreneur: 'RETAILER',
   retailer: 'RETAILER',
-  supplier: 'ENTERPRISE',
+  supplier: 'SUPPLIER',
 };
 
 const ROLE_BY_BUSINESS_TYPE: Record<BusinessType, AccountRole> = {
-  ENTREPRENEUR: 'entrepreneur',
   RETAILER: 'retailer',
-  ENTERPRISE: 'supplier',
+  SUPPLIER: 'supplier',
 };
 
 /** The value sent as `businessType` to PUT /auth/business-intent. */
