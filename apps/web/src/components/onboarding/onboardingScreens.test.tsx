@@ -78,8 +78,7 @@ vi.mock('@/lib/auth/api', () => ({
 
 vi.mock('@/lib/onboarding/roleApi', () => ({
   roleApi: { saveRole: mocks.saveRole },
-  roleForBusinessType: (intent: string) =>
-    intent === 'SUPPLIER' ? 'supplier' : 'retailer',
+  roleForBusinessType: (intent: string) => (intent === 'SUPPLIER' ? 'supplier' : 'retailer'),
 }));
 
 afterEach(() => cleanup());

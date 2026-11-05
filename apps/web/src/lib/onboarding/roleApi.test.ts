@@ -56,11 +56,7 @@ describe('role API', () => {
 
     for (const option of ROLE_OPTIONS) {
       expect(businessTypeForRole(option.id)).toBe(
-        option.id === 'supplier'
-          ? 'SUPPLIER'
-          : option.id === 'retailer'
-            ? 'RETAILER'
-            : 'RETAILER',
+        option.id === 'supplier' ? 'SUPPLIER' : option.id === 'retailer' ? 'RETAILER' : 'RETAILER',
       );
     }
   });
