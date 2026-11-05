@@ -100,7 +100,7 @@ describe('post-login onboarding destination', () => {
         status: 'ACTIVE',
         emailVerifiedAt: '2026-10-26T00:00:00.000Z',
         phoneVerifiedAt: null,
-        onboardingIntent: 'ENTERPRISE',
+        onboardingIntent: 'SUPPLIER',
         createdAt: '2026-10-26T00:00:00.000Z',
         updatedAt: '2026-10-26T00:00:00.000Z',
       },

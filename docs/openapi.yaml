@@ -414,6 +414,53 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
+  /supplier/profile:
+    get:
+      tags: [Supplier Profiles]
+      summary: Get the authenticated user's supplier profile
+      responses:
+        '200':
+          description: Supplier profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSupplierProfile'
+    put:
+      tags: [Supplier Profiles]
+      summary: Create or update the authenticated user's supplier profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertSupplierProfileRequest'
+      responses:
+        '200':
+          description: Supplier profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSupplierProfile'
+
+  /supplier/profile/submit:
+    post:
+      tags: [Supplier Profiles]
+      summary: Submit the authenticated user's supplier profile for review
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                businessId: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Supplier profile submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseSupplierProfile'
+
   /businesses:
     get:
       tags: [Businesses]
@@ -1777,10 +1824,16 @@ components:
 
     UserRole:
       type: string
-      enum: [OWNER, ADMIN, STAFF, SUPPLIER, RETAILER]
+      enum: [OWNER, MANAGER, STAFF]
     BusinessType:
       type: string
-      enum: [RETAILER, ENTREPRENEUR, ENTERPRISE]
+      enum: [RETAILER, SUPPLIER]
+    PlanKey:
+      type: string
+      enum: [ENTERPRISE, ENTERPRISE_PLUS]
+    SupplierProfileStatus:
+      type: string
+      enum: [DRAFT, PENDING_REVIEW, APPROVED, REJECTED]
     UserStatus:
       type: string
       enum: [PENDING_VERIFICATION, ACTIVE, SUSPENDED, DEACTIVATED]
@@ -1922,7 +1975,7 @@ components:
 
     SupplierProfile:
       type: object
-      required: [businessId]
+      required: [businessId, status]
       properties:
         businessId: {type: string, format: uuid}
         legalName: {type: string, maxLength: 200}
@@ -1933,6 +1986,8 @@ components:
         retailerAccess:
           type: string
           enum: [OPEN, APPROVAL_REQUIRED, PRIVATE]
+        status: {$ref: '#/components/schemas/SupplierProfileStatus'}
+        submittedAt: {type: [string, 'null'], format: date-time}
 
     RetailerProfile:
       type: object
@@ -2360,6 +2415,7 @@ components:
     UpsertSupplierProfileRequest:
       type: object
       properties:
+        businessId: {type: string, format: uuid}
         legalName: {type: string, maxLength: 200}
         description: {type: string, maxLength: 3000}
         contactPhone: {type: string, maxLength: 30}

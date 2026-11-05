@@ -30,6 +30,7 @@ model User {
   sessions        Session[]
   verificationTokens VerificationToken[]
   memberships     Membership[]
+  roleAssignments  UserRoleAssignment[]
   businesses      Business[] @relation("BusinessOwner")
 }
 
@@ -73,13 +74,18 @@ model Business {
   updatedAt DateTime @updatedAt
   owner User @relation("BusinessOwner", fields: [ownerId], references: [id])
   memberships Membership[]
+  roleAssignments UserRoleAssignment[]
+  phone String?
+  email String?
+  supplierProfile SupplierProfile?
+  activeSubscription BusinessSubscription?
 }
 
 model Membership {
   id String @id @default(uuid())
   userId String
   businessId String
-  role BusinessRole @default(MEMBER)
+  role BusinessRole @default(STAFF)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -101,12 +107,122 @@ enum BusinessStatus {
 
 enum BusinessType {
   RETAILER
-  ENTREPRENEUR
-  ENTERPRISE
+  SUPPLIER
 }
 
 enum BusinessRole {
   OWNER
-  ADMIN
-  MEMBER
+  MANAGER
+  STAFF
+}
+
+enum SupplierProfileStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum RetailerAccess {
+  OPEN
+  APPROVAL_REQUIRED
+  PRIVATE
+}
+
+model SupplierProfile {
+  id              String                @id @default(uuid())
+  businessId      String                @unique
+  legalName       String?
+  description     String?
+  contactPhone    String?
+  originLocation  Json?
+  retailerAccess  RetailerAccess        @default(OPEN)
+  status          SupplierProfileStatus @default(DRAFT)
+  submittedAt     DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  business        Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  name        String
+  assignments UserRoleAssignment[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  name        String
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  businessId String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  business  Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([userId, roleId, businessId])
+  @@index([businessId])
+}
+
+model Plan {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  name        String
+  description String?
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  transitions PlanTransition[] @relation("PlanFrom")
+  incomingTransitions PlanTransition[] @relation("PlanTo")
+  subscriptions BusinessSubscription[]
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+model BusinessSubscription {
+  id         String             @id @default(uuid())
+  businessId String             @unique
+  planId     String
+  status     SubscriptionStatus @default(ACTIVE)
+  startsAt   DateTime           @default(now())
+  endsAt     DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan       Plan               @relation(fields: [planId], references: [id])
+  @@index([planId])
+}
+
+model PlanTransition {
+  id          String   @id @default(uuid())
+  fromPlanId  String
+  toPlanId    String
+  createdAt   DateTime @default(now())
+  fromPlan    Plan     @relation("PlanFrom", fields: [fromPlanId], references: [id], onDelete: Cascade)
+  toPlan      Plan     @relation("PlanTo", fields: [toPlanId], references: [id], onDelete: Cascade)
+  @@unique([fromPlanId, toPlanId])
 }

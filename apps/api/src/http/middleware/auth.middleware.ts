@@ -60,3 +60,24 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     });
   }
 }
+
+export function requirePermission(permissionKey: string) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.userId) {
+      res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
+      return;
+    }
+    const { prisma } = await import('../../infrastructure/db.js');
+    const assignment = await prisma.userRoleAssignment.findFirst({
+      where: {
+        userId: req.userId,
+        role: { permissions: { some: { permission: { key: permissionKey } } } },
+      },
+    });
+    if (!assignment) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Permission denied' } });
+      return;
+    }
+    next();
+  };
+}

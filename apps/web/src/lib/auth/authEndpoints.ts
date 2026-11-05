@@ -35,6 +35,6 @@ export const AUTH_ENDPOINTS = {
   verifyResetCode: '/auth/verification-codes/verify',
   /** POST `{ email, code, password }` → 200 `{ data: { message } }`. */
   resetPassword: '/auth/reset-password',
-  /** PUT `{ businessType }` (RETAILER | ENTREPRENEUR | ENTERPRISE) → 200 `{ data: user }`. */
+  /** PUT `{ businessType }` (RETAILER | SUPPLIER) → 200 `{ data: user }`. */
   businessIntent: '/auth/business-intent',
 } as const;
