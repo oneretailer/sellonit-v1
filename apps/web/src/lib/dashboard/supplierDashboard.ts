@@ -5,6 +5,7 @@ export type DateRange = { from: string; to: string };
 
 export type SupplierDashboardData = {
   summary: {
+    /** Integer kobo. */
     totalSales: number;
     orderCount: number;
     retailerOrderCount: number;
@@ -13,7 +14,7 @@ export type SupplierDashboardData = {
     lowStock: number;
     outOfStock: number;
   };
-  salesTrend: { date: string; value: number }[];
+  salesTrend: { date: string; /** Integer kobo. */ value: number }[];
   stockAlerts: {
     id: string;
     name: string;
@@ -27,6 +28,7 @@ export type SupplierDashboardData = {
     retailerLocation: string;
     itemCount: number;
     orderedAt: string;
+    /** Integer kobo. */
     amount: number;
     status: 'awaiting_fulfilment' | 'shipped' | 'delivered';
   }[];

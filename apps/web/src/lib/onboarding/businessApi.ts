@@ -1,17 +1,11 @@
 /**
- * Business creation for the Create Business onboarding step, behind a small
- * adapter so the UI does not block on the backend.
- *
- * Backend status (source-confirmed): `POST /api/v1/businesses` IS implemented
- * (apps/api/src/modules/businesses/businesses.handlers.ts) and persists
- * `name`, `slug` and `type` — but the Prisma `Business` model has NO phone,
- * email or description columns, so those fields from `CreateBusinessRequest`
- * are silently dropped. Until the full contract is implemented we default to
- * the local adapter, which stores everything in the shared onboarding state
- * (sessionStorage, same place as the role). Flip `businessApi` to
- * `httpBusinessApi` once the backend persists the whole payload.
+ * Business signup through the typed OpenAPI client. The existing POST /businesses
+ * drops contact values, so the additive PROPOSED /onboarding/businesses operation
+ * preserves the full payload. A local draft is written only AFTER server success
+ * (for setup progress), never used as proof of membership. The legacy local adapter
+ * remains exported for existing tests/offline reference, but is no longer selected.
  */
-import { apiFetch } from '@/lib/api-client';
+import { api, newIdempotencyKey, unwrap } from '@/lib/api';
 import {
   writeOnboardingBusiness,
   type OnboardingBusinessDraft,
@@ -51,7 +45,7 @@ export type CreatedBusiness = {
 };
 
 export interface BusinessApi {
-  createBusiness(input: CreateBusinessInput): Promise<CreatedBusiness>;
+  createBusiness(input: CreateBusinessInput, idempotencyKey?: string): Promise<CreatedBusiness>;
 }
 
 function toDraft(input: CreateBusinessInput): OnboardingBusinessDraft {
@@ -83,27 +77,19 @@ export const localBusinessApi: BusinessApi = {
   },
 };
 
-/**
- * The real endpoint. Sends name/type/phone/email; `description` is not part of
- * the implemented contract yet, so it is still kept in the local draft.
- *
- * TODO(backend): include `description` once the API accepts and stores it.
- */
+/** PROPOSED typed endpoint. The caller owns the preflight and cross-tab broadcast. */
 export const httpBusinessApi: BusinessApi = {
-  async createBusiness(input) {
-    const draft = writeOnboardingBusiness(toDraft(input));
-    const response = await apiFetch<{ data: CreatedBusiness }>('/businesses', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: draft.name,
-        type: businessTypeForRole(input.role),
-        phone: draft.phone,
-        email: draft.email,
-      }),
-    });
-    return response.data;
+  async createBusiness(input, idempotencyKey = newIdempotencyKey()) {
+    const response = await unwrap(api.POST('/onboarding/businesses', {
+      params: { header: { 'Idempotency-Key': idempotencyKey } },
+      body: { name: input.name.trim(), phone: input.phone, email: input.email, description: input.description.trim(), accountType: input.role },
+    }));
+    const created = response.data;
+    if (!created?.id || !created.name || !created.type) throw new Error('Business creation returned an incomplete response.');
+    writeOnboardingBusiness(toDraft(input));
+    return { id: created.id, name: created.name, type: created.type };
   },
 };
 
-/** Single switch point (mirrors supplierDashboardApi / roleApi). */
-export const businessApi: BusinessApi = localBusinessApi;
+/** API-ready default; no local business is presented as server-created. */
+export const businessApi: BusinessApi = httpBusinessApi;

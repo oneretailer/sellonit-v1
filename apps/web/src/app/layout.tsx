@@ -4,6 +4,10 @@ import { cookies } from 'next/headers';
 import './globals.css';
 import { AuthSessionProvider, type InitialAuthSession } from '@/lib/auth/AuthSessionProvider';
 import type { AuthUser } from '@/lib/auth/types';
+import { QueryProvider } from '@/lib/providers/QueryProvider';
+import { ToastProvider } from '@/components/workspace/ToastProvider';
+import { MockProvider } from '@/components/workspace/MockProvider';
+import { MockControls } from '@/components/workspace/MockControls';
 
 /**
  * Poppins is exposed as the CSS variable `--font-poppins`. It is set on <html>
@@ -22,6 +26,8 @@ export const metadata: Metadata = {
 const ACCESS_COOKIE = 'sellonit_access_token';
 
 async function readInitialSession(): Promise<InitialAuthSession> {
+  // MSW runs in the browser. Do not make a real backend request during mock SSR.
+  if (process.env.NEXT_PUBLIC_API_MOCK === 'true') return { status: 'checking', user: null };
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
   if (!token) return { status: 'unauthenticated', user: null };
 
@@ -52,7 +58,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans">
-        <AuthSessionProvider initialSession={initialSession}>{children}</AuthSessionProvider>
+        <MockProvider><QueryProvider><AuthSessionProvider initialSession={initialSession}><ToastProvider>{children}<MockControls /></ToastProvider></AuthSessionProvider></QueryProvider></MockProvider>
       </body>
     </html>
   );

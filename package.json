@@ -62,5 +62,10 @@
   },
   "dependencies": {
     "dotenv": "^18.0.5"
+  },
+  "msw": {
+    "workerDirectory": [
+      "apps/web/public"
+    ]
   }
 }

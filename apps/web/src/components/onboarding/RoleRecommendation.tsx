@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { startTransition, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
@@ -92,7 +92,7 @@ const BULLET_ICONS: Record<RoleBulletIcon, () => React.JSX.Element> = {
  * (so the dashboard guard already sees fresh server data) and only then
  * navigates. "Go Back" returns to the selection view without saving.
  */
-export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack: () => void }) {
+export function RoleRecommendation({ role, onBack, completionLocked = false, preflight }: { role: AccountRole; onBack: () => void; completionLocked?: boolean; preflight?: () => Promise<boolean> }) {
   const router = useRouter();
   const { acceptAuthenticatedUser } = useAuthSession();
   const content = roleRecommendationContent(role);
@@ -106,19 +106,22 @@ export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack
   }, [role]);
 
   async function handleContinue(): Promise<void> {
-    if (inFlight.current) return;
+    if (inFlight.current || completionLocked) return;
     inFlight.current = true;
     setSaving(true);
     setError(null);
     try {
+      if (await preflight?.()) return;
       const saved = await roleApi.saveRole(role);
       // Refresh the in-memory session BEFORE navigating: the next guard reads
       // the server user, so it must already show onboardingIntent.
-      acceptAuthenticatedUser(saved.user);
-      // Every role continues to Create Business immediately after the role is
-      // saved. Only the Supplier track can advance past it today (see
-      // businessApi.canCreateBusiness); other roles get a "coming soon" notice.
-      router.replace(AUTH_ROUTE.createBusiness);
+      // Commit the saved intent and the Create Business navigation in one
+      // transition so the role-selection guard cannot observe an onboarded
+      // user while the old pathname is still mounted and bounce to Overview.
+      startTransition(() => {
+        acceptAuthenticatedUser(saved.user);
+        router.replace(AUTH_ROUTE.createBusiness);
+      });
     } catch (caught: unknown) {
       inFlight.current = false;
       setSaving(false);
@@ -176,8 +179,8 @@ export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack
         <PrimaryButton
           shape="rounded"
           onClick={() => void handleContinue()}
-          loading={saving}
-          disabled={saving}
+          loading={saving || completionLocked}
+          disabled={saving || completionLocked}
         >
           {saving ? (
             <>
@@ -193,7 +196,7 @@ export function RoleRecommendation({ role, onBack }: { role: AccountRole; onBack
         <button
           type="button"
           onClick={onBack}
-          disabled={saving}
+          disabled={saving || completionLocked}
           className="inline-flex min-h-11 items-center justify-center gap-2 px-4 text-base font-medium text-ink disabled:opacity-60"
         >
           <ArrowLeftIcon />

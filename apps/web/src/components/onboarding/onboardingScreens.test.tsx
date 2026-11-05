@@ -67,8 +67,11 @@ vi.mock('@/lib/auth/AuthSessionProvider', () => ({
     cachedDisplayName: 'Person Example',
     acceptAuthenticatedUser: mocks.acceptAuthenticatedUser,
     refreshSession: mocks.refreshSession,
+    refreshWorkspace: vi.fn().mockResolvedValue(null),
   }),
 }));
+
+vi.mock('@/lib/workspace/api', () => ({ confirmIdentity: vi.fn().mockResolvedValue(true), getSessionContext: vi.fn().mockResolvedValue({ businesses: [] }) }));
 
 vi.mock('@/lib/auth/api', () => ({
   getMe: mocks.getMe,

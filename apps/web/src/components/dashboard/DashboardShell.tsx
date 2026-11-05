@@ -108,12 +108,13 @@ function NavLink({
   );
 }
 
-function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function Navigation({ pathname, onNavigate, variant = 'supplier' }: { pathname: string; onNavigate?: () => void; variant?: 'supplier' | 'admin' }) {
   const [expandedGroups, setExpandedGroups] = useState<Set<DashboardNavGroup>>(
     () => new Set(DASHBOARD_NAV_GROUPS.map((group) => group.id)),
   );
   const dashboard = DASHBOARD_NAV_ITEMS.find((item) => item.id === 'dashboard');
   const overview = DASHBOARD_NAV_ITEMS.find((item) => item.id === 'overview');
+  if (variant === 'admin') return <nav aria-label="Platform administration navigation"><Link href="/admin/suppliers" onClick={onNavigate} aria-current={pathname.startsWith('/admin/suppliers') ? 'page' : undefined} className="flex min-h-11 items-center gap-3 rounded-xl bg-orange-50 px-3 text-sm font-semibold text-ink"><DashboardIcon name="business" className="size-[18px]" />Supplier review</Link></nav>;
   return (
     <nav aria-label="Supplier workspace navigation" className="flex min-h-0 flex-1 flex-col gap-5">
       {dashboard && overview ? (
@@ -171,21 +172,23 @@ function SidebarContent({
   businessName,
   pathname,
   onNavigate,
+  variant = 'supplier',
 }: {
   user: AuthUser;
   data: SupplierDashboardData;
   businessName: string;
   pathname: string;
   onNavigate?: () => void;
+  variant?: 'supplier' | 'admin';
 }) {
   return (
     <div className="flex min-h-full flex-col gap-6 px-4 py-7">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-ink">{businessName}</p>
-        <p className="mt-1 text-xs text-subtle">Supplier workspace</p>
+        <p className="mt-1 text-xs text-subtle">{variant === 'admin' ? 'Platform administration' : 'Supplier workspace'}</p>
       </div>
-      <SetupProgress data={data} />
-      <Navigation pathname={pathname} onNavigate={onNavigate} />
+      {variant === 'supplier' ? <SetupProgress data={data} /> : null}
+      <Navigation pathname={pathname} onNavigate={onNavigate} variant={variant} />
       <span className="sr-only">Signed in as {getUserFullName(user)}</span>
     </div>
   );
@@ -196,15 +199,20 @@ export function DashboardShell({
   data,
   children,
   activePath,
+  variant = 'supplier',
+  businessName: businessNameOverride,
 }: {
   user: AuthUser;
   data: SupplierDashboardData;
   children: ReactNode;
   activePath: string;
+  /** Additive admin presentation reuses the same header, sidebar and accessible drawer. */
+  variant?: 'supplier' | 'admin';
+  businessName?: string;
 }) {
   const pathname = usePathname() ?? activePath;
   const fullName = getUserFullName(user);
-  const businessName = data.businessName?.trim() || fullName;
+  const businessName = businessNameOverride?.trim() || (variant === 'admin' ? 'Sellonit platform' : data.businessName?.trim() || fullName);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -355,13 +363,13 @@ export function DashboardShell({
       </header>
       <div className="flex min-h-[990px]">
         <aside className="hidden w-[250px] shrink-0 border-r border-line bg-white lg:block">
-          <SidebarContent user={user} data={data} businessName={businessName} pathname={pathname} />
+          <SidebarContent user={user} data={data} businessName={businessName} pathname={pathname} variant={variant} />
         </aside>
         <div className="min-w-0 flex-1">
           <main className="mx-auto w-full max-w-screen-2xl min-w-0 px-4 py-5 md:px-6 md:py-6 lg:px-7 lg:py-7 2xl:px-8">
-            <div className="mb-5 lg:hidden">
+            {variant === 'supplier' ? <div className="mb-5 lg:hidden">
               <SetupProgress data={data} compact />
-            </div>
+            </div> : null}
             {children}
             {activeItem && activeItem.id !== 'overview' ? (
               <span className="sr-only">{activeItem.label} selected</span>
@@ -382,7 +390,7 @@ export function DashboardShell({
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Supplier workspace navigation"
+            aria-label={variant === 'admin' ? 'Platform administration navigation' : 'Supplier workspace navigation'}
             className="h-full w-[min(20rem,88vw)] overflow-y-auto border-r border-line bg-white shadow-xl"
           >
             <div className="flex min-h-22 items-center justify-between border-b border-line px-4">
@@ -412,15 +420,15 @@ export function DashboardShell({
             </div>
             <div className="px-4 py-5">
               <p className="truncate text-sm font-semibold">{businessName}</p>
-              <p className="mt-1 text-xs text-subtle">Supplier workspace</p>
+              <p className="mt-1 text-xs text-subtle">{variant === 'admin' ? 'Platform administration' : 'Supplier workspace'}</p>
               <div className="mt-5">
-                <Navigation pathname={pathname} onNavigate={closeDrawer} />
+                <Navigation pathname={pathname} onNavigate={closeDrawer} variant={variant} />
               </div>
             </div>
           </aside>
         </div>
       ) : null}
-      <span className="sr-only">Active page: {overview?.label ?? 'Dashboard'}</span>
+      <span className="sr-only">Active page: {variant === 'admin' ? 'Supplier review' : activeItem?.label ?? overview?.label ?? 'Dashboard'}</span>
     </div>
   );
 }

@@ -12,19 +12,13 @@ import {
 } from '@/lib/dashboard/dateRanges';
 import type { SupplierDashboardData } from '@/lib/dashboard/supplierDashboard';
 import { DashboardIcon } from './icons';
+import { formatNaira } from '@/lib/money';
 
-const currencyFormat = new Intl.NumberFormat('en-NG', {
-  style: 'currency',
-  currency: 'NGN',
-  maximumFractionDigits: 0,
-  minimumFractionDigits: 0,
-});
+// Compatibility export. Money values are integer kobo, including legacy dashboard data.
+export { formatNaira } from '@/lib/money';
+
 const countFormat = new Intl.NumberFormat('en-NG', { maximumFractionDigits: 0 });
 const shortDateFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
-
-export function formatNaira(amount: number): string {
-  return currencyFormat.format(amount);
-}
 
 export function formatCount(count: number): string {
   return countFormat.format(count);

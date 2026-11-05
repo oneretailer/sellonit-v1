@@ -74,6 +74,15 @@ async function readErrorBody(response: Response): Promise<ApiError> {
           );
           fields = entries.length > 0 ? Object.fromEntries(entries) : null;
         }
+        // Additive PROPOSED 422/409 envelopes use the existing ErrorDetail[] shape.
+        if (!fields && Array.isArray(body.error.details)) {
+          const entries = body.error.details.flatMap((detail: unknown) =>
+            isRecord(detail) && typeof detail.field === 'string' && typeof detail.message === 'string'
+              ? [[detail.field, detail.message] as [string, string]]
+              : [],
+          );
+          fields = entries.length > 0 ? Object.fromEntries(entries) : null;
+        }
       }
     } catch {
       // Malformed error body — fall through to the generic message.
@@ -93,16 +102,18 @@ async function readErrorBody(response: Response): Promise<ApiError> {
  * body. Throws {@link ApiError} for non-success responses and
  * {@link NetworkError} when the request cannot be made.
  */
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetchResponse(path: string, init: RequestInit = {}): Promise<Response> {
   let response: Response;
   try {
+    // Merge through Headers so callers may pass plain objects, tuples or a
+    // Headers instance (openapi-fetch supplies Headers; spreading one loses all entries).
+    const headers = new Headers(init.headers);
+    if (init.body !== undefined && !headers.has('content-type')) headers.set('content-type', 'application/json');
     response = await fetch(`${API_BASE_PATH}${path}`, {
       ...init,
+      credentials: 'same-origin',
       cache: 'no-store',
-      headers: {
-        ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
-        ...init.headers,
-      },
+      headers,
     });
   } catch {
     throw new NetworkError();
@@ -111,7 +122,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (!response.ok) {
     throw await readErrorBody(response);
   }
+  return response;
+}
 
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await apiFetchResponse(path, init);
   const contentType = response.headers.get('content-type') ?? '';
   if (response.status === 204 || !contentType.includes('application/json')) {
     return null as T;

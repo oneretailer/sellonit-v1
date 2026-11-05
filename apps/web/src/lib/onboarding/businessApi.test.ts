@@ -11,6 +11,7 @@ import {
   businessApi,
   canCreateBusiness,
   localBusinessApi,
+  httpBusinessApi,
 } from './businessApi';
 
 beforeEach(() => {
@@ -27,8 +28,9 @@ describe('business creation feature flag', () => {
     expect(canCreateBusiness(null)).toBe(false);
   });
 
-  it('selects the local adapter in exactly one exported switch point', () => {
-    expect(businessApi).toBe(localBusinessApi);
+  it('selects the typed HTTP adapter; local business drafts are not server membership', () => {
+    expect(businessApi).toBe(httpBusinessApi);
+    expect(businessApi).not.toBe(localBusinessApi);
   });
 });
 

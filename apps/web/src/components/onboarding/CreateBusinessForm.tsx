@@ -1,13 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { TextField } from '@/components/reuseable/TextField';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
-import { AUTH_ROUTE } from '@/lib/auth/authDestination';
 import {
   readOnboardingRole,
   subscribeOnboardingRole,
@@ -18,9 +16,13 @@ import { roleForBusinessType } from '@/lib/onboarding/roleApi';
 import type { AccountRole } from '@/lib/onboarding/roles';
 import { cn } from '@/lib/cn';
 import { isValidEmail, normalizeEmail } from '@/lib/validation/auth';
+import { useSignupCompletion } from '@/lib/auth/useSignupCompletion';
+import { SignupCompletionNotice } from '@/components/auth/SignupCompletionNotice';
+import { newIdempotencyKey } from '@/lib/api';
+import { presentError } from '@/lib/workspace/errors';
 
 const COMING_SOON_MESSAGE =
-  'Business creation for your role is coming soon. We’ve saved your details — you’ll be able to continue as soon as your workspace is ready.';
+  'Business creation for your role is coming soon. Your details stay in this form until your workspace is ready.';
 const JOIN_COMING_SOON_MESSAGE =
   'Joining an existing business is coming soon. For now you can create your own business above.';
 
@@ -45,13 +47,14 @@ function emailError(value: string): string | null {
  * "Create your business" — the onboarding step immediately after role selection,
  * shown for every role. Supplier submits and advances to the dashboard; other
  * roles validate the same form but get a friendly non-blocking "coming soon"
- * notice (gated by businessApi.canCreateBusiness). Details are stored through
- * the business adapter in the shared onboarding state until the backend
- * contract is complete. Errors show on blur or submit, never on each keystroke.
+ * notice (gated by canCreateBusiness) without submitting. Supplier details are
+ * persisted through the typed business API; a local draft is written only after
+ * server success for setup progress. Errors show on blur or submit, never on
+ * each keystroke.
  */
 export function CreateBusinessForm() {
-  const router = useRouter();
-  const { user } = useAuthSession();
+  const { user, refreshWorkspace } = useAuthSession();
+  const completion = useSignupCompletion();
   const storedRole = useSyncExternalStore(
     subscribeOnboardingRole,
     readOnboardingRole,
@@ -71,6 +74,7 @@ export function CreateBusinessForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const inFlight = useRef(false);
+  const idempotencyKey = useRef<string | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -97,7 +101,7 @@ export function CreateBusinessForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (inFlight.current) return;
+    if (inFlight.current || completion.locked) return;
 
     const nextErrors: Record<FieldKey, string | null> = {
       name: nameError(name),
@@ -118,28 +122,40 @@ export function CreateBusinessForm() {
     inFlight.current = true;
     setSubmitting(true);
     try {
+      // Actual server membership, not onboardingIntent or the local draft, is completion.
+      if (await completion.confirmOnServer()) return;
+      const confirmationError = completion.getConfirmationError();
+      if (confirmationError) { setFormError(confirmationError); inFlight.current = false; setSubmitting(false); return; }
+      if (!canCreateBusiness(role)) {
+        setNotice(COMING_SOON_MESSAGE); inFlight.current = false; setSubmitting(false); return;
+      }
+      idempotencyKey.current ??= newIdempotencyKey();
       await businessApi.createBusiness({
         name: name.trim(),
         phone: normalizePhone(phone) ?? phone.trim(),
         email: normalizeEmail(email),
         description: description.trim(),
         role: role ?? 'supplier',
-      });
+      }, idempotencyKey.current);
       if (canCreateBusiness(role)) {
+        // Refresh persisted membership before the dashboard guard reads it.
+        await refreshWorkspace();
         // Stays disabled while the app navigates to the dashboard.
-        router.replace(AUTH_ROUTE.dashboard);
+        completion.complete(role ?? 'supplier');
       } else {
-        // Non-supplier track: saved locally, but advancing is not supported yet.
+        // Defensive fallback; canCreateBusiness above normally prevents this.
         setNotice(COMING_SOON_MESSAGE);
         inFlight.current = false;
         setSubmitting(false);
       }
-    } catch {
+    } catch (caught) {
       inFlight.current = false;
       setSubmitting(false);
-      setFormError('We couldn’t save your business details. Please try again.');
+      setFormError(presentError(caught).message);
     }
   }
+
+  if (completion.locked) return <AuthCard gapClassName="gap-5"><SignupCompletionNotice error={completion.error} retry={completion.retry} /></AuthCard>;
 
   return (
     <AuthCard gapClassName="gap-6 md:gap-6" className={cn('auth-card--business', businessFieldWrapperClass)}>
@@ -171,7 +187,7 @@ export function CreateBusinessForm() {
           onBlur={() => handleBlur('name', name)}
           error={errors.name}
           inputRef={nameRef}
-          disabled={submitting}
+          disabled={submitting || completion.locked}
         />
 
         {/* Two columns from md up; stacks to one column when space is tight. */}
@@ -191,7 +207,7 @@ export function CreateBusinessForm() {
             onBlur={() => handleBlur('phone', phone)}
             error={errors.phone}
             inputRef={phoneRef}
-            disabled={submitting}
+            disabled={submitting || completion.locked}
           />
           <TextField
             id="business-email"
@@ -208,7 +224,7 @@ export function CreateBusinessForm() {
             onBlur={() => handleBlur('email', email)}
             error={errors.email}
             inputRef={emailRef}
-            disabled={submitting}
+            disabled={submitting || completion.locked}
           />
         </div>
 
@@ -221,7 +237,7 @@ export function CreateBusinessForm() {
               id="business-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              disabled={submitting}
+              disabled={submitting || completion.locked}
               rows={3}
               placeholder="Tell us a little about what your business does"
               className="min-h-20 w-full min-w-0 flex-1 resize-none bg-transparent text-base text-ink outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:text-gray-500"
@@ -243,7 +259,7 @@ export function CreateBusinessForm() {
 
         <PrimaryButton
           type="submit"
-          disabled={!valid || submitting}
+          disabled={!valid || submitting || completion.locked}
           loading={submitting}
           className="md:h-14 md:rounded-xl md:font-bold disabled:text-subtle"
         >

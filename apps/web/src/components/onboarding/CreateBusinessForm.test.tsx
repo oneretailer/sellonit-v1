@@ -11,11 +11,13 @@ const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn(), push: vi.fn() },
   createBusiness: vi.fn(),
   user: null as { firstName: string; onboardingIntent: string | null } | null,
+  context: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => mocks.router }));
+vi.mock('@/lib/workspace/api', () => ({ confirmIdentity: vi.fn().mockResolvedValue(true), getSessionContext: () => mocks.context() as Promise<{ businesses: { id: string }[] }> }));
 vi.mock('@/lib/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({ user: mocks.user }),
+  useAuthSession: () => ({ user: mocks.user, refreshWorkspace: vi.fn().mockResolvedValue(null) }),
 }));
 
 afterEach(() => {
@@ -28,6 +30,7 @@ beforeEach(() => {
   clearOnboardingRole();
   clearOnboardingBusiness();
   mocks.user = { firstName: 'Ada', onboardingIntent: 'ENTERPRISE' };
+  mocks.context.mockResolvedValue({ businesses: [] });
   // Keep the real feature flag / canCreateBusiness; only stub the adapter method.
   vi.spyOn(businessApi, 'createBusiness').mockImplementation(mocks.createBusiness);
   mocks.createBusiness.mockResolvedValue({ id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE' });
@@ -102,7 +105,26 @@ describe('Create Business screen', () => {
       email: 'hello@example.com',
       role: 'supplier',
     });
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard'));
+  });
+
+  it('preflights existing membership and skips duplicate signup submission', async () => {
+    mocks.context.mockResolvedValue({ businesses: [{ id: 'existing-business' }] });
+    const user = await fillValidForm();
+    await user.click(screen.getByRole('button', { name: 'Create Business' }));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard'));
+    expect(mocks.createBusiness).not.toHaveBeenCalled();
+  });
+
+  it('reuses the same idempotency key when retrying a failed submit', async () => {
+    const user = await fillValidForm();
+    mocks.createBusiness.mockRejectedValueOnce(new Error('offline'));
+    await user.click(screen.getByRole('button', { name: 'Create Business' }));
+    await waitFor(() => expect(mocks.createBusiness).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('button', { name: 'Create Business' }));
+    await waitFor(() => expect(mocks.createBusiness).toHaveBeenCalledTimes(2));
+    expect(mocks.createBusiness.mock.calls[0]![1]).toBeTruthy();
+    expect(mocks.createBusiness.mock.calls[1]![1]).toBe(mocks.createBusiness.mock.calls[0]![1]);
   });
 
   it('shows a non-blocking coming-soon notice for non-supplier roles and does not advance', async () => {

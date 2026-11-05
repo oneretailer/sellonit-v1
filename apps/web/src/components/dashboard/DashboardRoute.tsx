@@ -16,7 +16,7 @@ import { SupplierDashboardOverview } from './SupplierDashboardOverview';
 
 export type DashboardRouteMode = 'overview' | 'section';
 
-function DashboardSessionSkeleton({
+export function DashboardSessionSkeleton({
   displayName,
   onRetry,
 }: {

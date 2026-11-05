@@ -3403,10 +3403,896 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/session/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get authoritative workspace capabilities (PROPOSED)
+         * @description PROPOSED. Server-resolved grants for the active business. Clients must fail closed when grants are absent; membership labels are never authorization grants.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Current workspace context */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["WorkspaceSessionContext"];
+                        };
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/onboarding/businesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete business signup without losing contact details (PROPOSED)
+         * @description PROPOSED. Additive alternative to POST /businesses, which currently drops contact field values in the implementation. Atomically creates the business, owner membership and draft supplier profile when accountType is supplier. Reuses the original response for the same authenticated user and Idempotency-Key.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Unique key for safe retry of a mutating request. Reuse the same key only for the same logical operation. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CompleteBusinessSignupRequest"];
+                };
+            };
+            responses: {
+                /** @description Business and membership created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBusiness"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["FieldValidationFailed"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List supplier review queue (PROPOSED)
+         * @description PROPOSED. Platform ADMIN only.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Defaults to PENDING_REVIEW. */
+                    status?: components["schemas"]["SupplierReviewStatus"];
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Paginated suppliers */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaginatedAdminSuppliers"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/suppliers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get supplier profile and audit history (PROPOSED)
+         * @description PROPOSED. Platform ADMIN only. id is the supplier business ID.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Supplier review detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdminSupplierDetail"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/suppliers/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a pending supplier (PROPOSED)
+         * @description PROPOSED. PENDING_REVIEW -> APPROVED. Other states return INVALID_STATE_TRANSITION.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        plan: components["schemas"]["SupplierPlan"];
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated supplier */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdminSupplierDetail"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["FieldValidationFailed"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/suppliers/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a pending supplier (PROPOSED)
+         * @description PROPOSED. PENDING_REVIEW -> REJECTED. Other states return INVALID_STATE_TRANSITION.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SupplierReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated supplier */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdminSupplierDetail"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["FieldValidationFailed"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/suppliers/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspend an approved supplier (PROPOSED)
+         * @description PROPOSED. APPROVED -> SUSPENDED. Other states return INVALID_STATE_TRANSITION.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SupplierReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated supplier */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdminSupplierDetail"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["FieldValidationFailed"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/suppliers/{id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reinstate a suspended supplier (PROPOSED)
+         * @description PROPOSED. SUSPENDED -> APPROVED. Other states return INVALID_STATE_TRANSITION.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated supplier */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseAdminSupplierDetail"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active-business products (PROPOSED)
+         * @description PROPOSED. Requires product:read. Business scope comes from the authenticated session, never a client-supplied business ID.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    status?: components["schemas"]["ProductStatus"];
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Paginated products */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaginatedWorkspaceProducts"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        /**
+         * Create a product with one default variant (PROPOSED)
+         * @description PROPOSED. Requires product:write. No physical stock fields. SKU uniqueness is scoped to the active business.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description Unique key for safe retry of a mutating request. Reuse the same key only for the same logical operation. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateWorkspaceProductRequest"];
+                };
+            };
+            responses: {
+                /** @description Draft product created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["FieldValidationFailed"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get an active-business product (PROPOSED)
+         * @description PROPOSED. Requires product:read. Includes the current markup rule so the edit form needs no uncontracted pricing GET.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Product */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a non-archived product (PROPOSED)
+         * @description PROPOSED. Requires product:write. Archived products are read-only.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateWorkspaceProductRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated product */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["FieldValidationFailed"];
+            };
+        };
+        trace?: never;
+    };
+    "/supplier/products/{id}/pricing-rule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the maximum markup rule (PROPOSED)
+         * @description PROPOSED. Requires pricing:set. null means no ceiling; zero means fixed base price; a positive integer is the maximum markup in kobo.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetMaximumMarkupRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated product including its pricing rule */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["FieldValidationFailed"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier/products/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a product (PROPOSED)
+         * @description PROPOSED. Requires product:publish and APPROVED supplier status. DRAFT/UNPUBLISHED -> PUBLISHED; ARCHIVED is immutable.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Published product */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier/products/{id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unpublish a product (PROPOSED)
+         * @description PROPOSED. Requires product:publish and APPROVED supplier status. PUBLISHED -> UNPUBLISHED; other states return INVALID_STATE_TRANSITION.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unpublished product */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description PROPOSED. Platform identity, separate from business membership.
+         * @enum {string}
+         */
+        PlatformRole: "USER" | "ADMIN";
+        /**
+         * @description PROPOSED. Explicit server grant; never infer from a membership label.
+         * @enum {string}
+         */
+        WorkspacePermission: "product:read" | "product:write" | "pricing:set" | "product:publish" | "supplier:review";
+        /**
+         * @description PROPOSED. Server-enabled workspace feature.
+         * @enum {string}
+         */
+        WorkspaceFeature: "supplier-workspace" | "product-catalogue" | "admin-supplier-review";
+        /** @description PROPOSED. Actual persisted membership, not a browser draft. */
+        WorkspaceBusiness: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            type: components["schemas"]["BusinessType"];
+        };
+        /**
+         * @description PROPOSED. Supplier review lifecycle.
+         * @enum {string}
+         */
+        SupplierReviewStatus: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "SUSPENDED";
+        /**
+         * @description PROPOSED. Plan selected on approval.
+         * @enum {string}
+         */
+        SupplierPlan: "ENTERPRISE" | "ENTERPRISE_PLUS";
+        /** @description PROPOSED. Authorization inputs resolved by the server for the current cookie session. */
+        WorkspaceSessionContext: {
+            platformRole: components["schemas"]["PlatformRole"];
+            permissions: components["schemas"]["WorkspacePermission"][];
+            features: components["schemas"]["WorkspaceFeature"][];
+            businesses: components["schemas"]["WorkspaceBusiness"][];
+            activeBusiness: components["schemas"]["WorkspaceBusiness"] | null;
+            supplierStatus: components["schemas"]["SupplierReviewStatus"] | null;
+        };
+        /** @description PROPOSED. Full contact payload; supplier maps to ENTERPRISE. */
+        CompleteBusinessSignupRequest: {
+            name: string;
+            phone: string;
+            /** Format: email */
+            email: string;
+            description?: string;
+            /** @enum {string} */
+            accountType: "entrepreneur" | "retailer" | "supplier";
+        };
+        /** @description PROPOSED. id is the supplier business ID. */
+        AdminSupplierSummary: {
+            /** Format: uuid */
+            id: string;
+            businessName: string;
+            ownerPhone: string;
+            /** Format: date-time */
+            submittedAt: string | null;
+            status: components["schemas"]["SupplierReviewStatus"];
+        };
+        /** @description PROPOSED. Immutable review-history entry. */
+        SupplierAuditEvent: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            action: "SUBMITTED" | "APPROVED" | "REJECTED" | "SUSPENDED" | "REINSTATED";
+            actorName: string;
+            fromStatus: components["schemas"]["SupplierReviewStatus"] | null;
+            toStatus: components["schemas"]["SupplierReviewStatus"];
+            reason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @description PROPOSED. Supplier profile and immutable audit trail. */
+        AdminSupplierDetail: {
+            /** Format: uuid */
+            id: string;
+            businessName: string;
+            ownerName: string;
+            ownerPhone: string;
+            /** Format: email */
+            ownerEmail: string;
+            description: string;
+            /** Format: date-time */
+            submittedAt: string | null;
+            status: components["schemas"]["SupplierReviewStatus"];
+            plan: components["schemas"]["SupplierPlan"] | null;
+            auditHistory: components["schemas"]["SupplierAuditEvent"][];
+        };
+        /** @description PROPOSED. Required non-blank decision reason. */
+        SupplierReasonRequest: {
+            reason: string;
+        };
+        /** @description PROPOSED. Single default variant; no inventory/stock fields. */
+        WorkspaceDefaultVariant: {
+            sku: string;
+            basePriceKobo: number;
+        };
+        /** @description PROPOSED. null is no ceiling; zero is fixed base price. */
+        MaximumMarkupPricingRule: {
+            maxMarkupKobo: number | null;
+        };
+        /** @description PROPOSED. Active-business product with one default variant. */
+        WorkspaceProduct: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            businessId: string;
+            name: string;
+            description: string;
+            category: string;
+            defaultVariant: components["schemas"]["WorkspaceDefaultVariant"];
+            status: components["schemas"]["ProductStatus"];
+            pricingRule: components["schemas"]["MaximumMarkupPricingRule"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description PROPOSED. Server assigns businessId, DRAFT status and an uncapped pricing rule. */
+        CreateWorkspaceProductRequest: {
+            name: string;
+            description?: string;
+            category: string;
+            defaultVariant: components["schemas"]["WorkspaceDefaultVariant"];
+        };
+        /** @description PROPOSED. At least one editable field; archived products cannot be updated. */
+        UpdateWorkspaceProductRequest: {
+            name?: string;
+            description?: string;
+            category?: string;
+            defaultVariant?: components["schemas"]["WorkspaceDefaultVariant"];
+        };
+        /** @description PROPOSED. Whole kobo only; base price plus markup must remain a safe integer. */
+        SetMaximumMarkupRequest: {
+            maxMarkupKobo: number | null;
+        };
+        /** @description PROPOSED. */
+        PaginatedAdminSuppliers: {
+            data: components["schemas"]["AdminSupplierSummary"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        /** @description PROPOSED. */
+        PaginatedWorkspaceProducts: {
+            data: components["schemas"]["WorkspaceProduct"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        /** @description PROPOSED. */
+        ApiResponseAdminSupplierDetail: {
+            data: components["schemas"]["AdminSupplierDetail"];
+        };
+        /** @description PROPOSED. */
+        ApiResponseWorkspaceProduct: {
+            data: components["schemas"]["WorkspaceProduct"];
+        };
+        /** @description PROPOSED additive 422 envelope. fields maps contract paths (for example defaultVariant.sku) to a display message; details preserves the existing ErrorDetail shape. */
+        FieldValidationErrorResponse: {
+            error: {
+                /** @enum {string} */
+                code: "VALIDATION_FAILED";
+                message: string;
+                requestId: string;
+                fields?: {
+                    [key: string]: string;
+                };
+                details?: components["schemas"]["ErrorDetail"][];
+            };
+        };
         /** @enum {string} */
         UserRole: "OWNER" | "ADMIN" | "STAFF" | "SUPPLIER" | "RETAILER";
         /** @enum {string} */
@@ -4254,6 +5140,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description PROPOSED. Field-level validation failed; display fields beside their inputs. */
+        FieldValidationFailed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["FieldValidationErrorResponse"];
+            };
+        };
         /** @description Request validation failed */
         ValidationError: {
             headers: {
@@ -4310,6 +5205,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description Resource UUID. */
+        WorkspaceResourceId: string;
         BusinessId: string;
         MemberId: string;
         StoreId: string;
