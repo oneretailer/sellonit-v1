@@ -81,8 +81,7 @@ vi.mock('@/lib/auth/api', () => ({
 
 vi.mock('@/lib/onboarding/roleApi', () => ({
   roleApi: { saveRole: mocks.saveRole },
-  roleForBusinessType: (intent: string) =>
-    intent === 'ENTERPRISE' ? 'supplier' : intent === 'RETAILER' ? 'retailer' : 'entrepreneur',
+  roleForBusinessType: (intent: string) => (intent === 'SUPPLIER' ? 'supplier' : 'retailer'),
 }));
 
 afterEach(() => cleanup());
@@ -263,7 +262,7 @@ describe('role selection screen', () => {
       firstName: 'Person',
       lastName: 'Example',
       emailVerifiedAt: VERIFIED,
-      onboardingIntent: 'ENTERPRISE',
+      onboardingIntent: 'SUPPLIER',
     };
     render(<RoleSelectionPage />);
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));

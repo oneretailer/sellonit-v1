@@ -30,7 +30,7 @@ const SAVED_USER = {
   email: 'ada@example.com',
   firstName: 'Ada',
   lastName: 'Lovelace',
-  onboardingIntent: 'ENTERPRISE',
+  onboardingIntent: 'SUPPLIER',
 } as AuthUser;
 
 afterEach(() => {
@@ -46,21 +46,17 @@ describe('role API', () => {
     const { calls } = stubFetch(200, { data: SAVED_USER });
     await expect(roleApi.saveRole('supplier')).resolves.toEqual({
       user: SAVED_USER,
-      businessType: 'ENTERPRISE',
+      businessType: 'SUPPLIER',
     });
     expect(calls[0]).toEqual({
       url: '/api/v1/auth/business-intent',
       method: 'PUT',
-      body: { businessType: 'ENTERPRISE' },
+      body: { businessType: 'SUPPLIER' },
     });
 
     for (const option of ROLE_OPTIONS) {
       expect(businessTypeForRole(option.id)).toBe(
-        option.id === 'supplier'
-          ? 'ENTERPRISE'
-          : option.id === 'retailer'
-            ? 'RETAILER'
-            : 'ENTREPRENEUR',
+        option.id === 'supplier' ? 'SUPPLIER' : option.id === 'retailer' ? 'RETAILER' : 'RETAILER',
       );
     }
   });
@@ -74,13 +70,12 @@ describe('role API', () => {
 describe('BusinessType mapping', () => {
   it('maps each onboarding role to the backend enum', () => {
     expect(businessTypeForRole('retailer')).toBe('RETAILER');
-    expect(businessTypeForRole('entrepreneur')).toBe('ENTREPRENEUR');
-    expect(businessTypeForRole('supplier')).toBe('ENTERPRISE');
+    expect(businessTypeForRole('entrepreneur')).toBe('RETAILER');
+    expect(businessTypeForRole('supplier')).toBe('SUPPLIER');
   });
 
   it('round-trips a saved intent back to a role', () => {
-    expect(roleForBusinessType('ENTERPRISE')).toBe('supplier');
+    expect(roleForBusinessType('SUPPLIER')).toBe('supplier');
     expect(roleForBusinessType('RETAILER')).toBe('retailer');
-    expect(roleForBusinessType('ENTREPRENEUR')).toBe('entrepreneur');
   });
 });

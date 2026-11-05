@@ -102,7 +102,7 @@ beforeEach(() => {
   sessionStorage.clear();
   mocks.status = 'authenticated';
   mocks.pathname = '/dashboard/overview';
-  mocks.user = user({ onboardingIntent: 'ENTERPRISE' });
+  mocks.user = user({ onboardingIntent: 'SUPPLIER' });
 });
 
 describe('dashboard destination guard', () => {
@@ -131,7 +131,7 @@ describe('dashboard destination guard', () => {
     expect(mocks.router.replace).not.toHaveBeenCalledWith('/auth/role-selection');
   });
 
-  it.each(['RETAILER', 'ENTREPRENEUR'] as const)(
+  it.each(['RETAILER'] as const)(
     'renders the custom 404 for an onboarded %s account instead of a dashboard',
     (intent) => {
       mocks.user = user({ onboardingIntent: intent });

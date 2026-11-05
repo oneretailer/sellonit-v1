@@ -43,7 +43,7 @@ describe('resolveAuthDestination — the one routing decision', () => {
     ).toEqual({ kind: 'role-selection', path: AUTH_ROUTE.roleSelection });
   });
 
-  it.each(['ENTERPRISE', 'RETAILER', 'ENTREPRENEUR'] as const)(
+  it.each(['SUPPLIER', 'RETAILER'] as const)(
     'sends an onboarded %s account to the dashboard entry point',
     (onboardingIntent) => {
       expect(
@@ -58,7 +58,7 @@ describe('resolveAuthDestination — the one routing decision', () => {
   it('is pure: the same session always resolves to the same single destination', () => {
     const session = {
       status: 'authenticated' as const,
-      user: { emailVerifiedAt: VERIFIED, onboardingIntent: 'ENTERPRISE' as const },
+      user: { emailVerifiedAt: VERIFIED, onboardingIntent: 'SUPPLIER' as const },
     };
     const first = resolveAuthDestination(session);
     const second = resolveAuthDestination(session);

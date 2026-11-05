@@ -687,6 +687,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/supplier/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the authenticated user's supplier profile */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Supplier profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSupplierProfile"];
+                    };
+                };
+            };
+        };
+        /** Create or update the authenticated user's supplier profile */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpsertSupplierProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description Supplier profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSupplierProfile"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier/profile/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit the authenticated user's supplier profile for review */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        businessId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Supplier profile submitted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSupplierProfile"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/businesses": {
         parameters: {
             query?: never;
@@ -4294,9 +4397,13 @@ export interface components {
             };
         };
         /** @enum {string} */
-        UserRole: "OWNER" | "ADMIN" | "STAFF" | "SUPPLIER" | "RETAILER";
+        UserRole: "OWNER" | "MANAGER" | "STAFF";
         /** @enum {string} */
-        BusinessType: "RETAILER" | "ENTREPRENEUR" | "ENTERPRISE";
+        BusinessType: "RETAILER" | "SUPPLIER";
+        /** @enum {string} */
+        PlanKey: "ENTERPRISE" | "ENTERPRISE_PLUS";
+        /** @enum {string} */
+        SupplierProfileStatus: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED";
         /** @enum {string} */
         UserStatus: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
         /** @enum {string} */
@@ -4424,6 +4531,9 @@ export interface components {
             originLocation?: components["schemas"]["Address"];
             /** @enum {string} */
             retailerAccess?: "OPEN" | "APPROVAL_REQUIRED" | "PRIVATE";
+            status: components["schemas"]["SupplierProfileStatus"];
+            /** Format: date-time */
+            submittedAt?: string | null;
         };
         RetailerProfile: {
             /** Format: uuid */
@@ -4813,6 +4923,8 @@ export interface components {
             status?: "ACTIVE" | "SUSPENDED" | "REMOVED";
         };
         UpsertSupplierProfileRequest: {
+            /** Format: uuid */
+            businessId?: string;
             legalName?: string;
             description?: string;
             contactPhone?: string;

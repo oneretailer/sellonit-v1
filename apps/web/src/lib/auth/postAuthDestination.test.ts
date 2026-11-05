@@ -21,7 +21,7 @@ describe('post-auth destination', () => {
     );
   });
 
-  it.each(['ENTERPRISE', 'RETAILER', 'ENTREPRENEUR'] as const)(
+  it.each(['SUPPLIER', 'RETAILER'] as const)(
     'sends an onboarded account (%s) to the dashboard route exactly once',
     (onboardingIntent) => {
       // Every onboarded role resolves to the same entry point; the dashboard

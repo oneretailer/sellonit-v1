@@ -14,8 +14,8 @@ function stringField(value: unknown): value is string {
   return typeof value === 'string';
 }
 
-function businessTypeField(value: unknown): value is 'RETAILER' | 'ENTREPRENEUR' | 'ENTERPRISE' {
-  return value === 'RETAILER' || value === 'ENTREPRENEUR' || value === 'ENTERPRISE';
+function businessTypeField(value: unknown): value is 'RETAILER' | 'SUPPLIER' {
+  return value === 'RETAILER' || value === 'SUPPLIER';
 }
 
 export async function createBusinessHandler(req: Request, res: Response): Promise<void> {
@@ -26,6 +26,10 @@ export async function createBusinessHandler(req: Request, res: Response): Promis
     body && typeof body === 'object' ? (body as Record<string, unknown>).type : undefined;
   const requestBusinessType =
     body && typeof body === 'object' ? (body as Record<string, unknown>).businessType : undefined;
+  const requestPhone =
+    body && typeof body === 'object' ? (body as Record<string, unknown>).phone : undefined;
+  const requestEmail =
+    body && typeof body === 'object' ? (body as Record<string, unknown>).email : undefined;
   const requestedType = requestType ?? requestBusinessType;
   if (!req.userId || !stringField(requestName) || requestName.trim().length < 2) {
     res
@@ -37,9 +41,24 @@ export async function createBusinessHandler(req: Request, res: Response): Promis
     res.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Business type must be RETAILER, ENTREPRENEUR, or ENTERPRISE',
+        message: 'Business type must be RETAILER or SUPPLIER',
       },
     });
+    return;
+  }
+  if (requestPhone !== undefined && (!stringField(requestPhone) || requestPhone.length > 30)) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid business phone' } });
+    return;
+  }
+  if (
+    requestEmail !== undefined &&
+    (!stringField(requestEmail) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestEmail))
+  ) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid business email' } });
     return;
   }
   const name = requestName.trim();
@@ -55,7 +74,14 @@ export async function createBusinessHandler(req: Request, res: Response): Promis
       slug,
       ownerId: req.userId,
       type,
+      phone: requestPhone,
+      email: requestEmail,
       memberships: { create: { userId: req.userId, role: 'OWNER' } },
+      activeSubscription: {
+        create: {
+          plan: { connect: { key: 'ENTERPRISE' } },
+        },
+      },
     },
     include: { memberships: true },
   });

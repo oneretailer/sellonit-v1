@@ -71,7 +71,7 @@ describe('authenticated entry gates', () => {
       firstName: 'Jane',
       lastName: 'Doe',
       emailVerifiedAt: VERIFIED,
-      onboardingIntent: 'ENTERPRISE',
+      onboardingIntent: 'SUPPLIER',
     };
     render(<AuthenticatedAuthRouteGate>{child}</AuthenticatedAuthRouteGate>);
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
