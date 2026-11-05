@@ -4,6 +4,7 @@ import type { AnchorHTMLAttributes, ImgHTMLAttributes } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { DashboardRoute } from './DashboardRoute';
+import { polyfillDialog } from '@/components/workspace/testUtils';
 import { EMPTY_SUPPLIER_DASHBOARD } from '@/lib/dashboard/supplierDashboard';
 import type { AuthUser } from '@/lib/auth/types';
 
@@ -49,6 +50,23 @@ vi.mock('@/lib/auth/AuthSessionProvider', () => ({
     cachedDisplayName: 'Ada Lovelace',
     refreshSession: mocks.refreshSession,
   }),
+  useSession: () => ({
+    user: mocks.user,
+    signOut: vi.fn(() => Promise.resolve()),
+  }),
+}));
+vi.mock('@/lib/business/BusinessProvider', () => ({
+  useBusiness: () => ({
+    businesses: [{ id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE', role: 'OWNER' }],
+    activeBusiness: { id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE', role: 'OWNER' },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    switchBusiness: vi.fn(),
+    switcherOpen: false,
+    setSwitcherOpen: vi.fn(),
+    can: () => true,
+  }),
 }));
 vi.mock('@/lib/dashboard/useSupplierDashboard', () => ({
   useSupplierDashboard: () => ({
@@ -78,6 +96,7 @@ function user(overrides: Partial<AuthUser> = {}): AuthUser {
 
 afterEach(() => cleanup());
 beforeEach(() => {
+  polyfillDialog();
   vi.clearAllMocks();
   localStorage.clear();
   sessionStorage.clear();

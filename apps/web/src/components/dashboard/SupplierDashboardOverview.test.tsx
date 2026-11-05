@@ -7,7 +7,6 @@ import { SupplierDashboardOverview, formatNaira } from './SupplierDashboardOverv
 import { getDateRangeOptions, getTimeGreeting } from '@/lib/dashboard/dateRanges';
 import {
   EMPTY_SUPPLIER_DASHBOARD,
-  localSupplierDashboardApi,
   SETUP_STEPS,
 } from '@/lib/dashboard/supplierDashboard';
 import { getSetupProgress } from './DashboardShell';
@@ -61,9 +60,8 @@ function cardWithLabel(label: string) {
 }
 
 describe('supplier dashboard overview', () => {
-  it('uses empty local data, renders zero summaries and empty states, and contains no design samples', async () => {
-    const data = await localSupplierDashboardApi.getDashboard(selectedRange.range);
-    render(<SupplierDashboardOverview {...emptyProps} data={data} />);
+  it('renders zero summaries and empty states from empty data, with no design samples', () => {
+    render(<SupplierDashboardOverview {...emptyProps} data={EMPTY_SUPPLIER_DASHBOARD} />);
 
     expect(cardWithLabel('Total sales').getByText('₦0')).toBeTruthy();
     expect(cardWithLabel('Orders').getByText('0')).toBeTruthy();

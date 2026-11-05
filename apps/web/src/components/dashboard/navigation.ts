@@ -32,7 +32,7 @@ export const DASHBOARD_NAV_ITEMS = [
     id: 'products',
     label: 'Products',
     icon: 'products',
-    href: '/products',
+    href: '/dashboard/products',
     group: 'catalogue',
   },
   {

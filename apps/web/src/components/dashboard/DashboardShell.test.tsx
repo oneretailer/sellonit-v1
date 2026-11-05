@@ -7,10 +7,33 @@ import userEvent from '@testing-library/user-event';
 import { DashboardShell, getSetupProgress } from './DashboardShell';
 import { DASHBOARD_NAV_GROUPS, dashboardNavItemForPath } from './navigation';
 import { EMPTY_SUPPLIER_DASHBOARD } from '@/lib/dashboard/supplierDashboard';
+import { polyfillDialog } from '@/components/workspace/testUtils';
 import type { AuthUser } from '@/lib/auth/types';
 
-const mocks = vi.hoisted(() => ({ pathname: '/dashboard/overview' }));
-vi.mock('next/navigation', () => ({ usePathname: () => mocks.pathname }));
+const mocks = vi.hoisted(() => ({
+  pathname: '/dashboard/overview',
+  signOut: vi.fn(() => Promise.resolve()),
+}));
+vi.mock('next/navigation', () => ({ usePathname: () => mocks.pathname, useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
+vi.mock('@/lib/auth/AuthSessionProvider', () => ({
+  useSession: () => ({
+    user: { id: 'user-1', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
+    signOut: mocks.signOut,
+  }),
+}));
+vi.mock('@/lib/business/BusinessProvider', () => ({
+  useBusiness: () => ({
+    businesses: [{ id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE', role: 'OWNER' }],
+    activeBusiness: { id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE', role: 'OWNER' },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    switchBusiness: vi.fn(),
+    switcherOpen: false,
+    setSwitcherOpen: vi.fn(),
+    can: () => true,
+  }),
+}));
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
     <a href={href} {...props}>
@@ -30,6 +53,7 @@ vi.mock('next/image', () => ({
 
 afterEach(() => cleanup());
 beforeEach(() => {
+  polyfillDialog();
   vi.clearAllMocks();
   localStorage.clear();
   sessionStorage.clear();
@@ -113,14 +137,14 @@ describe('supplier workspace shell', () => {
     expect(openButton.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('closes the mobile drawer when its overlay is clicked', async () => {
+  it('closes the mobile drawer when the backdrop is clicked', async () => {
     const userEventSession = userEvent.setup();
     renderShell();
     await userEventSession.click(screen.getByRole('button', { name: 'Open navigation' }));
     const dialog = screen.getByRole('dialog');
-    const overlay = dialog.parentElement;
-    if (!overlay) throw new Error('Expected drawer overlay');
-    fireEvent.mouseDown(overlay, { target: overlay });
+    // jsdom has no layout: every rect is 0, so a click at (500, 500) on the
+    // dialog element itself is outside its box → treated as a backdrop click.
+    fireEvent.click(dialog, { clientX: 500, clientY: 500 });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
@@ -155,10 +179,20 @@ describe('supplier workspace shell', () => {
     expect(progress).toEqual({ completed: 2, total: 6, percent: 33 });
   });
 
-  it('links the progress widget to the refresh-safe Supplier Setup route', () => {
+  it('shows the setup card with percent, step count and a Continue setup link', () => {
     renderShell();
-    const links = screen.getAllByRole('link', { name: /Complete setup/ });
+    expect(screen.getAllByText('Complete your business setup').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0 of 6 steps completed').length).toBeGreaterThan(0);
+    const links = screen.getAllByRole('link', { name: 'Continue setup' });
     expect(links.length).toBeGreaterThan(0);
     links.forEach((link) => expect(link.getAttribute('href')).toBe('/dashboard/supplier-setup'));
+  });
+
+  it('renders the business switcher pill and profile menu with logout', async () => {
+    const userEventSession = userEvent.setup();
+    renderShell();
+    expect(screen.getByRole('button', { name: 'Switch business, current: Okechukwu Fashion' })).toBeTruthy();
+    await userEventSession.click(screen.getByRole('button', { name: 'Account menu' }));
+    expect(screen.getByRole('menuitem', { name: 'Log out' })).toBeTruthy();
   });
 });

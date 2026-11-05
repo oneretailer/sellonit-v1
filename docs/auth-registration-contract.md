@@ -272,5 +272,6 @@ phone/OTP registration UI.
 
 Frontend reference implementation: `apps/web/src/lib/auth/api.ts` (payload
 assembly + error mapping), `apps/web/src/lib/validation/auth.ts` (identical
-client-side rules), `apps/web/src/lib/auth/auth.mock.ts` (dev mock of this
-contract behind `NEXT_PUBLIC_MOCK_AUTH=true`).
+client-side rules). The former dev mock (`auth.mock.ts`,
+`NEXT_PUBLIC_MOCK_AUTH`) has been removed; the app now talks to the real API
+only.

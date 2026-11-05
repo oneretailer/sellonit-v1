@@ -16,6 +16,7 @@ import { workspaceKeys } from '@/lib/workspace/queryKeys';
 import type { Feature, Permission, SessionContext } from '@/lib/workspace/types';
 import { ApiError } from '@/lib/api-client';
 import { getMe } from './api';
+import { logout } from './authService';
 import type { AuthSessionStatus } from './authDestination';
 import type { AuthUser } from './types';
 
@@ -39,6 +40,8 @@ type AuthSessionContextValue = {
   can: (permission: Permission) => boolean;
   hasFeature: (feature: Feature) => boolean;
   refreshWorkspace: () => Promise<SessionContext | null>;
+  /** Revokes the session (best effort) and clears all local session state. */
+  signOut: () => Promise<void>;
 };
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
@@ -177,6 +180,16 @@ export function AuthSessionProvider({
     }
   }, [acceptAuthenticatedUser]);
 
+  const signOut = useCallback(async () => {
+    // Only clear local state after the server confirms the cookie is gone;
+    // a failed revoke keeps the session (no fake sign-out).
+    await logout();
+    clearSessionHint();
+    setUser(null);
+    setStatus('unauthenticated');
+    queryClient.clear();
+  }, [queryClient]);
+
   useEffect(() => {
     if (initialSession.status === 'authenticated' && initialSession.user) {
       writeSessionHint(initialSession.user);
@@ -191,8 +204,8 @@ export function AuthSessionProvider({
   }, [initialSession, refreshSession]);
 
   const value = useMemo(
-    () => ({ status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, workspaceError: contextQuery.error, can, hasFeature, refreshWorkspace }),
-    [status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, contextQuery.error, can, hasFeature, refreshWorkspace],
+    () => ({ status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, workspaceError: contextQuery.error, can, hasFeature, refreshWorkspace, signOut }),
+    [status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, contextQuery.error, can, hasFeature, refreshWorkspace, signOut],
   );
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
 }

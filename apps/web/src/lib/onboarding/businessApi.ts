@@ -2,8 +2,7 @@
  * Business signup through the typed OpenAPI client. The existing POST /businesses
  * drops contact values, so the additive PROPOSED /onboarding/businesses operation
  * preserves the full payload. A local draft is written only AFTER server success
- * (for setup progress), never used as proof of membership. The legacy local adapter
- * remains exported for existing tests/offline reference, but is no longer selected.
+ * (for setup progress), never used as proof of membership.
  */
 import { api, newIdempotencyKey, unwrap } from '@/lib/api';
 import {
@@ -11,7 +10,6 @@ import {
   type OnboardingBusinessDraft,
 } from '@/lib/auth/flowState';
 import type { BusinessType } from '@/lib/auth/types';
-import { businessTypeForRole } from '@/lib/onboarding/roleApi';
 import type { AccountRole } from '@/lib/onboarding/roles';
 
 /**
@@ -57,25 +55,6 @@ function toDraft(input: CreateBusinessInput): OnboardingBusinessDraft {
     completedAt: new Date().toISOString(),
   };
 }
-
-/**
- * Stores the business details in the shared onboarding state and resolves with
- * a locally-identified business. This is the temporary path while the backend
- * contract is incomplete.
- *
- * TODO(backend): replace with `httpBusinessApi` once POST /businesses persists
- * phone, email and description (and a supplier-profile endpoint exists).
- */
-export const localBusinessApi: BusinessApi = {
-  createBusiness(input) {
-    const draft = writeOnboardingBusiness(toDraft(input));
-    return Promise.resolve({
-      id: `local-${draft.completedAt}`,
-      name: draft.name,
-      type: businessTypeForRole(input.role),
-    });
-  },
-};
 
 /** PROPOSED typed endpoint. The caller owns the preflight and cross-tab broadcast. */
 export const httpBusinessApi: BusinessApi = {

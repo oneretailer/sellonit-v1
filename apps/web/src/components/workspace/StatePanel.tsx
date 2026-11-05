@@ -1,8 +1,60 @@
+'use client';
+
+/**
+ * Workspace state panels. `StatePanel` is the single large-card state used by
+ * the dashboard access/error screens (and reused by products empty/error).
+ * The older LoadingState/EmptyState/ErrorState/NoAccessState remain for the
+ * admin workspace; new screens should prefer StatePanel.
+ */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/cn';
+import { DashboardIcon, type DashboardIconName } from '@/components/dashboard/icons';
 import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { presentError } from '@/lib/workspace/errors';
+
+export type StateTone = 'gray' | 'cream' | 'red' | 'green';
+
+const toneTile: Record<StateTone, string> = {
+  gray: 'bg-gray-100 text-subtle',
+  cream: 'bg-orange-50 text-primary',
+  red: 'bg-red-50 text-danger',
+  green: 'bg-green-50 text-success',
+};
+
+/** One large white rounded card with a centered icon, title, body and actions. */
+export function StatePanel({
+  icon,
+  tone = 'gray',
+  title,
+  description,
+  actions,
+  className,
+}: {
+  icon: DashboardIconName;
+  tone?: StateTone;
+  title: string;
+  description: string;
+  actions?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        'flex min-h-[50vh] w-full flex-col items-center justify-center gap-5 rounded-3xl border border-line bg-white p-6 text-center sm:p-10 lg:p-12',
+        className,
+      )}
+    >
+      <span aria-hidden="true" className={cn('flex size-14 items-center justify-center rounded-full', toneTile[tone])}>
+        <DashboardIcon name={icon} className="size-7" />
+      </span>
+      <h2 className="font-heading text-xl font-semibold text-ink md:text-2xl">{title}</h2>
+      <p className="max-w-[420px] text-sm leading-6 text-subtle">{description}</p>
+      {actions ? <div className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:flex-row">{actions}</div> : null}
+    </section>
+  );
+}
 
 export function LoadingState({ label = 'Loading workspace' }: { label?: string }) {
   return <div role="status" aria-label={label} className="space-y-5 rounded-3xl border border-line p-6">

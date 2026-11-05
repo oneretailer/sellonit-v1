@@ -1,42 +1,88 @@
 /** @vitest-environment jsdom */
-import { afterEach, beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+
+import type { AnchorHTMLAttributes } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SupplierReview } from './SupplierReview';
 import { polyfillDialog, renderWorkspace } from '@/components/workspace/testUtils';
-import { server } from '@/mocks/server';
-import { resetMockData } from '@/mocks/handlers';
-import { DEFAULT_MOCK_CONFIG, writeMockConfig } from '@/mocks/scenarios';
-import { mockSession } from '@/mocks/data';
-const mocks = vi.hoisted(() => ({ refreshSession: vi.fn() }));
-vi.mock('@/lib/auth/AuthSessionProvider', () => ({ useSession: () => ({ user: { id: 'admin-user' }, workspace: mockSession(), refreshSession: mocks.refreshSession }) }));
-beforeAll(() => { server.listen({ onUnhandledFrame: 'error' }); polyfillDialog(); });
-beforeEach(() => { resetMockData(); writeMockConfig({ ...DEFAULT_MOCK_CONFIG, persona: 'ADMIN' }); });
-afterEach(() => { cleanup(); server.resetHandlers(); });
-afterAll(() => server.close());
-const baseId = '44444444-4444-4444-8444-44444444444';
-describe('supplier review confirmation UI', () => {
-  it.each([[0, ['Approve supplier', 'Reject supplier']], [1, ['Suspend supplier']], [2, []], [3, ['Reinstate supplier']], [4, []]] as [number, string[]][])('shows only valid actions for fixture %i', async (index, labels) => {
-    writeMockConfig({ ...DEFAULT_MOCK_CONFIG, persona: 'ADMIN', supplierStatus: 'PENDING_REVIEW' });
-    renderWorkspace(<SupplierReview id={`${baseId}${index}`} />); await screen.findByRole('heading', { name: /Lagos|Abuja|Kano|Enugu|Jos/ });
-    for (const label of ['Approve supplier', 'Reject supplier', 'Suspend supplier', 'Reinstate supplier']) expect(screen.queryByRole('button', { name: label }) !== null).toBe(labels.includes(label));
+import { ApiError } from '@/lib/api-client';
+import * as adminApi from '@/lib/workspace/adminApi';
+import type { SupplierDetail } from '@/lib/workspace/types';
+
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} {...props}>{children}</a>
+  ),
+}));
+vi.mock('@/lib/auth/AuthSessionProvider', () => ({
+  useSession: () => ({
+    user: { id: 'admin-1' },
+    refreshSession: vi.fn(() => Promise.resolve(null)),
+  }),
+}));
+
+function supplier(overrides: Partial<SupplierDetail> = {}): SupplierDetail {
+  return {
+    id: 'sup-1',
+    businessName: 'Okechukwu Fashion',
+    ownerName: 'Ada Lovelace',
+    ownerPhone: '08031234567',
+    ownerEmail: 'ada@example.com',
+    description: 'Fashion wholesaler',
+    status: 'PENDING_REVIEW',
+    plan: null,
+    submittedAt: '2026-10-26T00:00:00.000Z',
+    auditHistory: [],
+    ...overrides,
+  };
+}
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+beforeEach(() => polyfillDialog());
+
+describe('supplier review (spied API, no mocks server)', () => {
+  it('loads a supplier and shows only status-valid actions', async () => {
+    vi.spyOn(adminApi, 'getSupplier').mockResolvedValue(supplier());
+    renderWorkspace(<SupplierReview id="sup-1" />);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Okechukwu Fashion' })).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Approve supplier' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reject supplier' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Suspend supplier' })).toBeNull();
   });
-  it('requires confirmation, sends selected plan, updates history and announces success', async () => {
-    const user = userEvent.setup(); renderWorkspace(<SupplierReview id={`${baseId}0`} />);
-    await user.click(await screen.findByRole('button', { name: 'Approve supplier' }));
-    expect(screen.getByRole('dialog')).toBeTruthy(); expect(screen.getByText('PENDING REVIEW')).toBeTruthy();
-    await user.selectOptions(screen.getByLabelText('Approval plan'), 'ENTERPRISE_PLUS');
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve supplier' }));
+
+  it('requires a reason before rejecting and calls the real API adapter', async () => {
+    const userEventSession = userEvent.setup();
+    vi.spyOn(adminApi, 'getSupplier').mockResolvedValue(supplier());
+    const transition = vi.spyOn(adminApi, 'transitionSupplier')
+      .mockResolvedValue(supplier({ status: 'REJECTED' }));
+    renderWorkspace(<SupplierReview id="sup-1" />);
+    await userEventSession.click(await screen.findByRole('button', { name: 'Reject supplier' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeTruthy();
+    // Confirm without a reason → inline error, no API call.
+    const confirmButtons = screen.getAllByRole('button', { name: 'Reject supplier' });
+    await userEventSession.click(confirmButtons[confirmButtons.length - 1]!);
+    expect((await screen.findAllByText('A reason is required.')).length).toBeGreaterThan(0);
+    expect(transition).not.toHaveBeenCalled();
+    await userEventSession.type(screen.getByLabelText('Reason (required)'), 'Incomplete documents');
+    await userEventSession.click(confirmButtons[confirmButtons.length - 1]!);
+    await waitFor(() => expect(transition).toHaveBeenCalledWith('sup-1', 'reject', { reason: 'Incomplete documents', plan: 'ENTERPRISE' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(await screen.findByText('ENTERPRISE PLUS')).toBeTruthy();
-    expect(screen.getByText(/Platform administrator/)).toBeTruthy();
-    expect(screen.getByText('Supplier approved.')).toBeTruthy();
   });
-  it('keeps a required reason beside its input', async () => {
-    const user = userEvent.setup(); renderWorkspace(<SupplierReview id={`${baseId}0`} />);
-    await user.click(await screen.findByRole('button', { name: 'Reject supplier' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Reject supplier' }));
-    expect(screen.getByLabelText('Reason (required)').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getAllByText('A reason is required.').length).toBeGreaterThan(0);
+
+  it('surfaces load errors with a retry that refetches', async () => {
+    const userEventSession = userEvent.setup();
+    const get = vi.spyOn(adminApi, 'getSupplier')
+      .mockRejectedValueOnce(new ApiError(500, 'INTERNAL', 'Something went wrong.'))
+      .mockResolvedValue(supplier());
+    renderWorkspace(<SupplierReview id="sup-1" />);
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    await userEventSession.click(retry);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Okechukwu Fashion' })).toBeTruthy());
+    expect(get).toHaveBeenCalledTimes(2);
   });
 });

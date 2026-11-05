@@ -8,6 +8,8 @@
  * reads or writes it.
  */
 
+import { ACTIVE_BUSINESS_HEADER, getActiveBusinessId } from '@/lib/business/activeBusiness';
+
 export const API_BASE_PATH = '/api/v1';
 
 /** A non-successful API response. `code` is the backend's stable error code. */
@@ -109,6 +111,9 @@ export async function apiFetchResponse(path: string, init: RequestInit = {}): Pr
     // Headers instance (openapi-fetch supplies Headers; spreading one loses all entries).
     const headers = new Headers(init.headers);
     if (init.body !== undefined && !headers.has('content-type')) headers.set('content-type', 'application/json');
+    // TODO(backend): confirm active-business transport (header vs path). One place.
+    const businessId = getActiveBusinessId();
+    if (businessId && !headers.has(ACTIVE_BUSINESS_HEADER)) headers.set(ACTIVE_BUSINESS_HEADER, businessId);
     response = await fetch(`${API_BASE_PATH}${path}`, {
       ...init,
       credentials: 'same-origin',

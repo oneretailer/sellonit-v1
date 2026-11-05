@@ -7,8 +7,7 @@
  *
  * Not listed because the backend does not implement them:
  * - `POST /auth/resend-verification` (docs/auth-registration-contract.md §4)
- * - `POST /auth/logout`, `POST /auth/refresh` (documented in docs/openapi.yaml
- *   but not mounted in auth.routes.ts)
+ * - `POST /auth/refresh` (documented in docs/openapi.yaml but not mounted)
  */
 export const AUTH_ENDPOINTS = {
   /** POST `{ email, password, firstName, lastName }` → 201 `{ data: user }`. */
@@ -37,4 +36,10 @@ export const AUTH_ENDPOINTS = {
   resetPassword: '/auth/reset-password',
   /** PUT `{ businessType }` (RETAILER | ENTREPRENEUR | ENTERPRISE) → 200 `{ data: user }`. */
   businessIntent: '/auth/business-intent',
+  /**
+   * POST → 204, revokes the session and clears the cookie. Documented in
+   * docs/openapi.yaml. TODO(backend): not yet mounted in auth.routes.ts; the
+   * client treats 404 as "endpoint absent" and still clears the local session.
+   */
+  logout: '/auth/logout',
 } as const;

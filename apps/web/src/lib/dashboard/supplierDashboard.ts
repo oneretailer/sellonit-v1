@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import type { AccountRole } from '@/lib/onboarding/roles';
 import { SUPPLIER_SETUP_STEPS } from '@/lib/onboarding/supplierSetup';
 
@@ -68,34 +69,26 @@ export interface SupplierDashboardApi {
   getDashboard(range: DateRange): Promise<SupplierDashboardData>;
 }
 
-export const localSupplierDashboardApi: SupplierDashboardApi = {
-  getDashboard(_range) {
-    return Promise.resolve({
-      ...EMPTY_SUPPLIER_DASHBOARD,
-      summary: { ...EMPTY_SUPPLIER_DASHBOARD.summary },
-      salesTrend: [],
-      stockAlerts: [],
-      recentOrders: [],
-      setup: { completedStepIds: [] },
-    });
-  },
-};
-
 /**
- * TODO(backend): the current API source has no implemented supplier dashboard
- * handler. The OpenAPI document only sketches summary analytics and requires a
- * business ID; do not call it until the complete contract is implemented.
+ * Real HTTP adapter. TODO(backend): GET /supplier/dashboard is not implemented
+ * yet (the OpenAPI document only sketches per-business analytics). Until it
+ * exists the Overview shows its load-error + Retry state — no mock data.
+ * Expected response: `{ data: SupplierDashboardData }` with money in kobo and
+ * `setup.completedStepIds` from the shared six-step checklist.
  */
 export const httpSupplierDashboardApi: SupplierDashboardApi = {
-  getDashboard(_range) {
-    return Promise.reject(
-      new Error('TODO(backend): supplier dashboard endpoint is not implemented.'),
+  async getDashboard(range) {
+    const search = new URLSearchParams({ from: range.from, to: range.to });
+    const response = await apiFetch<{ data: SupplierDashboardData }>(
+      `/supplier/dashboard?${search.toString()}`,
+      { method: 'GET' },
     );
+    return response.data;
   },
 };
 
-// Single switch point when a complete, implemented backend contract is available.
-export const supplierDashboardApi: SupplierDashboardApi = localSupplierDashboardApi;
+/** Single switch point; always the real API now that mocks are removed. */
+export const supplierDashboardApi: SupplierDashboardApi = httpSupplierDashboardApi;
 
 /** Product onboarding roles are intentionally separate from backend permissions. */
 export type SupplierDashboardRole = AccountRole;

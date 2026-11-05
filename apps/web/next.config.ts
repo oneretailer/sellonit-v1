@@ -87,10 +87,6 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   turbopack: {
     root: repoRoot,
-    // MSW 3 maps msw/browser to null under Node's export condition, including
-    // Next's SSR compilation. Resolve its browser entry explicitly; the dynamic
-    // import is executed only in MockProvider's browser effect behind the flag.
-    resolveAlias: { 'msw/browser': './node_modules/msw/lib/browser/index.js' },
   },
   poweredByHeader: false,
   reactStrictMode: true,

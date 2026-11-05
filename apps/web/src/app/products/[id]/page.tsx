@@ -1,5 +1,7 @@
-import type { Metadata } from 'next';
-import { WorkspaceRoute } from '@/components/workspace/WorkspaceRoute';
-import { ProductEditor } from '@/components/products/ProductEditor';
-export const metadata: Metadata = { title: 'Edit product' };
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) { const { id } = await params; return <WorkspaceRoute permission="product:read" feature="product-catalogue"><ProductEditor id={id} /></WorkspaceRoute>; }
+import { redirect } from 'next/navigation';
+
+/** Legacy route: the products module now lives at /dashboard/products. */
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/dashboard/products/${id}/edit`);
+}

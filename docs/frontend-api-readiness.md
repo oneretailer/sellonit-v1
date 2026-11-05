@@ -1,3 +1,12 @@
+> **⚠️ Superseded in part (2026-11-05).** All mocks (MSW handlers/scenarios,
+> `MockProvider`/`MockControls`, `auth.mock.ts`, `mockServiceWorker.js`, the
+> `NEXT_PUBLIC_API_MOCK` flag and the msw dev dependency) have been **removed**
+> at the product owner's request, and the supplier Products module was rebuilt
+> at `/dashboard/products` — see `docs/products-module.md` for the current
+> state. Sections below that describe MSW, mock controls, the local business
+> adapter or `app/products/**` components are historical. The endpoint
+> contract, transport, auth and OpenAPI notes remain accurate.
+
 # Sellonit frontend API-readiness handoff
 
 Scope: frontend only (`apps/web`, generated shared API types, additive OpenAPI proposals, root npm metadata/lockfile and `.env.example`). No backend implementation, database migration, or Next.js API route was added. The existing `/api/v1/*` rewrite in `apps/web/next.config.ts` is unchanged.

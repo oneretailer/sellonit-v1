@@ -1,22 +1,31 @@
 /** @vitest-environment jsdom */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearOnboardingBusiness,
-  ONBOARDING_BUSINESS_STORAGE_KEY,
   readOnboardingBusiness,
 } from '@/lib/auth/flowState';
 import {
   NON_SUPPLIER_BUSINESS_CREATION_ENABLED,
   businessApi,
   canCreateBusiness,
-  localBusinessApi,
   httpBusinessApi,
 } from './businessApi';
+
+const post = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/api', () => ({
+  api: { POST: post },
+  newIdempotencyKey: () => 'idem-test',
+  unwrap: (result: Promise<{ data?: unknown; error?: unknown }>) => result.then((body) => {
+    if (body.error || body.data === undefined) throw new Error('request failed');
+    return body.data;
+  }),
+}));
 
 beforeEach(() => {
   sessionStorage.clear();
   clearOnboardingBusiness();
+  post.mockReset();
 });
 
 describe('business creation feature flag', () => {
@@ -28,33 +37,38 @@ describe('business creation feature flag', () => {
     expect(canCreateBusiness(null)).toBe(false);
   });
 
-  it('selects the typed HTTP adapter; local business drafts are not server membership', () => {
+  it('selects the typed HTTP adapter; no local adapter remains', () => {
     expect(businessApi).toBe(httpBusinessApi);
-    expect(businessApi).not.toBe(localBusinessApi);
   });
 });
 
-describe('local business adapter', () => {
-  it('stores the details in the shared onboarding state and resolves a business', async () => {
-    const created = await localBusinessApi.createBusiness({
+describe('HTTP business adapter', () => {
+  it('posts the full payload and only writes the local draft after server success', async () => {
+    post.mockResolvedValue({ data: { data: { id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE' } } });
+    const created = await httpBusinessApi.createBusiness({
       name: '  Okechukwu Fashion  ',
       phone: '08031234567',
       email: 'Hello@Example.com',
       description: '  Fashion retailer  ',
       role: 'supplier',
-    });
+    }, 'idem-1');
 
-    expect(created.name).toBe('Okechukwu Fashion');
-    expect(created.type).toBe('ENTERPRISE');
-    expect(created.id).toBeTruthy();
-
-    // Persisted in the same sessionStorage-backed onboarding state as the role.
-    expect(sessionStorage.getItem(ONBOARDING_BUSINESS_STORAGE_KEY)).not.toBeNull();
+    expect(created).toEqual({ id: 'biz-1', name: 'Okechukwu Fashion', type: 'ENTERPRISE' });
+    expect(post).toHaveBeenCalledWith('/onboarding/businesses', expect.objectContaining({
+      params: { header: { 'Idempotency-Key': 'idem-1' } },
+      body: { name: 'Okechukwu Fashion', phone: '08031234567', email: 'Hello@Example.com', description: 'Fashion retailer', accountType: 'supplier' },
+    }));
     const draft = readOnboardingBusiness();
     expect(draft?.name).toBe('Okechukwu Fashion');
     expect(draft?.phone).toBe('08031234567');
     expect(draft?.email).toBe('Hello@Example.com');
-    expect(draft?.description).toBe('Fashion retailer');
-    expect(draft?.completedAt).toBeTruthy();
+  });
+
+  it('does not write a local draft when the server rejects', async () => {
+    post.mockResolvedValue({ error: { code: 'VALIDATION_ERROR' } });
+    await expect(httpBusinessApi.createBusiness({
+      name: 'Okechukwu Fashion', phone: '08031234567', email: 'hello@example.com', description: '', role: 'supplier',
+    })).rejects.toThrow();
+    expect(readOnboardingBusiness()).toBeNull();
   });
 });

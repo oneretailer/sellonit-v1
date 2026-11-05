@@ -131,6 +131,23 @@ export class ResendUnavailableError extends Error {
 /* ── Request functions ─────────────────────────────────────────────────── */
 
 /**
+ * POST /auth/logout — revokes the current session cookie.
+ * TODO(backend): the route is documented in docs/openapi.yaml but not yet
+ * mounted. A 401 (already expired) is "nothing left to revoke"; every other
+ * failure — including 404 while the endpoint is absent — throws, because the
+ * httpOnly cookie can only be cleared server-side and clearing local state
+ * anyway would bounce the user straight back into the dashboard.
+ */
+export async function logout(): Promise<void> {
+  try {
+    await apiFetch<null>(AUTH_ENDPOINTS.logout, { method: 'POST' });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return;
+    throw error;
+  }
+}
+
+/**
  * The body field that carries the identifier. The backend's login, forgot
  * password and reset password handlers all read a field named `email`.
  */

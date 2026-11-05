@@ -18,7 +18,21 @@ export type DashboardIconName =
   | 'sales'
   | 'box'
   | 'alert'
-  | 'arrow';
+  | 'arrow'
+  | 'info'
+  | 'check-circle'
+  | 'image'
+  | 'upload'
+  | 'search'
+  | 'plus'
+  | 'dots'
+  | 'trash'
+  | 'wifi-off'
+  | 'lock'
+  | 'shield'
+  | 'logout'
+  | 'chevron-down'
+  | 'close';
 
 const ICON_PATHS: Record<DashboardIconName, ReactNode> = {
   dashboard: (
@@ -129,6 +143,76 @@ const ICON_PATHS: Record<DashboardIconName, ReactNode> = {
       <path d="M5 12h14M13 6l6 6-6 6" />
     </>
   ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 8h.01" />
+    </>
+  ),
+  'check-circle': (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="m5 18 5-5 3 3 3-3 3 3" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M7 17a5 5 0 0 1-.8-9.9A6 6 0 0 1 18 8.3 4.5 4.5 0 0 1 17.5 17" />
+      <path d="M12 12v8m0-8-3 3m3-3 3 3" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.8-3.8" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  dots: (
+    <>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16M9 7V5h6v2M6.5 7l1 13h9l1-13" />
+      <path d="M10 11v5M14 11v5" />
+    </>
+  ),
+  'wifi-off': (
+    <>
+      <path d="M2 8.5A15 15 0 0 1 12 5c1.2 0 2.4.14 3.5.4M22 8.5a15 15 0 0 0-3.2-2.1M5 12.5a10 10 0 0 1 4.2-2.1M19 12.5a10 10 0 0 0-2.5-1.7M8.5 16.4a5.5 5.5 0 0 1 7 0" />
+      <path d="M12 20h.01M3 3l18 18" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3 5 6v5c0 5 3.4 8.4 7 10 3.6-1.6 7-5 7-10V6l-7-3Z" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5M21 12H9" />
+    </>
+  ),
+  'chevron-down': <path d="m6 9 6 6 6-6" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
 };
 
 export function DashboardIcon({

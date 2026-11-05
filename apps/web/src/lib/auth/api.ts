@@ -36,9 +36,6 @@ import type {
   VerifyPhoneResponse,
 } from './types';
 
-/** FOR REMOVAL — dev mock switch (NEXT_PUBLIC_MOCK_AUTH=true). Default OFF. */
-const MOCK_AUTH = process.env.NEXT_PUBLIC_MOCK_AUTH === 'true';
-
 async function registerUserRequest(input: RegisterUserRequest): Promise<RegisterUserResponse> {
   const fullName = input.fullName.trim();
   const { firstName, lastName } = splitFullName(fullName);
@@ -62,10 +59,6 @@ async function registerUserRequest(input: RegisterUserRequest): Promise<Register
  * for anything beyond success.
  */
 export async function registerUser(input: RegisterUserRequest): Promise<RegisterUserResponse> {
-  if (MOCK_AUTH) {
-    const { mockRegisterUser } = await import('./auth.mock');
-    return mockRegisterUser(input);
-  }
   return registerUserRequest(input);
 }
 
@@ -103,10 +96,6 @@ async function verifyEmailRequest(token: string): Promise<VerifyEmailResponse> {
  * show the standalone success screen before the onboarding gate.
  */
 export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
-  if (MOCK_AUTH) {
-    const { mockVerifyEmail } = await import('./auth.mock');
-    return mockVerifyEmail(token);
-  }
   return verifyEmailRequest(token);
 }
 

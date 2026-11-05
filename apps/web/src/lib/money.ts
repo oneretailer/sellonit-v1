@@ -25,9 +25,28 @@ export function koboToNaira(kobo: number): string {
   return `${value / 100n}.${(value % 100n).toString().padStart(2, '0')}`;
 }
 
-/** Display-only conversion. Preserves kobo precision instead of rounding prices. */
+/** The one Naira display formatter (en-NG, NGN). Whole amounts hide decimals. */
+const nairaFormatter = new Intl.NumberFormat('en-NG', {
+  style: 'currency',
+  currency: 'NGN',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+/**
+ * Display-only conversion. Uses the shared Intl formatter, but falls back to
+ * exact BigInt-derived text when a float round-trip could lose kobo precision.
+ * Doubles round-trip 15 significant decimal digits exactly; below 10^15 kobo
+ * the naira amount has at most 13 whole + 2 fraction digits, so Intl is exact.
+ * Above it (e.g. MAX_KOBO) Intl's shortest-round-trip formatting drops digits.
+ */
+const INTL_SAFE_KOBO_LIMIT = 10 ** 15;
+
 export function formatNaira(kobo: number): string {
   const [whole = '0', fraction = '00'] = koboToNaira(kobo).split('.');
+  if (kobo < INTL_SAFE_KOBO_LIMIT) {
+    return nairaFormatter.format(Number(`${whole}.${fraction}`));
+  }
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `₦${grouped}${fraction === '00' ? '' : `.${fraction}`}`;
 }
