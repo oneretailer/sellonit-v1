@@ -21,7 +21,10 @@ describe('workspace API error presentation', () => {
     ['DUPLICATE_SKU', 'validation', true],
     ['LIMIT_REACHED', 'access', false],
   ] as const)('maps %s to a stable %s presentation', (code, kind, retryable) => {
-    expect(presentError(new ApiError(400, code, 'Server message'))).toMatchObject({ kind, retryable });
+    expect(presentError(new ApiError(400, code, 'Server message'))).toMatchObject({
+      kind,
+      retryable,
+    });
   });
 
   it('preserves specific backend VALIDATION_ERROR message when no field map is returned', () => {

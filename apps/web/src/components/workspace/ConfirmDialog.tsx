@@ -11,8 +11,30 @@ import { InlineError } from '@/components/reuseable/InlineError';
 import { Spinner } from '@/components/reuseable/Spinner';
 import { cn } from '@/lib/cn';
 
-export function ConfirmDialog({ open, title, description, children, confirmLabel, cancelLabel = 'Cancel', tone = 'warning', pending = false, error, onConfirm, onClose }: {
-  open: boolean; title: string; description: string; children?: ReactNode; confirmLabel: string; cancelLabel?: string; tone?: DialogTone; pending?: boolean; error?: string | null; onConfirm: () => void; onClose: () => void;
+export function ConfirmDialog({
+  open,
+  title,
+  description,
+  children,
+  confirmLabel,
+  cancelLabel = 'Cancel',
+  tone = 'warning',
+  pending = false,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  children?: ReactNode;
+  confirmLabel: string;
+  cancelLabel?: string;
+  tone?: DialogTone;
+  pending?: boolean;
+  error?: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
 }) {
   return (
     <Dialog
@@ -22,13 +44,31 @@ export function ConfirmDialog({ open, title, description, children, confirmLabel
       tone={tone}
       onClose={onClose}
       closeLocked={pending}
-      actions={<>
-        <button type="button" data-dialog-safe className={dialogSecondaryClass} disabled={pending} onClick={onClose}>{cancelLabel}</button>
-        <button type="button" className={cn(dialogPrimaryClass, tone === 'danger' && 'bg-danger text-white hover:bg-danger/90')} disabled={pending} onClick={onConfirm}>
-          {pending ? <Spinner /> : null}
-          {confirmLabel}
-        </button>
-      </>}
+      actions={
+        <>
+          <button
+            type="button"
+            data-dialog-safe
+            className={dialogSecondaryClass}
+            disabled={pending}
+            onClick={onClose}
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              dialogPrimaryClass,
+              tone === 'danger' && 'bg-danger text-white hover:bg-danger/90',
+            )}
+            disabled={pending}
+            onClick={onConfirm}
+          >
+            {pending ? <Spinner /> : null}
+            {confirmLabel}
+          </button>
+        </>
+      }
     >
       {children}
       {error ? <InlineError>{error}</InlineError> : null}

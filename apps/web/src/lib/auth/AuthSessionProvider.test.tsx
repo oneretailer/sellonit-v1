@@ -51,7 +51,11 @@ function TestApp({
   initialSession: InitialAuthSession;
   children: ReactNode;
 }) {
-  return <QueryProvider><AuthSessionProvider initialSession={initialSession}>{children}</AuthSessionProvider></QueryProvider>;
+  return (
+    <QueryProvider>
+      <AuthSessionProvider initialSession={initialSession}>{children}</AuthSessionProvider>
+    </QueryProvider>
+  );
 }
 
 afterEach(() => cleanup());

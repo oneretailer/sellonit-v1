@@ -92,7 +92,17 @@ const BULLET_ICONS: Record<RoleBulletIcon, () => React.JSX.Element> = {
  * (so the dashboard guard already sees fresh server data) and only then
  * navigates. "Go Back" returns to the selection view without saving.
  */
-export function RoleRecommendation({ role, onBack, completionLocked = false, preflight }: { role: AccountRole; onBack: () => void; completionLocked?: boolean; preflight?: () => Promise<boolean> }) {
+export function RoleRecommendation({
+  role,
+  onBack,
+  completionLocked = false,
+  preflight,
+}: {
+  role: AccountRole;
+  onBack: () => void;
+  completionLocked?: boolean;
+  preflight?: () => Promise<boolean>;
+}) {
   const router = useRouter();
   const { acceptAuthenticatedUser } = useAuthSession();
   const content = roleRecommendationContent(role);

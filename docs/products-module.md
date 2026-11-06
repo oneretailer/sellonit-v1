@@ -8,12 +8,13 @@ loading / empty / error states until each backend endpoint exists.
 ## 1. What was built
 
 ### Routes
-| Route | Screen |
-|---|---|
-| `/dashboard/products` | Products list (stats, tabs, search/filters, table, pagination) |
-| `/dashboard/products/new` | Add product |
-| `/dashboard/products/[id]/edit` | Edit product (both **View** and **Edit** row actions land here) |
-| `/products`, `/products/new`, `/products/[id]` | Redirect to the new routes (old module retired) |
+
+| Route                                          | Screen                                                          |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `/dashboard/products`                          | Products list (stats, tabs, search/filters, table, pagination)  |
+| `/dashboard/products/new`                      | Add product                                                     |
+| `/dashboard/products/[id]/edit`                | Edit product (both **View** and **Edit** row actions land here) |
+| `/products`, `/products/new`, `/products/[id]` | Redirect to the new routes (old module retired)                 |
 
 Unbuilt sidebar sections (Inventory, Pricing, Orders, Fulfilment, Analytics,
 Business profile, Settings, Website) keep linking to their existing
@@ -21,6 +22,7 @@ Business profile, Settings, Website) keep linking to their existing
 for them.
 
 ### App shell (`components/dashboard/DashboardShell.tsx`)
+
 - Header: wordmark, **business-switcher pill**, notification bell with orange
   dot (notifications themselves are a stub), profile menu with **Log out**.
 - ~240px (`w-60`) sticky sidebar with its own scroll: business name +
@@ -33,6 +35,7 @@ for them.
   change, Escape and backdrop click.
 
 ### Products list (`components/products/ProductsListPage.tsx`)
+
 - Three stat cards (Total with published/drafts split, Low stock, Out of
   stock) fed by `GET /supplier/products/summary`; inventory cards link to
   `/dashboard/inventory`.
@@ -52,6 +55,7 @@ for them.
   `useProductFilters`; any filter change resets page 1.
 
 ### Add/Edit form (`components/products/ProductFormPage.tsx`)
+
 - "← Products" breadcrumb, photos / details / pricing / inventory cards;
   sticky right column (~340–360px) with live **Preview** and **Publish** card
   (Publish product, Save draft, Cancel).
@@ -74,6 +78,7 @@ for them.
   uploaded photos.
 
 ### Photo uploader (`components/products/ProductImageUploader.tsx`)
+
 Reusable `value` / `onChange` / `uploadFn` component: empty drag-drop zone,
 drag-over, per-file progress with Cancel, uploaded tiles (Main photo badge,
 Replace, Remove), failed tiles with Retry. JPG/PNG only, 5MB each, 8 max
@@ -82,6 +87,7 @@ one failure never blocks the rest. Tile ids become the server image ids that
 the form submits as `imageIds`.
 
 ### Overlays (`components/workspace/Dialog.tsx`, `ConfirmDialog.tsx`)
+
 One native-`<dialog>` base: 60% black backdrop, white panel, 24px radius,
 32px padding (24 below sm), fluid `max-w-[460px]`, 40px tone icon tile,
 two equal-width buttons (outlined secondary + solid orange primary; stacked
@@ -92,6 +98,7 @@ for the admin workspace. The discard / switch-business confirmations live in
 `NavigationGuard`; publish confirm/success live in the form.
 
 ### Business switcher (`components/dashboard/BusinessSwitcher.tsx`)
+
 Header pill → "Your businesses" popover (bottom sheet below sm): rows with
 type · role, orange check + `aria-current` on the active business, divider +
 **Add business** → Create Business. Arrow keys/Enter/Escape/outside-click,
@@ -103,6 +110,7 @@ business?". `BusinessProvider` persists the active id
 request.
 
 ### Access/error states (`lib/dashboard/access.ts`, `useDashboardAccess.ts`, `components/dashboard/DashboardFrame.tsx`)
+
 One mapper + one hook + one frame render the generic `StatePanel` inside the
 shell: load failed (Retry), business unavailable (Switch business), access
 denied (Go back), page forbidden (Back to dashboard / Switch business), no
@@ -112,18 +120,18 @@ everything today (`can()` is the single tightening point).
 
 ## 2. Where things live
 
-| Concern | File |
-|---|---|
-| Product API contract (ALL endpoints) | `apps/web/src/lib/products/productsApi.ts` |
-| Types / constants / stock rule | `apps/web/src/lib/products/{types,constants,stock}.ts` |
-| Query keys + hooks (business-scoped, optimistic publish) | `apps/web/src/lib/products/queries.ts` |
-| Form validation + payload mapping | `apps/web/src/lib/products/validation.ts` |
-| Business context / switcher data | `apps/web/src/lib/business/{BusinessProvider,businessesApi,activeBusiness}.tsx/ts` |
-| Business header injection | `apps/web/src/lib/api-client.ts` + `activeBusiness.ts` |
-| Error → state mapping | `apps/web/src/lib/dashboard/access.ts` |
-| Dialogs | `apps/web/src/components/workspace/{Dialog,ConfirmDialog,NavigationGuard}.tsx` |
-| Setup progress (single source, 6 steps) | `apps/web/src/lib/onboarding/supplierSetup.ts` |
-| Money / date formatters | `apps/web/src/lib/money.ts`, `apps/web/src/lib/format/date.ts` |
+| Concern                                                  | File                                                                               |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Product API contract (ALL endpoints)                     | `apps/web/src/lib/products/productsApi.ts`                                         |
+| Types / constants / stock rule                           | `apps/web/src/lib/products/{types,constants,stock}.ts`                             |
+| Query keys + hooks (business-scoped, optimistic publish) | `apps/web/src/lib/products/queries.ts`                                             |
+| Form validation + payload mapping                        | `apps/web/src/lib/products/validation.ts`                                          |
+| Business context / switcher data                         | `apps/web/src/lib/business/{BusinessProvider,businessesApi,activeBusiness}.tsx/ts` |
+| Business header injection                                | `apps/web/src/lib/api-client.ts` + `activeBusiness.ts`                             |
+| Error → state mapping                                    | `apps/web/src/lib/dashboard/access.ts`                                             |
+| Dialogs                                                  | `apps/web/src/components/workspace/{Dialog,ConfirmDialog,NavigationGuard}.tsx`     |
+| Setup progress (single source, 6 steps)                  | `apps/web/src/lib/onboarding/supplierSetup.ts`                                     |
+| Money / date formatters                                  | `apps/web/src/lib/money.ts`, `apps/web/src/lib/format/date.ts`                     |
 
 ## 3. Backend TODOs (isolated, honest failures until implemented)
 
@@ -169,7 +177,7 @@ everything today (`can()` is the single tightening point).
 - The briefs said "mock adapter on by default" + `?mock=` flags; the owner's
   later instruction (**remove all mocks**) overrides that. All states are
   still reachable and covered by unit/DOM tests with service spies.
-- The design's sample texts ("Cotton polo shirt" as *sample*, "prototype
+- The design's sample texts ("Cotton polo shirt" as _sample_, "prototype
   simulation only…") are **not** rendered anywhere; dialog product names come
   from the live form value.
 - Notifications bell is visual-only (dot, no panel) — no notifications

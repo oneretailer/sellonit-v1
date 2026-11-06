@@ -133,7 +133,10 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
   }
 
   return (
-    <AuthCard gapClassName="gap-6 sm:gap-12" className={cn('auth-card--login', loginFieldWrapperClass)}>
+    <AuthCard
+      gapClassName="gap-6 sm:gap-12"
+      className={cn('auth-card--login', loginFieldWrapperClass)}
+    >
       {/* Mobile keeps the centred heading + bag mark; from md the heading is
           left-aligned and the artwork is dropped (login design). */}
       <StepHeader

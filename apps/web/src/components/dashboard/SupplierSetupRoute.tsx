@@ -16,7 +16,11 @@ function SetupSessionSkeleton({ onRetry }: { onRetry?: () => void }) {
       <Navbar rightLink={{ label: 'Supplier Set up', variant: 'text' }} />
       <main className="flex flex-1 items-start justify-center px-4 py-8 md:items-center-safe md:px-6 md:py-12">
         <div className="flex w-full max-w-[480px] flex-col gap-5 rounded-card border border-line bg-surface p-6 md:p-8">
-          <span role="status" aria-label="Loading supplier setup" className="block h-7 w-64 max-w-full animate-pulse rounded-full bg-gray-200" />
+          <span
+            role="status"
+            aria-label="Loading supplier setup"
+            className="block h-7 w-64 max-w-full animate-pulse rounded-full bg-gray-200"
+          />
           <span className="block h-4 w-full animate-pulse rounded-full bg-gray-100" />
           <span className="block h-48 w-full animate-pulse rounded-2xl bg-gray-50" />
           <span className="block h-12 w-full animate-pulse rounded-xl bg-gray-100" />

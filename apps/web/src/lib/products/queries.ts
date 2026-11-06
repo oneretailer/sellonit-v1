@@ -8,8 +8,10 @@ import type { Paginated, Product, ProductInput, ProductListParams } from './type
 /** Cache keys include the active business and the filters. */
 export const productKeys = {
   all: (businessId: string | null) => ['products', businessId] as const,
-  list: (businessId: string | null, params: ProductListParams) => ['products', businessId, 'list', params] as const,
-  detail: (businessId: string | null, id: string) => ['products', businessId, 'detail', id] as const,
+  list: (businessId: string | null, params: ProductListParams) =>
+    ['products', businessId, 'list', params] as const,
+  detail: (businessId: string | null, id: string) =>
+    ['products', businessId, 'detail', id] as const,
   summary: (businessId: string | null) => ['product-summary', businessId] as const,
   categories: (businessId: string | null) => ['product-categories', businessId] as const,
 };
@@ -79,7 +81,8 @@ export function useCreateProduct() {
 export function useUpdateProduct() {
   const invalidate = useInvalidateProducts();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Partial<ProductInput> }) => productsApi.update(id, input),
+    mutationFn: ({ id, input }: { id: string; input: Partial<ProductInput> }) =>
+      productsApi.update(id, input),
     onSuccess: invalidate,
   });
 }
@@ -107,13 +110,17 @@ export function usePublishProduct() {
       publish ? productsApi.publish(id) : productsApi.unpublish(id),
     onMutate: async ({ id, publish }) => {
       await queryClient.cancelQueries({ queryKey: productKeys.all(businessId) });
-      const previous = queryClient.getQueriesData<Paginated<Product>>({ queryKey: productKeys.all(businessId) });
+      const previous = queryClient.getQueriesData<Paginated<Product>>({
+        queryKey: productKeys.all(businessId),
+      });
       const nextStatus = publish ? 'published' : 'draft';
       for (const [key, data] of previous) {
         if (!data?.data) continue;
         queryClient.setQueryData<Paginated<Product>>(key, {
           ...data,
-          data: data.data.map((product) => product.id === id ? { ...product, status: nextStatus } : product),
+          data: data.data.map((product) =>
+            product.id === id ? { ...product, status: nextStatus } : product,
+          ),
         });
       }
       return { previous };

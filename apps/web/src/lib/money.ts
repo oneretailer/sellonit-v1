@@ -3,7 +3,11 @@ export const MAX_KOBO = Number.MAX_SAFE_INTEGER;
 
 export function assertKobo(value: number, allowZero = false): void {
   if (!Number.isSafeInteger(value) || value < (allowZero ? 0 : 1)) {
-    throw new RangeError(allowZero ? 'Enter zero or a positive whole-kobo amount.' : 'Enter an amount greater than zero.');
+    throw new RangeError(
+      allowZero
+        ? 'Enter zero or a positive whole-kobo amount.'
+        : 'Enter an amount greater than zero.',
+    );
   }
 }
 

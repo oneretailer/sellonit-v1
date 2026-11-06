@@ -30,7 +30,8 @@ function parseFilters(search: URLSearchParams): ProductFilters {
     tab: status === 'published' || status === 'draft' ? status : 'all',
     q: search.get('q') ?? '',
     category: search.get('category') ?? '',
-    stock: stock && (STOCK_VALUES as readonly string[]).includes(stock) ? stock as StockFilter : 'all',
+    stock:
+      stock && (STOCK_VALUES as readonly string[]).includes(stock) ? (stock as StockFilter) : 'all',
     page: Number.isFinite(page) && page > 0 ? page : 1,
   };
 }
@@ -65,37 +66,52 @@ export function useProductFilters() {
     }
   }, [filters.q]);
 
-  useEffect(() => () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
 
-  const push = useCallback((next: ProductFilters) => {
-    const query = toSearchParams(next).toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [pathname, router]);
+  const push = useCallback(
+    (next: ProductFilters) => {
+      const query = toSearchParams(next).toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
 
-  const setFilters = useCallback((changes: Partial<Omit<ProductFilters, 'page'>> & { page?: number }) => {
-    const next: ProductFilters = { ...filters, ...changes };
-    // Any filter change (other than paging itself) resets to page 1.
-    const pagingOnly = changes.page !== undefined
-      && changes.tab === undefined && changes.q === undefined
-      && changes.category === undefined && changes.stock === undefined;
-    if (!pagingOnly) next.page = 1;
-    if (changes.q !== undefined) {
-      lastPushedQ.current = changes.q.trim();
-      setSearchText(changes.q);
-    }
-    push(next);
-  }, [filters, push]);
+  const setFilters = useCallback(
+    (changes: Partial<Omit<ProductFilters, 'page'>> & { page?: number }) => {
+      const next: ProductFilters = { ...filters, ...changes };
+      // Any filter change (other than paging itself) resets to page 1.
+      const pagingOnly =
+        changes.page !== undefined &&
+        changes.tab === undefined &&
+        changes.q === undefined &&
+        changes.category === undefined &&
+        changes.stock === undefined;
+      if (!pagingOnly) next.page = 1;
+      if (changes.q !== undefined) {
+        lastPushedQ.current = changes.q.trim();
+        setSearchText(changes.q);
+      }
+      push(next);
+    },
+    [filters, push],
+  );
 
-  const setSearch = useCallback((text: string) => {
-    setSearchText(text);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      lastPushedQ.current = text.trim();
-      push({ ...filters, q: text, page: 1 });
-    }, SEARCH_DEBOUNCE_MS);
-  }, [filters, push]);
+  const setSearch = useCallback(
+    (text: string) => {
+      setSearchText(text);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        lastPushedQ.current = text.trim();
+        push({ ...filters, q: text, page: 1 });
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [filters, push],
+  );
 
   const clearFilters = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -104,16 +120,23 @@ export function useProductFilters() {
     push({ tab: 'all', q: '', category: '', stock: 'all', page: 1 });
   }, [push]);
 
-  const params = useMemo<ProductListParams>(() => ({
-    page: filters.page,
-    pageSize: PRODUCTS_PAGE_SIZE,
-    ...(filters.tab !== 'all' ? { status: filters.tab } : {}),
-    ...(filters.q.trim() ? { q: filters.q.trim() } : {}),
-    ...(filters.category ? { category: filters.category } : {}),
-    ...(filters.stock !== 'all' ? { stock: filters.stock } : {}),
-  }), [filters]);
+  const params = useMemo<ProductListParams>(
+    () => ({
+      page: filters.page,
+      pageSize: PRODUCTS_PAGE_SIZE,
+      ...(filters.tab !== 'all' ? { status: filters.tab } : {}),
+      ...(filters.q.trim() ? { q: filters.q.trim() } : {}),
+      ...(filters.category ? { category: filters.category } : {}),
+      ...(filters.stock !== 'all' ? { stock: filters.stock } : {}),
+    }),
+    [filters],
+  );
 
-  const hasActiveFilters = filters.tab !== 'all' || filters.q.trim() !== '' || filters.category !== '' || filters.stock !== 'all';
+  const hasActiveFilters =
+    filters.tab !== 'all' ||
+    filters.q.trim() !== '' ||
+    filters.category !== '' ||
+    filters.stock !== 'all';
 
   return { filters, params, searchText, setSearch, setFilters, clearFilters, hasActiveFilters };
 }

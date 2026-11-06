@@ -2,13 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { SupplierDashboardData } from '@/lib/dashboard/supplierDashboard';
 import { EMPTY_SUPPLIER_DASHBOARD } from '@/lib/dashboard/supplierDashboard';
 import {
@@ -55,7 +49,9 @@ function SetupProgress({ data }: { data: SupplierDashboardData }) {
         <p className="text-sm font-semibold text-ink">Complete your business setup</p>
         <span className="shrink-0 text-sm font-semibold text-primary">{percent}%</span>
       </div>
-      <p className="mt-1 text-xs text-subtle">{completed} of {total} steps completed</p>
+      <p className="mt-1 text-xs text-subtle">
+        {completed} of {total} steps completed
+      </p>
       <div
         role="progressbar"
         aria-label="Business setup progress"
@@ -64,7 +60,10 @@ function SetupProgress({ data }: { data: SupplierDashboardData }) {
         aria-valuenow={percent}
         className="mt-3 h-1.5 overflow-hidden rounded-full bg-orange-100"
       >
-        <span className="block h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
+        <span
+          className="block h-full rounded-full bg-primary transition-[width]"
+          style={{ width: `${percent}%` }}
+        />
       </div>
       <Link
         href={SUPPLIER_SETUP_ROUTE}
@@ -88,9 +87,10 @@ function NavLink({
   nested?: boolean;
 }) {
   const guard = useOptionalNavigationGuard();
-  const active = item.id === 'overview'
-    ? pathname === item.href
-    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  const active =
+    item.id === 'overview'
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
   return (
     <Link
       href={item.href}
@@ -133,8 +133,14 @@ function Navigation({
   if (variant === 'admin') {
     return (
       <nav aria-label="Platform administration navigation">
-        <Link href="/admin/suppliers" onClick={onNavigate} aria-current={activePath.startsWith('/admin/suppliers') ? 'page' : undefined} className="flex min-h-11 items-center gap-3 rounded-xl bg-orange-50 px-3 text-sm font-semibold text-ink">
-          <DashboardIcon name="business" className="size-[18px]" />Supplier review
+        <Link
+          href="/admin/suppliers"
+          onClick={onNavigate}
+          aria-current={activePath.startsWith('/admin/suppliers') ? 'page' : undefined}
+          className="flex min-h-11 items-center gap-3 rounded-xl bg-orange-50 px-3 text-sm font-semibold text-ink"
+        >
+          <DashboardIcon name="business" className="size-[18px]" />
+          Supplier review
         </Link>
       </nav>
     );
@@ -169,14 +175,22 @@ function Navigation({
               className="flex min-h-11 items-center justify-between gap-2 px-3 text-left text-xs font-medium text-gray-500"
             >
               <span>{group.label}</span>
-              <span aria-hidden="true" className={`transition-transform ${expanded ? 'rotate-90' : ''}`}>
+              <span
+                aria-hidden="true"
+                className={`transition-transform ${expanded ? 'rotate-90' : ''}`}
+              >
                 <DashboardIcon name="chevron" className="size-4" />
               </span>
             </button>
             {expanded ? (
               <div className="flex flex-col gap-1">
                 {items.map((item) => (
-                  <NavLink key={item.id} item={item} pathname={activePath} onNavigate={onNavigate} />
+                  <NavLink
+                    key={item.id}
+                    item={item}
+                    pathname={activePath}
+                    onNavigate={onNavigate}
+                  />
                 ))}
               </div>
             ) : null}
@@ -244,12 +258,20 @@ function ProfileMenu() {
         {initials}
       </button>
       {open ? (
-        <div role="menu" aria-label="Account" className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-2 shadow-lg">
+        <div
+          role="menu"
+          aria-label="Account"
+          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-2 shadow-lg"
+        >
           <div className="border-b border-line px-3 py-2">
             <p className="truncate text-sm font-semibold text-ink">{fullName}</p>
             {user?.email ? <p className="truncate text-xs text-subtle">{user.email}</p> : null}
           </div>
-          {error ? <p role="alert" className="px-3 pt-2 text-xs text-danger">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="px-3 pt-2 text-xs text-danger">
+              {error}
+            </p>
+          ) : null}
           <button
             type="button"
             role="menuitem"
@@ -328,7 +350,9 @@ function SidebarContent({
     <>
       <div className="mb-5 px-3">
         <p className="truncate text-sm font-semibold text-ink">{businessName}</p>
-        <p className="text-xs text-subtle">{variant === 'admin' ? 'Platform workspace' : 'Supplier workspace'}</p>
+        <p className="text-xs text-subtle">
+          {variant === 'admin' ? 'Platform workspace' : 'Supplier workspace'}
+        </p>
       </div>
       {variant === 'supplier' ? (
         <div className="mb-5 px-1">
@@ -362,9 +386,8 @@ export function DashboardShell({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerId = useId();
   const fullName = getUserFullName(user);
-  const resolvedBusinessName = businessName
-    ?? business.activeBusiness?.name
-    ?? (data.businessName || fullName);
+  const resolvedBusinessName =
+    businessName ?? business.activeBusiness?.name ?? (data.businessName || fullName);
 
   // Close the drawer whenever the route changes (adjusting state during render
   // is React's recommended alternative to a setState-in-effect cascade).
@@ -393,9 +416,9 @@ export function DashboardShell({
         return;
       }
       if (event.key !== 'Tab' || !drawerRef.current) return;
-      const focusable = Array.from(drawerRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled])',
-      ));
+      const focusable = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (!first || !last) return;
@@ -421,7 +444,10 @@ export function DashboardShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
-      <a href="#dashboard-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary focus:shadow-lg">
+      <a
+        href="#dashboard-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary focus:shadow-lg"
+      >
         Skip to content
       </a>
       <header className="sticky top-0 z-30 border-b border-line bg-white">
@@ -444,7 +470,9 @@ export function DashboardShell({
             </Link>
           </div>
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            {variant === 'supplier' ? <BusinessSwitcher /> : (
+            {variant === 'supplier' ? (
+              <BusinessSwitcher />
+            ) : (
               <span className="hidden items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-ink sm:flex">
                 <DashboardIcon name="business" className="size-4 text-subtle" />
                 Sellonit platform
@@ -458,7 +486,12 @@ export function DashboardShell({
 
       <div className="flex flex-1">
         <aside className="sticky top-16 hidden max-h-[calc(100dvh-4rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-white px-3 py-6 sm:top-20 sm:max-h-[calc(100dvh-5rem)] lg:block">
-          <SidebarContent businessName={resolvedBusinessName} variant={variant} data={data} activePath={activePath} />
+          <SidebarContent
+            businessName={resolvedBusinessName}
+            variant={variant}
+            data={data}
+            activePath={activePath}
+          />
           <div className="mt-6 border-t border-line px-3 pt-4">
             <p className="truncate text-sm font-medium text-ink">{fullName}</p>
             <p className="truncate text-xs text-subtle">{user.email}</p>
@@ -466,21 +499,26 @@ export function DashboardShell({
         </aside>
 
         <main id="dashboard-content" className="min-w-0 flex-1 px-4 py-6 sm:px-7 sm:py-7">
-          <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6">
-            {children}
-          </div>
+          <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6">{children}</div>
         </main>
       </div>
 
       <dialog
         ref={drawerRef}
         aria-label="Supplier workspace navigation"
-        onCancel={(event) => { event.preventDefault(); closeDrawer(); }}
+        onCancel={(event) => {
+          event.preventDefault();
+          closeDrawer();
+        }}
         onClick={(event) => {
           // Backdrop clicks target the dialog itself but land outside its box.
           if (event.target !== drawerRef.current) return;
           const rect = drawerRef.current.getBoundingClientRect();
-          const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+          const outside =
+            event.clientX < rect.left ||
+            event.clientX > rect.right ||
+            event.clientY < rect.top ||
+            event.clientY > rect.bottom;
           if (outside) closeDrawer();
         }}
         className="fixed inset-y-0 left-0 m-0 h-dvh w-[min(20rem,85vw)] max-w-none border-0 bg-white p-0 shadow-xl backdrop:bg-black/60 lg:hidden"
@@ -489,11 +527,22 @@ export function DashboardShell({
           <div className="mb-4 flex items-center justify-between">
             {/* eslint-disable-next-line @next/next/no-img-element -- brand wordmark served locally. */}
             <img src="/wordmark.svg" alt="Sellonit" className="h-7 w-auto" />
-            <button type="button" aria-label="Close navigation" onClick={closeDrawer} className="flex size-11 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-50 hover:text-ink">
+            <button
+              type="button"
+              aria-label="Close navigation"
+              onClick={closeDrawer}
+              className="flex size-11 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-50 hover:text-ink"
+            >
               <DashboardIcon name="close" className="size-5" />
             </button>
           </div>
-          <SidebarContent businessName={resolvedBusinessName} variant={variant} data={data} activePath={activePath} onNavigate={closeDrawer} />
+          <SidebarContent
+            businessName={resolvedBusinessName}
+            variant={variant}
+            data={data}
+            activePath={activePath}
+            onNavigate={closeDrawer}
+          />
           <div className="mt-auto border-t border-line px-3 pt-4">
             <p className="truncate text-sm font-medium text-ink">{fullName}</p>
             <p className="truncate text-xs text-subtle">{user.email}</p>

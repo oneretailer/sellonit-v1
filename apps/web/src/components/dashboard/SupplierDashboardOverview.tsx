@@ -640,7 +640,10 @@ export function SupplierDashboardOverview({
         >
           <p className="text-sm text-ink">
             Sales and order analytics are coming soon. You can complete your{' '}
-            <Link href="/dashboard/business-profile" className="font-semibold text-primary underline">
+            <Link
+              href="/dashboard/business-profile"
+              className="font-semibold text-primary underline"
+            >
               business profile
             </Link>{' '}
             and supplier setup in the meantime.

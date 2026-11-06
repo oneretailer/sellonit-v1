@@ -1,10 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  clearOnboardingBusiness,
-  readOnboardingBusiness,
-} from '@/lib/auth/flowState';
+import { clearOnboardingBusiness, readOnboardingBusiness } from '@/lib/auth/flowState';
 import { getActiveBusinessId } from '@/lib/business/activeBusiness';
 import {
   NON_SUPPLIER_BUSINESS_CREATION_ENABLED,
@@ -56,10 +53,17 @@ describe('HTTP business adapter', () => {
   it('creates via POST /businesses, persists supplier profile via PUT /supplier/:businessId/profile, sets active business, and writes draft', async () => {
     post.mockResolvedValue({
       data: {
-        data: { id: 'biz-1', name: 'Okechukwu Fashion', slug: 'okechukwu-fashion-1234', type: 'SUPPLIER' },
+        data: {
+          id: 'biz-1',
+          name: 'Okechukwu Fashion',
+          slug: 'okechukwu-fashion-1234',
+          type: 'SUPPLIER',
+        },
       },
     });
-    apiFetchMock.mockResolvedValue({ data: { id: 'prof-1', businessId: 'biz-1', status: 'DRAFT' } });
+    apiFetchMock.mockResolvedValue({
+      data: { id: 'prof-1', businessId: 'biz-1', status: 'DRAFT' },
+    });
 
     const created = await httpBusinessApi.createBusiness(
       {

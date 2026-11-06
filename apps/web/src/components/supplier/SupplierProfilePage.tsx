@@ -62,7 +62,7 @@ function toPayload(values: ProfileFormValues): UpsertSupplierProfilePayload {
     values.state.trim().length > 0;
   return {
     legalName: values.legalName.trim(),
-    contactPhone: (normalizePhone(values.contactPhone) ?? values.contactPhone.trim()),
+    contactPhone: normalizePhone(values.contactPhone) ?? values.contactPhone.trim(),
     description: values.description.trim(),
     retailerAccess: values.retailerAccess,
     ...(hasOrigin

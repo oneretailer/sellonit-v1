@@ -87,7 +87,10 @@ export function redirectTarget(
   if (destination.path === null) return null;
   if (pathname) {
     if (destination.path === pathname) return null;
-    if (destination.kind === 'dashboard' && WORKSPACE_BASES.some((base) => isWithin(pathname, base))) {
+    if (
+      destination.kind === 'dashboard' &&
+      WORKSPACE_BASES.some((base) => isWithin(pathname, base))
+    ) {
       return null;
     }
   }

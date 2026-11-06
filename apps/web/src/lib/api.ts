@@ -6,7 +6,10 @@ import { API_BASE_PATH, ApiError, apiFetchResponse } from './api-client';
 export const api = createClient<paths>({
   // Request needs an absolute URL in Node/tests. The custom fetch below strips this
   // placeholder back to the existing same-origin path before any network request.
-  baseUrl: typeof window === 'undefined' ? `http://sellonit.invalid${API_BASE_PATH}` : `${window.location.origin}${API_BASE_PATH}`,
+  baseUrl:
+    typeof window === 'undefined'
+      ? `http://sellonit.invalid${API_BASE_PATH}`
+      : `${window.location.origin}${API_BASE_PATH}`,
   fetch: async (request) => {
     const url = new URL(request.url);
     return apiFetchResponse(url.pathname.slice(API_BASE_PATH.length) + url.search, {
@@ -19,10 +22,16 @@ export const api = createClient<paths>({
 });
 
 /** apiFetchResponse normalizes HTTP failures to ApiError before openapi-fetch parses. */
-export async function unwrap<T>(result: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
+export async function unwrap<T>(
+  result: Promise<{ data?: T; error?: unknown; response: Response }>,
+): Promise<T> {
   const { data, response } = await result;
   if (data === undefined) {
-    throw new ApiError(response.status, null, 'We received an unexpected response. Please try again.');
+    throw new ApiError(
+      response.status,
+      null,
+      'We received an unexpected response. Please try again.',
+    );
   }
   return data;
 }

@@ -7,10 +7,7 @@ import { InlineError } from '@/components/reuseable/InlineError';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { TextField } from '@/components/reuseable/TextField';
 import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
-import {
-  readOnboardingRole,
-  subscribeOnboardingRole,
-} from '@/lib/auth/flowState';
+import { readOnboardingRole, subscribeOnboardingRole } from '@/lib/auth/flowState';
 import { normalizePhone } from '@/lib/auth/identifier';
 import { setActiveBusinessId } from '@/lib/business/activeBusiness';
 import { businessKeys } from '@/lib/business/BusinessProvider';
@@ -31,8 +28,7 @@ const JOIN_COMING_SOON_MESSAGE =
 
 /* md+ only: round the bordered field wrappers to ~16px to match the login card.
    The wrapper (not the inner input) carries the border, so target div:has(>input). */
-const businessFieldWrapperClass =
-  'md:[&_div:has(>input:not([type=checkbox]))]:rounded-2xl';
+const businessFieldWrapperClass = 'md:[&_div:has(>input:not([type=checkbox]))]:rounded-2xl';
 
 type FieldKey = 'name' | 'phone' | 'email';
 
@@ -59,11 +55,7 @@ export function CreateBusinessForm({ mode = 'onboarding' }: { mode?: 'onboarding
   const { user } = useAuthSession();
   const queryClient = useContext(QueryClientContext);
   const completion = useSignupCompletion({ mode, userId: user?.id ?? null });
-  const storedRole = useSyncExternalStore(
-    subscribeOnboardingRole,
-    readOnboardingRole,
-    () => null,
-  );
+  const storedRole = useSyncExternalStore(subscribeOnboardingRole, readOnboardingRole, () => null);
   // The saved account intent wins; fall back to this browser's selection.
   const role: AccountRole | null = user?.onboardingIntent
     ? roleForBusinessType(user.onboardingIntent)
@@ -99,7 +91,11 @@ export function CreateBusinessForm({ mode = 'onboarding' }: { mode?: 'onboarding
 
   function handleBlur(field: FieldKey, value: string) {
     const message =
-      field === 'name' ? nameError(value) : field === 'phone' ? phoneError(value) : emailError(value);
+      field === 'name'
+        ? nameError(value)
+        : field === 'phone'
+          ? phoneError(value)
+          : emailError(value);
     setErrors((current) => ({ ...current, [field]: message }));
   }
 
@@ -129,18 +125,29 @@ export function CreateBusinessForm({ mode = 'onboarding' }: { mode?: 'onboarding
       // Actual server membership, not onboardingIntent or the local draft, is completion.
       if (await completion.confirmOnServer()) return;
       const confirmationError = completion.getConfirmationError();
-      if (confirmationError) { setFormError(confirmationError); inFlight.current = false; setSubmitting(false); return; }
+      if (confirmationError) {
+        setFormError(confirmationError);
+        inFlight.current = false;
+        setSubmitting(false);
+        return;
+      }
       if (!canCreateBusiness(role)) {
-        setNotice(COMING_SOON_MESSAGE); inFlight.current = false; setSubmitting(false); return;
+        setNotice(COMING_SOON_MESSAGE);
+        inFlight.current = false;
+        setSubmitting(false);
+        return;
       }
       idempotencyKey.current ??= newIdempotencyKey();
-      const created = await businessApi.createBusiness({
-        name: name.trim(),
-        phone: normalizePhone(phone) ?? phone.trim(),
-        email: normalizeEmail(email),
-        description: description.trim(),
-        role: role ?? 'supplier',
-      }, idempotencyKey.current);
+      const created = await businessApi.createBusiness(
+        {
+          name: name.trim(),
+          phone: normalizePhone(phone) ?? phone.trim(),
+          email: normalizeEmail(email),
+          description: description.trim(),
+          role: role ?? 'supplier',
+        },
+        idempotencyKey.current,
+      );
       if (canCreateBusiness(role)) {
         setActiveBusinessId(created.id);
         await queryClient?.invalidateQueries({ queryKey: businessKeys.all });
@@ -159,18 +166,24 @@ export function CreateBusinessForm({ mode = 'onboarding' }: { mode?: 'onboarding
     }
   }
 
-  if (completion.locked) return <AuthCard gapClassName="gap-5"><SignupCompletionNotice error={completion.error} retry={completion.retry} /></AuthCard>;
+  if (completion.locked)
+    return (
+      <AuthCard gapClassName="gap-5">
+        <SignupCompletionNotice error={completion.error} retry={completion.retry} />
+      </AuthCard>
+    );
 
   return (
-    <AuthCard gapClassName="gap-6 md:gap-6" className={cn('auth-card--business', businessFieldWrapperClass)}>
+    <AuthCard
+      gapClassName="gap-6 md:gap-6"
+      className={cn('auth-card--business', businessFieldWrapperClass)}
+    >
       <div className="flex w-full flex-col gap-2 text-center">
         {firstName ? <p className="text-sm text-subtle">Welcome, {firstName}</p> : null}
         <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           Create your business
         </h1>
-        <p className="text-base text-subtle sm:text-lg">
-          Set up your business account on sellonit
-        </p>
+        <p className="text-base text-subtle sm:text-lg">Set up your business account on sellonit</p>
       </div>
 
       <form

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OnboardingBusinessDraft } from '@/lib/auth/flowState';
-import {
-  SUPPLIER_SETUP_STEPS,
-  computeSupplierSetupProgress,
-} from './supplierSetup';
+import { SUPPLIER_SETUP_STEPS, computeSupplierSetupProgress } from './supplierSetup';
 
 const draft: OnboardingBusinessDraft = {
   name: 'Okechukwu Fashion',

@@ -48,7 +48,8 @@ export function presentError(error: unknown): ErrorPresentation {
       };
     case 'NOT_A_SUPPLIER':
       return {
-        message: 'This business is not a supplier business. Switch to a supplier business to continue.',
+        message:
+          'This business is not a supplier business. Switch to a supplier business to continue.',
         retryable: false,
         kind: 'access',
       };
@@ -106,7 +107,8 @@ export function presentError(error: unknown): ErrorPresentation {
       };
     case 'LIMIT_REACHED':
       return {
-        message: 'Your plan limit has been reached. Upgrade or archive an item before trying again.',
+        message:
+          'Your plan limit has been reached. Upgrade or archive an item before trying again.',
         retryable: false,
         kind: 'access',
       };

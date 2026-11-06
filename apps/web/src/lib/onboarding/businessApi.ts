@@ -13,10 +13,7 @@
 import type { components } from '@sellonit/shared';
 import { api, newIdempotencyKey, unwrap } from '@/lib/api';
 import { apiFetch } from '@/lib/api-client';
-import {
-  writeOnboardingBusiness,
-  type OnboardingBusinessDraft,
-} from '@/lib/auth/flowState';
+import { writeOnboardingBusiness, type OnboardingBusinessDraft } from '@/lib/auth/flowState';
 import { setActiveBusinessId } from '@/lib/business/activeBusiness';
 import { businessTypeForRole } from '@/lib/onboarding/roleApi';
 import type { AccountRole } from '@/lib/onboarding/roles';

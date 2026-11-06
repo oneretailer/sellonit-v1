@@ -18,12 +18,7 @@
  *   GET    /supplier/categories                ?businessId
  *   POST   /supplier/uploads/product-images    (multipart, progress + abort)
  */
-import {
-  API_BASE_PATH,
-  ApiError,
-  ENDPOINT_NOT_IMPLEMENTED_CODE,
-  apiFetch,
-} from '@/lib/api-client';
+import { API_BASE_PATH, ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, apiFetch } from '@/lib/api-client';
 import { ACTIVE_BUSINESS_HEADER, getActiveBusinessId } from '@/lib/business/activeBusiness';
 import type {
   Paginated,
@@ -71,10 +66,13 @@ function normalizeProduct(raw: Product): Product {
 
 export const productsApi = {
   async list(params: ProductListParams, signal?: AbortSignal): Promise<Paginated<Product>> {
-    const response = await apiFetch<Paginated<Product>>(`/supplier/products${queryString(params)}`, {
-      method: 'GET',
-      signal,
-    });
+    const response = await apiFetch<Paginated<Product>>(
+      `/supplier/products${queryString(params)}`,
+      {
+        method: 'GET',
+        signal,
+      },
+    );
     return {
       ...response,
       data: Array.isArray(response.data) ? response.data.map(normalizeProduct) : [],

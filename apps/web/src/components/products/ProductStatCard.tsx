@@ -24,12 +24,20 @@ export function ProductStatCard({
   linkLabel?: string;
   isLoading?: boolean;
 }) {
-  const tile = tone === 'orange' ? 'bg-orange-50 text-primary' : tone === 'red' ? 'bg-red-50 text-danger' : 'bg-gray-100 text-subtle';
+  const tile =
+    tone === 'orange'
+      ? 'bg-orange-50 text-primary'
+      : tone === 'red'
+        ? 'bg-red-50 text-danger'
+        : 'bg-gray-100 text-subtle';
   return (
     <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line bg-white p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="truncate text-sm font-medium text-subtle">{label}</p>
-        <span aria-hidden="true" className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl', tile)}>
+        <span
+          aria-hidden="true"
+          className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl', tile)}
+        >
           <DashboardIcon name={icon} className="size-5" />
         </span>
       </div>
@@ -40,7 +48,10 @@ export function ProductStatCard({
       )}
       {subline ? <p className="truncate text-xs text-subtle">{subline}</p> : null}
       {href ? (
-        <Link href={href} className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-2">
+        <Link
+          href={href}
+          className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-2"
+        >
           {linkLabel} <DashboardIcon name="arrow" className="size-3.5" />
         </Link>
       ) : null}

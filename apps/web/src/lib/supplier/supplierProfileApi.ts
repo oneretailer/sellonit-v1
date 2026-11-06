@@ -144,7 +144,9 @@ const noopUnsubscribe = () => () => undefined;
  * while safely returning `null` in isolated component unit tests that render
  * without `<QueryProvider>`.
  */
-export function useOptionalSupplierProfile(businessId: string | null): SupplierProfileRecord | null {
+export function useOptionalSupplierProfile(
+  businessId: string | null,
+): SupplierProfileRecord | null {
   const queryClient = useContext(QueryClientContext);
 
   const subscribe = useCallback(
@@ -161,7 +163,10 @@ export function useOptionalSupplierProfile(businessId: string | null): SupplierP
 
   const getSnapshot = useCallback((): SupplierProfileRecord | null => {
     if (!queryClient || !businessId) return null;
-    return queryClient.getQueryData<SupplierProfileRecord>(supplierProfileKeys.detail(businessId)) ?? null;
+    return (
+      queryClient.getQueryData<SupplierProfileRecord>(supplierProfileKeys.detail(businessId)) ??
+      null
+    );
   }, [businessId, queryClient]);
 
   useEffect(() => {

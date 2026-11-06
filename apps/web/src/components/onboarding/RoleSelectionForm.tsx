@@ -54,12 +54,22 @@ export function RoleSelectionForm() {
     setView('recommend');
   }
 
-  if (completion.locked) return <AuthCard gapClassName="gap-5"><SignupCompletionNotice error={completion.error} retry={completion.retry} /></AuthCard>;
+  if (completion.locked)
+    return (
+      <AuthCard gapClassName="gap-5">
+        <SignupCompletionNotice error={completion.error} retry={completion.retry} />
+      </AuthCard>
+    );
 
   if (view === 'recommend' && selectedRole) {
     return (
       <AuthCard gapClassName="gap-8 md:gap-12">
-        <RoleRecommendation role={selectedRole} onBack={() => setView('select')} completionLocked={completion.locked} preflight={completion.confirmOnServer} />
+        <RoleRecommendation
+          role={selectedRole}
+          onBack={() => setView('select')}
+          completionLocked={completion.locked}
+          preflight={completion.confirmOnServer}
+        />
       </AuthCard>
     );
   }
@@ -105,7 +115,11 @@ export function RoleSelectionForm() {
           </fieldset>
 
           <div className="flex w-full flex-col items-center gap-6 text-center">
-            <PrimaryButton type="submit" disabled={!selectedRole || completion.locked} className="auth-button text-ink">
+            <PrimaryButton
+              type="submit"
+              disabled={!selectedRole || completion.locked}
+              className="auth-button text-ink"
+            >
               Continue
             </PrimaryButton>
             <Link

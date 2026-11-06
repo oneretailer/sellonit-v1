@@ -68,8 +68,14 @@ function normalizePlan(business: ApiBusiness): BusinessPlanKey | null {
   return null;
 }
 
-export async function listBusinesses(userId: string | null, signal?: AbortSignal): Promise<SwitcherBusiness[]> {
-  const response = await apiFetch<{ data: ApiBusiness[] }>('/businesses', { method: 'GET', signal });
+export async function listBusinesses(
+  userId: string | null,
+  signal?: AbortSignal,
+): Promise<SwitcherBusiness[]> {
+  const response = await apiFetch<{ data: ApiBusiness[] }>('/businesses', {
+    method: 'GET',
+    signal,
+  });
   const rows = Array.isArray(response.data) ? response.data : [];
   return rows.map((business) => {
     const membership = userId

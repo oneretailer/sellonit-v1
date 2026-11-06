@@ -45,7 +45,12 @@ export const PRODUCT_ERROR_MESSAGES = {
 
 /** Field order used for "focus the first invalid field". */
 export const PRODUCT_FIELD_ORDER: (keyof ProductFormValues | 'images')[] = [
-  'images', 'name', 'category', 'sku', 'wholesalePrice', 'stockQuantity',
+  'images',
+  'name',
+  'category',
+  'sku',
+  'wholesalePrice',
+  'stockQuantity',
 ];
 
 export function validateProduct(
@@ -57,7 +62,8 @@ export function validateProduct(
   const publish = intent === 'publish';
 
   if (publish && uploadedImageCount === 0) errors.images = PRODUCT_ERROR_MESSAGES.images;
-  if (uploadedImageCount > MAX_PRODUCT_IMAGES) errors.images = `Use at most ${MAX_PRODUCT_IMAGES} photos.`;
+  if (uploadedImageCount > MAX_PRODUCT_IMAGES)
+    errors.images = `Use at most ${MAX_PRODUCT_IMAGES} photos.`;
 
   if (!values.name.trim()) errors.name = PRODUCT_ERROR_MESSAGES.name;
   else if (values.name.trim().length > 200) errors.name = 'Use at most 200 characters.';
@@ -97,11 +103,18 @@ export function validateProduct(
  * Build the API payload. Draft blanks become empty strings / 0 so a partial
  * draft round-trips; publish values are already validated.
  */
-export function productInputFromValues(values: ProductFormValues, imageIds: string[]): ProductInput {
+export function productInputFromValues(
+  values: ProductFormValues,
+  imageIds: string[],
+): ProductInput {
   let wholesalePrice = 0;
   const priceText = values.wholesalePrice.trim();
   if (priceText) {
-    try { wholesalePrice = nairaToKobo(priceText); } catch { wholesalePrice = 0; }
+    try {
+      wholesalePrice = nairaToKobo(priceText);
+    } catch {
+      wholesalePrice = 0;
+    }
   }
   const stockText = values.stockQuantity.trim();
   const stockQuantity = /^\d+$/.test(stockText) ? Number.parseInt(stockText, 10) : 0;

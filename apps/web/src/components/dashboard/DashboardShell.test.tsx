@@ -14,7 +14,10 @@ const mocks = vi.hoisted(() => ({
   pathname: '/dashboard/overview',
   signOut: vi.fn(() => Promise.resolve()),
 }));
-vi.mock('next/navigation', () => ({ usePathname: () => mocks.pathname, useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => mocks.pathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+}));
 vi.mock('@/lib/auth/AuthSessionProvider', () => ({
   useSession: () => ({
     user: { id: 'user-1', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
@@ -191,7 +194,9 @@ describe('supplier workspace shell', () => {
   it('renders the business switcher pill and profile menu with logout', async () => {
     const userEventSession = userEvent.setup();
     renderShell();
-    expect(screen.getByRole('button', { name: 'Switch business, current: Okechukwu Fashion' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Switch business, current: Okechukwu Fashion' }),
+    ).toBeTruthy();
     await userEventSession.click(screen.getByRole('button', { name: 'Account menu' }));
     expect(screen.getByRole('menuitem', { name: 'Log out' })).toBeTruthy();
   });

@@ -68,7 +68,9 @@ export function Dialog({
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
+    return () => {
+      document.body.style.overflow = previous;
+    };
   }, [open]);
 
   // Initial focus goes to the safe (non-destructive) action.
@@ -84,24 +86,41 @@ export function Dialog({
       aria-modal="true"
       aria-labelledby={`${id}-title`}
       aria-describedby={`${id}-description`}
-      onCancel={(event) => { event.preventDefault(); if (!closeLocked) onClose(); }}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!closeLocked) onClose();
+      }}
       onClick={(event) => {
         // Backdrop clicks target the dialog itself but land outside its box.
         // Padding clicks inside the panel must NOT close it.
         if (event.target !== ref.current || closeLocked) return;
         const rect = ref.current.getBoundingClientRect();
-        const outside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+        const outside =
+          event.clientX < rect.left ||
+          event.clientX > rect.right ||
+          event.clientY < rect.top ||
+          event.clientY > rect.bottom;
         if (outside) onClose();
       }}
       className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[460px] overflow-y-auto rounded-3xl border border-line bg-white p-6 text-left text-ink shadow-xl backdrop:bg-black/60 sm:p-8"
     >
       <div className="flex flex-col gap-6">
-        <span aria-hidden="true" className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', toneStyles[tone])}>
+        <span
+          aria-hidden="true"
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-full',
+            toneStyles[tone],
+          )}
+        >
           {icon ?? <DashboardIcon name={toneIcons[tone]} className="size-5" />}
         </span>
         <div className="flex flex-col gap-3">
-          <h2 id={`${id}-title`} className="font-heading text-xl font-semibold text-ink">{title}</h2>
-          <p id={`${id}-description`} className="text-sm leading-6 text-subtle">{description}</p>
+          <h2 id={`${id}-title`} className="font-heading text-xl font-semibold text-ink">
+            {title}
+          </h2>
+          <p id={`${id}-description`} className="text-sm leading-6 text-subtle">
+            {description}
+          </p>
         </div>
         {children}
         <div className="flex flex-col-reverse gap-3 sm:flex-row">{actions}</div>
@@ -112,6 +131,13 @@ export function Dialog({
 
 /** Equal-width dialog buttons. Secondary outlined orange; primary solid orange.
  * Below sm they stack with the primary on top (flex-col-reverse). */
-export const dialogButtonClass = 'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors sm:w-1/2';
-export const dialogSecondaryClass = cn(dialogButtonClass, 'border border-primary bg-white text-ink hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60');
-export const dialogPrimaryClass = cn(dialogButtonClass, 'bg-primary text-ink hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-primary-disabled');
+export const dialogButtonClass =
+  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors sm:w-1/2';
+export const dialogSecondaryClass = cn(
+  dialogButtonClass,
+  'border border-primary bg-white text-ink hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60',
+);
+export const dialogPrimaryClass = cn(
+  dialogButtonClass,
+  'bg-primary text-ink hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-primary-disabled',
+);

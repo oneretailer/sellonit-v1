@@ -9,7 +9,10 @@ import { polyfillProductsEnv } from './testSupport';
 import { MAX_PRODUCT_IMAGES } from '@/lib/products/constants';
 import type { UploadImageOptions, UploadedImage } from '@/lib/products/types';
 
-function Harness({ uploadFn, initial = [] }: {
+function Harness({
+  uploadFn,
+  initial = [],
+}: {
   uploadFn: (file: File, options: UploadImageOptions) => Promise<UploadedImage>;
   initial?: UploaderImage[];
 }) {
@@ -17,7 +20,12 @@ function Harness({ uploadFn, initial = [] }: {
   return (
     <>
       <ProductImageUploader value={images} onChange={setImages} uploadFn={uploadFn} />
-      <output aria-label="ids">{images.filter((image) => image.status === 'uploaded').map((image) => image.id).join(',')}</output>
+      <output aria-label="ids">
+        {images
+          .filter((image) => image.status === 'uploaded')
+          .map((image) => image.id)
+          .join(',')}
+      </output>
     </>
   );
 }
@@ -32,7 +40,9 @@ afterEach(() => cleanup());
 describe('product image uploader', () => {
   it('uploads immediately and exposes the server image id to the parent', async () => {
     const userEventSession = userEvent.setup();
-    const uploadFn = vi.fn((file: File) => Promise.resolve({ id: `srv-${file.name}`, url: `https://cdn.example/${file.name}` }));
+    const uploadFn = vi.fn((file: File) =>
+      Promise.resolve({ id: `srv-${file.name}`, url: `https://cdn.example/${file.name}` }),
+    );
     render(<Harness uploadFn={uploadFn} />);
     await userEventSession.upload(screen.getByLabelText('Upload product photos'), png());
     await waitFor(() => expect(screen.getByLabelText('ids').textContent).toBe('srv-photo.png'));
@@ -45,7 +55,9 @@ describe('product image uploader', () => {
     render(<Harness uploadFn={uploadFn} />);
     const input = screen.getByLabelText('Upload product photos');
     // fireEvent bypasses the accept filter, like drag-drop of a wrong file.
-    fireEvent.change(input, { target: { files: [new File(['x'], 'note.txt', { type: 'text/plain' })] } });
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'note.txt', { type: 'text/plain' })] },
+    });
     expect(await screen.findByText(/isn't a JPG or PNG/)).toBeTruthy();
     const big = new File(['x'], 'big.png', { type: 'image/png' });
     Object.defineProperty(big, 'size', { value: 5 * 1024 * 1024 + 1 });
@@ -56,7 +68,8 @@ describe('product image uploader', () => {
 
   it('offers Retry after a failed upload and succeeds on retry', async () => {
     const userEventSession = userEvent.setup();
-    const uploadFn = vi.fn()
+    const uploadFn = vi
+      .fn()
       .mockRejectedValueOnce(new Error('Upload failed. Try again.'))
       .mockResolvedValue({ id: 'srv-1', url: 'https://cdn.example/photo.png' });
     render(<Harness uploadFn={uploadFn} />);
@@ -73,7 +86,9 @@ describe('product image uploader', () => {
     const uploadFn = vi.fn((_file: File, options: UploadImageOptions) => {
       captured = options;
       return new Promise<UploadedImage>((_resolve, reject) => {
-        options.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        options.signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError')),
+        );
       });
     });
     render(<Harness uploadFn={uploadFn} />);
@@ -89,7 +104,10 @@ describe('product image uploader', () => {
     const userEventSession = userEvent.setup();
     const uploadFn = vi.fn(() => Promise.resolve({ id: 'x', url: 'x' }));
     const initial: UploaderImage[] = Array.from({ length: MAX_PRODUCT_IMAGES }, (_, index) => ({
-      id: `img-${index}`, url: `https://cdn.example/${index}.jpg`, status: 'uploaded', progress: 100,
+      id: `img-${index}`,
+      url: `https://cdn.example/${index}.jpg`,
+      status: 'uploaded',
+      progress: 100,
     }));
     render(<Harness uploadFn={uploadFn} initial={initial} />);
     expect(screen.queryByRole('button', { name: 'Add photo' })).toBeNull();

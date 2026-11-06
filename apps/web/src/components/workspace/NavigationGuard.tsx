@@ -7,7 +7,15 @@
  *
  * The form also installs its own `beforeunload` listener while dirty.
  */
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import { Dialog, dialogPrimaryClass, dialogSecondaryClass } from './Dialog';
 import { Spinner } from '@/components/reuseable/Spinner';
@@ -50,19 +58,26 @@ export function NavigationGuardProvider({ children }: { children: ReactNode }) {
 
   const runGuarded = useCallback((action: PendingAction) => {
     const guard = guardRef.current;
-    if (!guard?.isDirty) { action.run(); return; }
+    if (!guard?.isDirty) {
+      action.run();
+      return;
+    }
     setPending(action);
   }, []);
 
-  const navigate = useCallback((href: string) => {
-    runGuarded({
-      title: 'Discard this product?',
-      description: "You have unsaved changes. If you leave now, what you've entered won't be kept.",
-      discardLabel: 'Discard',
-      keepLabel: 'Keep editing',
-      run: () => router.push(href),
-    });
-  }, [router, runGuarded]);
+  const navigate = useCallback(
+    (href: string) => {
+      runGuarded({
+        title: 'Discard this product?',
+        description:
+          "You have unsaved changes. If you leave now, what you've entered won't be kept.",
+        discardLabel: 'Discard',
+        keepLabel: 'Keep editing',
+        run: () => router.push(href),
+      });
+    },
+    [router, runGuarded],
+  );
 
   async function confirmDiscard() {
     if (!pending || discarding) return;
@@ -79,7 +94,10 @@ export function NavigationGuardProvider({ children }: { children: ReactNode }) {
   }
 
   const isDirty = useCallback(() => guardRef.current?.isDirty === true, []);
-  const value = useMemo(() => ({ registerGuard, isDirty, navigate, runGuarded }), [registerGuard, isDirty, navigate, runGuarded]);
+  const value = useMemo(
+    () => ({ registerGuard, isDirty, navigate, runGuarded }),
+    [registerGuard, isDirty, navigate, runGuarded],
+  );
 
   return (
     <NavigationGuardContext.Provider value={value}>
@@ -89,17 +107,32 @@ export function NavigationGuardProvider({ children }: { children: ReactNode }) {
         tone="warning"
         title={pending?.title ?? ''}
         description={pending?.description ?? ''}
-        onClose={() => { if (!discarding) setPending(null); }}
+        onClose={() => {
+          if (!discarding) setPending(null);
+        }}
         closeLocked={discarding}
-        actions={<>
-          <button type="button" className={dialogSecondaryClass} disabled={discarding} onClick={() => void confirmDiscard()}>
-            {pending?.discardLabel ?? 'Discard'}
-          </button>
-          <button type="button" data-dialog-safe className={dialogPrimaryClass} disabled={discarding} onClick={() => setPending(null)}>
-            {discarding ? <Spinner /> : null}
-            {pending?.keepLabel ?? 'Keep editing'}
-          </button>
-        </>}
+        actions={
+          <>
+            <button
+              type="button"
+              className={dialogSecondaryClass}
+              disabled={discarding}
+              onClick={() => void confirmDiscard()}
+            >
+              {pending?.discardLabel ?? 'Discard'}
+            </button>
+            <button
+              type="button"
+              data-dialog-safe
+              className={dialogPrimaryClass}
+              disabled={discarding}
+              onClick={() => setPending(null)}
+            >
+              {discarding ? <Spinner /> : null}
+              {pending?.keepLabel ?? 'Keep editing'}
+            </button>
+          </>
+        }
       />
     </NavigationGuardContext.Provider>
   );

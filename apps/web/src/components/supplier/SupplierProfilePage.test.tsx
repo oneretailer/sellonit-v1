@@ -51,7 +51,11 @@ describe('SupplierProfilePage', () => {
     vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
       const urlStr = String(url);
-      calls.push({ url: urlStr, method, body: typeof init?.body === 'string' ? init.body : undefined });
+      calls.push({
+        url: urlStr,
+        method,
+        body: typeof init?.body === 'string' ? init.body : undefined,
+      });
       if (method === 'GET') {
         return Promise.resolve(
           new Response(
@@ -118,17 +122,15 @@ describe('SupplierProfilePage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save profile' }));
     await waitFor(() =>
-      expect(calls.some((c) => c.method === 'PUT' && c.url === '/api/v1/supplier/biz-1/profile')).toBe(
-        true,
-      ),
+      expect(
+        calls.some((c) => c.method === 'PUT' && c.url === '/api/v1/supplier/biz-1/profile'),
+      ).toBe(true),
     );
 
     await user.click(screen.getByRole('button', { name: 'Submit for review' }));
     await waitFor(() =>
       expect(
-        calls.some(
-          (c) => c.method === 'POST' && c.url === '/api/v1/supplier/biz-1/profile/submit',
-        ),
+        calls.some((c) => c.method === 'POST' && c.url === '/api/v1/supplier/biz-1/profile/submit'),
       ).toBe(true),
     );
     expect(await screen.findByText('PENDING REVIEW')).toBeTruthy();
@@ -140,7 +142,9 @@ describe('SupplierProfilePage', () => {
     vi.stubGlobal('fetch', () =>
       Promise.resolve(
         new Response(
-          JSON.stringify({ data: { businessId: 'biz-1', status: 'DRAFT', legalName: 'Okechukwu Fashion' } }),
+          JSON.stringify({
+            data: { businessId: 'biz-1', status: 'DRAFT', legalName: 'Okechukwu Fashion' },
+          }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         ),
       ),

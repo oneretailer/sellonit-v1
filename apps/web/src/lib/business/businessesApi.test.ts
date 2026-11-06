@@ -5,11 +5,20 @@ import {
   businessTypeLabel,
   listBusinesses,
 } from './businessesApi';
-import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, apiFetch, isEndpointNotImplemented } from '@/lib/api-client';
+import {
+  ApiError,
+  ENDPOINT_NOT_IMPLEMENTED_CODE,
+  apiFetch,
+  isEndpointNotImplemented,
+} from '@/lib/api-client';
 
 afterEach(() => vi.unstubAllGlobals());
 
-function stubFetch(status: number, body: unknown, contentType = 'application/json'): { calls: string[] } {
+function stubFetch(
+  status: number,
+  body: unknown,
+  contentType = 'application/json',
+): { calls: string[] } {
   const calls: string[] = [];
   vi.stubGlobal('fetch', (url: string) => {
     calls.push(String(url));

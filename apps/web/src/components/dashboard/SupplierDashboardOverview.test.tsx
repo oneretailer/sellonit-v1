@@ -5,10 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { SupplierDashboardOverview, formatNaira } from './SupplierDashboardOverview';
 import { getDateRangeOptions, getTimeGreeting } from '@/lib/dashboard/dateRanges';
-import {
-  EMPTY_SUPPLIER_DASHBOARD,
-  SETUP_STEPS,
-} from '@/lib/dashboard/supplierDashboard';
+import { EMPTY_SUPPLIER_DASHBOARD, SETUP_STEPS } from '@/lib/dashboard/supplierDashboard';
 import { getSetupProgress } from './DashboardShell';
 import type { AuthUser } from '@/lib/auth/types';
 import type { SupplierDashboardData } from '@/lib/dashboard/supplierDashboard';

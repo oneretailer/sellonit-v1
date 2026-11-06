@@ -39,7 +39,11 @@ beforeEach(() => {
   mocks.listBusinesses.mockResolvedValue([]);
   // Keep the real feature flag / canCreateBusiness; only stub the adapter method.
   vi.spyOn(businessApi, 'createBusiness').mockImplementation(mocks.createBusiness);
-  mocks.createBusiness.mockResolvedValue({ id: 'biz-1', name: 'Okechukwu Fashion', type: 'SUPPLIER' });
+  mocks.createBusiness.mockResolvedValue({
+    id: 'biz-1',
+    name: 'Okechukwu Fashion',
+    type: 'SUPPLIER',
+  });
 });
 
 async function fillValidForm(props: { mode?: 'onboarding' | 'add' } = {}) {
@@ -60,7 +64,10 @@ describe('Create Business screen', () => {
     expect(screen.getByLabelText('Business phone number')).toBeTruthy();
     expect(screen.getByLabelText('Business email')).toBeTruthy();
     expect(screen.getByLabelText('Business description')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Create Business' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Create Business' })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.getByRole('button', { name: 'Join an existing business' })).toBeTruthy();
   });
 
@@ -116,7 +123,14 @@ describe('Create Business screen', () => {
 
   it('preflights existing membership via GET /businesses and skips duplicate initial signup', async () => {
     mocks.listBusinesses.mockResolvedValue([
-      { id: 'existing-business', name: 'Existing', type: 'SUPPLIER', status: 'ACTIVE', role: 'OWNER', plan: null },
+      {
+        id: 'existing-business',
+        name: 'Existing',
+        type: 'SUPPLIER',
+        status: 'ACTIVE',
+        role: 'OWNER',
+        plan: null,
+      },
     ]);
     const user = await fillValidForm();
     await user.click(screen.getByRole('button', { name: 'Create Business' }));
@@ -126,7 +140,14 @@ describe('Create Business screen', () => {
 
   it('creates an additional business in mode="add" even when businesses already exist', async () => {
     mocks.listBusinesses.mockResolvedValue([
-      { id: 'existing-business', name: 'Existing', type: 'SUPPLIER', status: 'ACTIVE', role: 'OWNER', plan: null },
+      {
+        id: 'existing-business',
+        name: 'Existing',
+        type: 'SUPPLIER',
+        status: 'ACTIVE',
+        role: 'OWNER',
+        plan: null,
+      },
     ]);
     mocks.createBusiness.mockResolvedValue({ id: 'biz-2', name: 'Second Co', type: 'SUPPLIER' });
     const user = await fillValidForm({ mode: 'add' });

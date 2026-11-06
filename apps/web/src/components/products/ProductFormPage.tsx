@@ -63,7 +63,11 @@ function PriceInput({
   const [focused, setFocused] = useState(false);
   let display = value;
   if (!focused && value.trim()) {
-    try { display = formatNaira(nairaToKobo(value.trim())).replace(/^₦/, ''); } catch { display = value; }
+    try {
+      display = formatNaira(nairaToKobo(value.trim())).replace(/^₦/, '');
+    } catch {
+      display = value;
+    }
   }
   return (
     <Input
@@ -84,7 +88,15 @@ function PriceInput({
   );
 }
 
-function Card({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Card({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-5 rounded-2xl border border-line bg-white p-5 sm:p-6">
       <div>
@@ -96,13 +108,27 @@ function Card({ title, description, children }: { title: string; description?: s
   );
 }
 
-function ProductPreview({ values, images, status }: { values: ProductFormValues; images: UploaderImage[]; status: 'draft' | 'published' }) {
+function ProductPreview({
+  values,
+  images,
+  status,
+}: {
+  values: ProductFormValues;
+  images: UploaderImage[];
+  status: 'draft' | 'published';
+}) {
   const main = images.find((image) => image.status === 'uploaded');
   let price = '₦—';
   if (values.wholesalePrice.trim()) {
-    try { price = formatNaira(nairaToKobo(values.wholesalePrice.trim())); } catch { price = '₦—'; }
+    try {
+      price = formatNaira(nairaToKobo(values.wholesalePrice.trim()));
+    } catch {
+      price = '₦—';
+    }
   }
-  const stock = /^\d+$/.test(values.stockQuantity.trim()) ? Number.parseInt(values.stockQuantity.trim(), 10) : null;
+  const stock = /^\d+$/.test(values.stockQuantity.trim())
+    ? Number.parseInt(values.stockQuantity.trim(), 10)
+    : null;
   return (
     <section className="rounded-2xl border border-line bg-white p-5">
       <h2 className="text-sm font-semibold text-ink">Preview</h2>
@@ -120,13 +146,27 @@ function ProductPreview({ values, images, status }: { values: ProductFormValues;
           )}
         </div>
         <div className="flex flex-col gap-1.5 p-4">
-          <p className={cn('truncate text-sm font-medium', values.name.trim() ? 'text-ink' : 'text-subtle/60')}>{values.name.trim() || 'Product name'}</p>
+          <p
+            className={cn(
+              'truncate text-sm font-medium',
+              values.name.trim() ? 'text-ink' : 'text-subtle/60',
+            )}
+          >
+            {values.name.trim() || 'Product name'}
+          </p>
           <p className="truncate text-xs text-subtle">
-            {values.category.trim() || 'Category'}{values.sku.trim() ? ` · ${values.sku.trim()}` : ''}
+            {values.category.trim() || 'Category'}
+            {values.sku.trim() ? ` · ${values.sku.trim()}` : ''}
           </p>
           <p className="text-base font-semibold text-ink">{price}</p>
-          {stock !== null ? <StockText quantity={stock} /> : <span className="text-xs text-subtle">Stock quantity</span>}
-          <div className="mt-1"><ProductStatusPill status={status} /></div>
+          {stock !== null ? (
+            <StockText quantity={stock} />
+          ) : (
+            <span className="text-xs text-subtle">Stock quantity</span>
+          )}
+          <div className="mt-1">
+            <ProductStatusPill status={status} />
+          </div>
         </div>
       </div>
     </section>
@@ -145,7 +185,12 @@ function valuesFromProduct(product: Product): ProductFormValues {
 }
 
 function imagesFromProduct(product: Product): UploaderImage[] {
-  return product.images.map((image) => ({ id: image.id, url: image.url, status: 'uploaded', progress: 100 }));
+  return product.images.map((image) => ({
+    id: image.id,
+    url: image.url,
+    status: 'uploaded',
+    progress: 100,
+  }));
 }
 
 export function ProductFormPage({ productId }: { productId?: string }) {
@@ -180,7 +225,13 @@ export function ProductFormPage({ productId }: { productId?: string }) {
           title="Product catalogue is coming soon"
           description="Editing products is not available on the server yet."
           actions={
-            <button type="button" onClick={() => router.push(PRODUCT_ROUTES.list)} className="min-h-11 rounded-xl border border-line bg-white px-6 text-sm font-semibold text-ink transition-colors hover:bg-gray-50">Back to products</button>
+            <button
+              type="button"
+              onClick={() => router.push(PRODUCT_ROUTES.list)}
+              className="min-h-11 rounded-xl border border-line bg-white px-6 text-sm font-semibold text-ink transition-colors hover:bg-gray-50"
+            >
+              Back to products
+            </button>
           }
         />
       );
@@ -191,15 +242,43 @@ export function ProductFormPage({ productId }: { productId?: string }) {
         icon={notFound ? 'products' : 'wifi-off'}
         tone="gray"
         title={notFound ? 'Product not found' : "We couldn't load this product"}
-        description={notFound ? 'It may have been deleted, or it belongs to another business.' : 'Check your connection and try again.'}
-        actions={<>
-          <button type="button" onClick={() => router.push(PRODUCT_ROUTES.list)} className="min-h-11 rounded-xl border border-line bg-white px-6 text-sm font-semibold text-ink transition-colors hover:bg-gray-50">Back to products</button>
-          {!notFound ? <button type="button" onClick={() => void productQuery.refetch()} className="min-h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-ink transition-colors hover:bg-primary-hover">Try again</button> : null}
-        </>}
+        description={
+          notFound
+            ? 'It may have been deleted, or it belongs to another business.'
+            : 'Check your connection and try again.'
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => router.push(PRODUCT_ROUTES.list)}
+              className="min-h-11 rounded-xl border border-line bg-white px-6 text-sm font-semibold text-ink transition-colors hover:bg-gray-50"
+            >
+              Back to products
+            </button>
+            {!notFound ? (
+              <button
+                type="button"
+                onClick={() => void productQuery.refetch()}
+                className="min-h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-ink transition-colors hover:bg-primary-hover"
+              >
+                Try again
+              </button>
+            ) : null}
+          </>
+        }
       />
     );
   }
-  return <ProductForm key={product?.id ?? 'new'} product={product} guard={guard} router={router} notify={notify} />;
+  return (
+    <ProductForm
+      key={product?.id ?? 'new'}
+      product={product}
+      guard={guard}
+      router={router}
+      notify={notify}
+    />
+  );
 }
 
 function ProductForm({
@@ -214,13 +293,20 @@ function ProductForm({
   notify: ReturnType<typeof useToast>;
 }) {
   const isEdit = product !== undefined;
-  const initialValues = useMemo(() => product ? valuesFromProduct(product) : EMPTY_PRODUCT_VALUES, [product]);
-  const initialImages = useMemo(() => product ? imagesFromProduct(product) : [], [product]);
-  const initialImageIds = useMemo(() => new Set(initialImages.map((image) => image.id)), [initialImages]);
+  const initialValues = useMemo(
+    () => (product ? valuesFromProduct(product) : EMPTY_PRODUCT_VALUES),
+    [product],
+  );
+  const initialImages = useMemo(() => (product ? imagesFromProduct(product) : []), [product]);
+  const initialImageIds = useMemo(
+    () => new Set(initialImages.map((image) => image.id)),
+    [initialImages],
+  );
 
-  const { register, control, reset, getValues, setValue, setError, clearErrors, formState } = useForm<ProductFormValues>({
-    defaultValues: initialValues,
-  });
+  const { register, control, reset, getValues, setValue, setError, clearErrors, formState } =
+    useForm<ProductFormValues>({
+      defaultValues: initialValues,
+    });
   const watched = useWatch({ control });
   const values: ProductFormValues = { ...EMPTY_PRODUCT_VALUES, ...watched };
   const [images, setImages] = useState<UploaderImage[]>(initialImages);
@@ -233,7 +319,9 @@ function ProductForm({
   const attemptedIntent = useRef<ProductFormIntent | null>(null);
   const savedIdRef = useRef<string | null>(product?.id ?? null);
   const imagesRef = useRef(images);
-  useEffect(() => { imagesRef.current = images; }, [images]);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
   const categories = useProductCategories();
   const catalogueUnavailable = categories.isError && isEndpointNotImplemented(categories.error);
@@ -247,8 +335,10 @@ function ProductForm({
   const formDisabled = busy || catalogueUnavailable;
   const alreadyPublished = product?.status === 'published';
 
-  const isDirty = formState.isDirty || images.length !== initialImages.length
-    || images.some((image, index) => initialImages[index]?.id !== image.id);
+  const isDirty =
+    formState.isDirty ||
+    images.length !== initialImages.length ||
+    images.some((image, index) => initialImages[index]?.id !== image.id);
 
   // ---- Unsaved-changes guard + beforeunload -------------------------------
   const discardCleanup = useCallback(async () => {
@@ -276,20 +366,21 @@ function ProductForm({
 
   // ---- Validation ---------------------------------------------------------
   const fieldError = (field: keyof ProductFormValues | 'images'): string | undefined =>
-    field === 'images'
-      ? (imagesError ?? undefined)
-      : formState.errors[field]?.message;
+    field === 'images' ? (imagesError ?? undefined) : formState.errors[field]?.message;
 
-  const applyErrors = useCallback((errors: ProductFieldErrors) => {
-    clearErrors();
-    setImagesError(errors.images ?? null);
-    for (const [field, message] of Object.entries(errors)) {
-      if (field === 'images') continue;
-      setError(field as keyof ProductFormValues, { type: 'manual', message });
-    }
-    const count = Object.keys(errors).length;
-    setAlertCount(count > 0 ? count : null);
-  }, [clearErrors, setError]);
+  const applyErrors = useCallback(
+    (errors: ProductFieldErrors) => {
+      clearErrors();
+      setImagesError(errors.images ?? null);
+      for (const [field, message] of Object.entries(errors)) {
+        if (field === 'images') continue;
+        setError(field as keyof ProductFormValues, { type: 'manual', message });
+      }
+      const count = Object.keys(errors).length;
+      setAlertCount(count > 0 ? count : null);
+    },
+    [clearErrors, setError],
+  );
 
   // After a failed attempt, errors clear as fields become valid. Keyed on the
   // serialized values so a new watched-object identity alone can't loop.
@@ -297,21 +388,30 @@ function ProductForm({
   const imagesKey = images.map((image) => `${image.id}:${image.status}`).join('|');
   useEffect(() => {
     if (attemptedIntent.current === null) return;
-    const errors = validateProduct(getValues(), imagesRef.current.filter((image) => image.status === 'uploaded').length, attemptedIntent.current);
+    const errors = validateProduct(
+      getValues(),
+      imagesRef.current.filter((image) => image.status === 'uploaded').length,
+      attemptedIntent.current,
+    );
     applyErrors(errors);
   }, [valuesKey, imagesKey, applyErrors, getValues]);
 
   function focusFirstInvalid(errors: ProductFieldErrors) {
     const first = PRODUCT_FIELD_ORDER.find((field) => errors[field]);
     if (!first) return;
-    const element = document.getElementById(first === 'images' ? 'product-photos' : `product-${first}`);
+    const element = document.getElementById(
+      first === 'images' ? 'product-photos' : `product-${first}`,
+    );
     element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     element?.focus({ preventScroll: true });
   }
 
   // ---- Submit flows ---------------------------------------------------------
   function buildInput() {
-    return productInputFromValues(getValues(), imagesRef.current.filter((image) => image.status === 'uploaded').map((image) => image.id));
+    return productInputFromValues(
+      getValues(),
+      imagesRef.current.filter((image) => image.status === 'uploaded').map((image) => image.id),
+    );
   }
 
   async function saveProduct(): Promise<Product> {
@@ -359,9 +459,11 @@ function ProductForm({
       }
     }
     setAlertCount(null);
-    setAlertMessage(caught instanceof ApiError && caught.message
-      ? caught.message
-      : 'Something went wrong while saving. Try again.');
+    setAlertMessage(
+      caught instanceof ApiError && caught.message
+        ? caught.message
+        : 'Something went wrong while saving. Try again.',
+    );
   }
 
   async function doSavePublished() {
@@ -429,27 +531,43 @@ function ProductForm({
       <div className="flex flex-col gap-2">
         <a
           href={PRODUCT_ROUTES.list}
-          onClick={(event) => { event.preventDefault(); guard.navigate(PRODUCT_ROUTES.list); }}
+          onClick={(event) => {
+            event.preventDefault();
+            guard.navigate(PRODUCT_ROUTES.list);
+          }}
           className="inline-flex min-h-9 w-fit items-center gap-1.5 rounded-lg text-sm font-medium text-subtle transition-colors hover:text-ink"
         >
           <DashboardIcon name="chevron" className="size-4 rotate-180" />
           Products
         </a>
-        <h1 className="font-heading text-2xl font-semibold text-ink md:text-[28px]">{isEdit ? 'Edit product' : 'Add product'}</h1>
-        <p className="text-sm text-subtle">{isEdit ? 'Update the details, price and stock for this product.' : 'Add the details retailers need to buy this product.'}</p>
+        <h1 className="font-heading text-2xl font-semibold text-ink md:text-[28px]">
+          {isEdit ? 'Edit product' : 'Add product'}
+        </h1>
+        <p className="text-sm text-subtle">
+          {isEdit
+            ? 'Update the details, price and stock for this product.'
+            : 'Add the details retailers need to buy this product.'}
+        </p>
       </div>
 
       {catalogueUnavailable ? (
         // TODO(BE-002): remove once /api/v1/supplier/categories and /api/v1/supplier/products* exist.
-        <p role="status" className="rounded-2xl border border-primary/30 bg-orange-50 px-4 py-3 text-sm text-ink">
-          Product catalogue endpoints are not available on the server yet. Saving and photo uploads will unlock once the backend product API is deployed.
+        <p
+          role="status"
+          className="rounded-2xl border border-primary/30 bg-orange-50 px-4 py-3 text-sm text-ink"
+        >
+          Product catalogue endpoints are not available on the server yet. Saving and photo uploads
+          will unlock once the backend product API is deployed.
         </p>
       ) : null}
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,22.5rem)]">
         <div className="flex min-w-0 flex-col gap-6">
           <div id="product-photos" tabIndex={-1} className="outline-none">
-            <Card title="Product photos" description="Add up to 8 photos. The first photo is the main photo shoppers see.">
+            <Card
+              title="Product photos"
+              description="Add up to 8 photos. The first photo is the main photo shoppers see."
+            >
               <ProductImageUploader
                 value={images}
                 onChange={setImages}
@@ -491,15 +609,25 @@ function ProductForm({
                   disabled={busy || categories.isPending}
                   {...register('category')}
                 >
-                  <option value="">{categories.isPending ? 'Loading categories…' : 'Choose a category'}</option>
+                  <option value="">
+                    {categories.isPending ? 'Loading categories…' : 'Choose a category'}
+                  </option>
                   {(categories.data ?? []).map((category) => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
                   ))}
                 </Select>
                 {categories.isError && !catalogueUnavailable ? (
                   <p className="text-xs text-danger">
                     Couldn&apos;t load categories.{' '}
-                    <button type="button" onClick={() => void categories.refetch()} className="font-semibold underline underline-offset-2">Retry</button>
+                    <button
+                      type="button"
+                      onClick={() => void categories.refetch()}
+                      className="font-semibold underline underline-offset-2"
+                    >
+                      Retry
+                    </button>
                   </p>
                 ) : null}
               </div>
@@ -544,31 +672,56 @@ function ProductForm({
 
         <div className="flex min-w-0 flex-col gap-6 xl:sticky xl:top-24">
           {alertCount !== null && alertCount > 0 ? (
-            <div role="alert" className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-red-50 p-4">
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-red-50 p-4"
+            >
               <DashboardIcon name="alert" className="mt-0.5 size-5 shrink-0 text-danger" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-danger">Product not published</p>
-                <p className="mt-0.5 text-sm text-danger/90">Fix the {alertCount} highlighted {alertCount === 1 ? 'field' : 'fields'} and try again.</p>
+                <p className="mt-0.5 text-sm text-danger/90">
+                  Fix the {alertCount} highlighted {alertCount === 1 ? 'field' : 'fields'} and try
+                  again.
+                </p>
               </div>
-              <button type="button" aria-label="Dismiss alert" onClick={() => setAlertCount(null)} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-danger transition-colors hover:bg-red-100">
+              <button
+                type="button"
+                aria-label="Dismiss alert"
+                onClick={() => setAlertCount(null)}
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-danger transition-colors hover:bg-red-100"
+              >
                 <DashboardIcon name="close" className="size-4" />
               </button>
             </div>
           ) : null}
           {alertMessage ? (
-            <div role="alert" className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-red-50 p-4">
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-red-50 p-4"
+            >
               <DashboardIcon name="alert" className="mt-0.5 size-5 shrink-0 text-danger" />
               <p className="min-w-0 flex-1 text-sm text-danger">{alertMessage}</p>
-              <button type="button" aria-label="Dismiss alert" onClick={() => setAlertMessage(null)} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-danger transition-colors hover:bg-red-100">
+              <button
+                type="button"
+                aria-label="Dismiss alert"
+                onClick={() => setAlertMessage(null)}
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-danger transition-colors hover:bg-red-100"
+              >
                 <DashboardIcon name="close" className="size-4" />
               </button>
             </div>
           ) : null}
 
-          <ProductPreview values={values} images={images} status={alreadyPublished ? 'published' : 'draft'} />
+          <ProductPreview
+            values={values}
+            images={images}
+            status={alreadyPublished ? 'published' : 'draft'}
+          />
 
           <section className="rounded-2xl border border-line bg-white p-5">
-            <h2 className="text-sm font-semibold text-ink">{alreadyPublished ? 'Save changes' : 'Publish'}</h2>
+            <h2 className="text-sm font-semibold text-ink">
+              {alreadyPublished ? 'Save changes' : 'Publish'}
+            </h2>
             <p className="mt-1 text-xs leading-5 text-subtle">
               {alreadyPublished
                 ? 'This product is live. Save to update what retailers see.'
@@ -604,7 +757,11 @@ function ProductForm({
                 Cancel
               </button>
             </div>
-            {uploading ? <p role="status" className="mt-3 text-xs text-subtle">Waiting for photos to finish uploading…</p> : null}
+            {uploading ? (
+              <p role="status" className="mt-3 text-xs text-subtle">
+                Waiting for photos to finish uploading…
+              </p>
+            ) : null}
           </section>
         </div>
       </div>
@@ -615,15 +772,32 @@ function ProductForm({
         tone="info"
         title="Publish this product?"
         description={`"${nameForDialogs}" will be visible to retailers and available to buy.`}
-        onClose={() => { if (!busy) setConfirmOpen(false); }}
+        onClose={() => {
+          if (!busy) setConfirmOpen(false);
+        }}
         closeLocked={busy}
-        actions={<>
-          <button type="button" data-dialog-safe className={dialogSecondaryClass} disabled={busy} onClick={() => setConfirmOpen(false)}>Review again</button>
-          <button type="button" className={dialogPrimaryClass} disabled={busy} onClick={() => void doSavePublished()}>
-            {submitting === 'publish' ? <Spinner /> : null}
-            Publish product
-          </button>
-        </>}
+        actions={
+          <>
+            <button
+              type="button"
+              data-dialog-safe
+              className={dialogSecondaryClass}
+              disabled={busy}
+              onClick={() => setConfirmOpen(false)}
+            >
+              Review again
+            </button>
+            <button
+              type="button"
+              className={dialogPrimaryClass}
+              disabled={busy}
+              onClick={() => void doSavePublished()}
+            >
+              {submitting === 'publish' ? <Spinner /> : null}
+              Publish product
+            </button>
+          </>
+        }
       />
 
       {/* Published success. Escape/backdrop → back to products. */}
@@ -633,10 +807,21 @@ function ProductForm({
         title="Product published"
         description={`"${successName ?? ''}" is now live and visible to retailers.`}
         onClose={goToList}
-        actions={<>
-          <button type="button" className={dialogSecondaryClass} onClick={addAnother}>Add another product</button>
-          <button type="button" data-dialog-safe className={dialogPrimaryClass} onClick={goToList}>Back to products</button>
-        </>}
+        actions={
+          <>
+            <button type="button" className={dialogSecondaryClass} onClick={addAnother}>
+              Add another product
+            </button>
+            <button
+              type="button"
+              data-dialog-safe
+              className={dialogPrimaryClass}
+              onClick={goToList}
+            >
+              Back to products
+            </button>
+          </>
+        }
       />
     </>
   );

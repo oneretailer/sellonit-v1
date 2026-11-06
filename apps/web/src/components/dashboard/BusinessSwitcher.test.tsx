@@ -11,8 +11,12 @@ import {
   resetProductsMocks,
 } from '@/components/products/testSupport';
 
-vi.mock('next/navigation', async () => (await import('@/components/products/testState')).navigationMockFactory());
-vi.mock('@/lib/business/BusinessProvider', async () => (await import('@/components/products/testState')).businessMockFactory());
+vi.mock('next/navigation', async () =>
+  (await import('@/components/products/testState')).navigationMockFactory(),
+);
+vi.mock('@/lib/business/BusinessProvider', async () =>
+  (await import('@/components/products/testState')).businessMockFactory(),
+);
 
 beforeEach(() => {
   resetProductsMocks();
@@ -24,7 +28,9 @@ describe('business switcher', () => {
   it('shows the active business in the pill and opens the menu on click', async () => {
     const userEventSession = userEvent.setup();
     renderProducts(<BusinessSwitcher />);
-    const pill = screen.getByRole('button', { name: 'Switch business, current: Okechukwu Fashion' });
+    const pill = screen.getByRole('button', {
+      name: 'Switch business, current: Okechukwu Fashion',
+    });
     expect(pill.getAttribute('aria-expanded')).toBe('false');
     await userEventSession.click(pill);
     expect(businessMocks.setSwitcherOpen).toHaveBeenCalledWith(true);
@@ -68,7 +74,9 @@ describe('business switcher', () => {
     expect(menu.contains(document.activeElement)).toBe(true);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(businessMocks.setSwitcherOpen).toHaveBeenCalledWith(false);
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Switch business, current: Okechukwu Fashion' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Switch business, current: Okechukwu Fashion' }),
+    );
   });
 
   it('moves focus with arrow keys', async () => {

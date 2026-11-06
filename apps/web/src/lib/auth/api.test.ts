@@ -181,9 +181,23 @@ describe('toRegisterUserRequest', () => {
 
 describe('typed transport header preservation', () => {
   it('forwards Headers instances such as Idempotency-Key without dropping entries', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: { ok: true } }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: { ok: true } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
     const { api } = await import('@/lib/api');
-    await api.POST('/onboarding/businesses', { params: { header: { 'Idempotency-Key': 'test-key-123' } }, body: { name: 'Test', phone: '08031234567', email: 'test@example.com', description: '', accountType: 'supplier' } });
+    await api.POST('/onboarding/businesses', {
+      params: { header: { 'Idempotency-Key': 'test-key-123' } },
+      body: {
+        name: 'Test',
+        phone: '08031234567',
+        email: 'test@example.com',
+        description: '',
+        accountType: 'supplier',
+      },
+    });
     const init = fetchMock.mock.calls[0]![1]!;
     expect(new Headers(init.headers).get('Idempotency-Key')).toBe('test-key-123');
     expect(new Headers(init.headers).get('content-type')).toBe('application/json');

@@ -9,27 +9,28 @@
 
 ## Priority Summary
 
-| ID | Priority | Area | Summary |
-| --- | --- | --- | --- |
-| `BE-001` | **P0** | Auth / Session | Implement `POST /api/v1/auth/logout` to revoke session and clear `HttpOnly` cookie |
-| `BE-002` | **P0** | Supplier Products | Implement Supplier Products CRUD, publish/unpublish, categories, image uploads, and summary |
-| `BE-003` | **P1** | Supplier Dashboard | Implement `GET /api/v1/supplier/:businessId/dashboard` metrics + setup step completion |
-| `BE-004` | **P1** | Tenancy & Businesses | Expose `activeSubscription`/`plan`, enforce `OWNER \| MANAGER` & `SUSPENDED` checks, unify tenancy |
-| `BE-005` | **P1** | RBAC / Session Context | Implement `GET /api/v1/session/context` (or return role permission grants on `/businesses` + `/auth/me`) |
-| `BE-006` | **P1** | Admin Moderation | Implement `/api/v1/admin/suppliers*` queue, detail, approve/reject/suspend/reinstate |
-| `BE-007` | **P1** | API & OpenAPI Hygiene | Add JSON 404 catch-all, standardize `requestId` + field validation details, fix `openapi.yaml` drift |
-| `BE-008` | **P2** | Auth Verification | Implement `POST /api/v1/auth/resend-verification` and `POST /api/v1/auth/refresh` |
-| `BE-009` | **P2** | Team Onboarding | Implement business member invitations & "Join an existing business" acceptance |
-| `BE-010` | **P2** | Notifications | Implement `GET /api/v1/notifications` and `POST /api/v1/notifications/:id/read` |
-| `BE-011` | **P2** | Seed Fixtures | Expand `apps/api/prisma/seed.ts` with dev accounts covering supplier/multi-business/role states |
-| `BE-012` | **P3** | Retailer & Commerce | Implement Retailer onboarding and Supplier Inventory / Pricing / Website / Orders / Wallet modules |
-| `BE-013` | **P3** | OAuth & Phone Auth | Implement Google/Apple OAuth and phone-identifier login / password reset (or remove from v1 spec) |
+| ID       | Priority | Area                   | Summary                                                                                                  |
+| -------- | -------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| `BE-001` | **P0**   | Auth / Session         | Implement `POST /api/v1/auth/logout` to revoke session and clear `HttpOnly` cookie                       |
+| `BE-002` | **P0**   | Supplier Products      | Implement Supplier Products CRUD, publish/unpublish, categories, image uploads, and summary              |
+| `BE-003` | **P1**   | Supplier Dashboard     | Implement `GET /api/v1/supplier/:businessId/dashboard` metrics + setup step completion                   |
+| `BE-004` | **P1**   | Tenancy & Businesses   | Expose `activeSubscription`/`plan`, enforce `OWNER \| MANAGER` & `SUSPENDED` checks, unify tenancy       |
+| `BE-005` | **P1**   | RBAC / Session Context | Implement `GET /api/v1/session/context` (or return role permission grants on `/businesses` + `/auth/me`) |
+| `BE-006` | **P1**   | Admin Moderation       | Implement `/api/v1/admin/suppliers*` queue, detail, approve/reject/suspend/reinstate                     |
+| `BE-007` | **P1**   | API & OpenAPI Hygiene  | Add JSON 404 catch-all, standardize `requestId` + field validation details, fix `openapi.yaml` drift     |
+| `BE-008` | **P2**   | Auth Verification      | Implement `POST /api/v1/auth/resend-verification` and `POST /api/v1/auth/refresh`                        |
+| `BE-009` | **P2**   | Team Onboarding        | Implement business member invitations & "Join an existing business" acceptance                           |
+| `BE-010` | **P2**   | Notifications          | Implement `GET /api/v1/notifications` and `POST /api/v1/notifications/:id/read`                          |
+| `BE-011` | **P2**   | Seed Fixtures          | Expand `apps/api/prisma/seed.ts` with dev accounts covering supplier/multi-business/role states          |
+| `BE-012` | **P3**   | Retailer & Commerce    | Implement Retailer onboarding and Supplier Inventory / Pricing / Website / Orders / Wallet modules       |
+| `BE-013` | **P3**   | OAuth & Phone Auth     | Implement Google/Apple OAuth and phone-identifier login / password reset (or remove from v1 spec)        |
 
 ---
 
 ## Detailed Backend Tasks
 
 ### `BE-001` — Implement Session Logout (`POST /api/v1/auth/logout`)
+
 - **Priority:** **P0 (Critical)**
 - **Why Frontend Needs It:** `loginHandler` (`apps/api/src/modules/auth/auth.handlers.ts:157-164`) sets `sellonit_access_token` as an `HttpOnly` cookie (`path: '/'`, `sameSite: 'lax'`). Browser JavaScript cannot delete an `HttpOnly` cookie. Currently `POST /api/v1/auth/logout` is not mounted in `apps/api/src/http/routes/auth.routes.ts`, so clicking **Log out** in `DashboardShell.tsx` or `AccountPanel.tsx` hits `404` and leaves the user signed in on refresh.
 - **Proposed Contract:**
@@ -45,6 +46,7 @@
 ---
 
 ### `BE-002` — Implement Supplier Products Module (CRUD, Publish/Unpublish, Categories, Image Uploads, Summary)
+
 - **Priority:** **P0 (Critical)**
 - **Why Frontend Needs It:** The entire Supplier Products UI (`/dashboard/products`, `/dashboard/products/new`, `/dashboard/products/[id]/edit` backed by `apps/web/src/lib/products/productsApi.ts`) is built and tested, while `apps/api/src/modules/supplier-products/` contains only `.gitkeep` and `schema.prisma` has no product/category/image models.
 - **Contract Decision to Resolve First:** Reconcile `docs/openapi.yaml` `/supplier-products` (lines 729–869), `docs/openapi.yaml` `PROPOSED` `/supplier/products` (lines 1914–2055), and `productsApi.ts` into one canonical contract.
@@ -75,7 +77,7 @@
            "meta": { "page": 1, "pageSize": 10, "total": 1, "totalPages": 1 }
          }
          ```
-         *(Note: Document explicitly whether `wholesalePrice` is integer kobo or NGN; `apps/web/src/lib/money.ts` and `openapi.yaml` kobo fields must match.)*
+         _(Note: Document explicitly whether `wholesalePrice` is integer kobo or NGN; `apps/web/src/lib/money.ts` and `openapi.yaml` kobo fields must match.)_
     2. `GET /api/v1/supplier/products/summary`
        - Response `200`: `{ "data": { "totalProducts": 12, "publishedCount": 8, "draftCount": 4, "outOfStockCount": 2 } }`
     3. `GET /api/v1/supplier/products/:id` → `200 { "data": SupplierProduct }` | `404 { "error": { "code": "NOT_FOUND", ... } }`
@@ -94,6 +96,7 @@
 ---
 
 ### `BE-003` — Implement Supplier Dashboard Overview & Authoritative Setup Progress
+
 - **Priority:** **P1 (High)**
 - **Why Frontend Needs It:** `/dashboard/overview` (`apps/web/src/lib/dashboard/supplierDashboard.ts:80-86`) requests `GET /api/v1/supplier/dashboard?from=YYYY-MM-DD&to=YYYY-MM-DD` for KPI cards, revenue chart, top products, order breakdown, recent orders, and `setup.completedStepIds`. Currently Steps 1 (`business-information`) and 2 (`supplier-profile`) are derived from `GET /businesses` and `GET /supplier/:businessId/profile`, while Steps 3–6 and dashboard metrics have no endpoint.
 - **Proposed Contract:**
@@ -111,7 +114,13 @@
         },
         "revenueSeries": [],
         "topProducts": [],
-        "orderStatus": { "pending": 0, "processing": 0, "shipped": 0, "completed": 0, "cancelled": 0 },
+        "orderStatus": {
+          "pending": 0,
+          "processing": 0,
+          "shipped": 0,
+          "completed": 0,
+          "cancelled": 0
+        },
         "recentOrders": [],
         "setup": {
           "completedStepIds": ["business-information", "supplier-profile"]
@@ -124,6 +133,7 @@
 ---
 
 ### `BE-004` — Standardize Business Tenancy, Subscription Exposure, Role Guards & `SUSPENDED` Status
+
 - **Priority:** **P1 (High)**
 - **Why Frontend Needs It:**
   1. `GET /api/v1/businesses` and `POST /api/v1/businesses` (`apps/api/src/modules/businesses/businesses.handlers.ts:85,94`) create `BusinessSubscription(Plan='ENTERPRISE')` in PostgreSQL but omit `activeSubscription` and `supplierProfile` from the response JSON, and omit `orderBy` and `meta`.
@@ -144,6 +154,7 @@
 ---
 
 ### `BE-005` — Implement Workspace Session Context & Role Permission Grants
+
 - **Priority:** **P1 (High)**
 - **Why Frontend Needs It:** `WorkspaceRoute.tsx` (`/admin/suppliers`), `PermissionGuard.tsx`, and `BusinessProvider.can()` (`apps/web/src/lib/business/BusinessProvider.tsx:95-99`) need server-resolved platform roles (`ADMIN | USER`), business permissions (`product:read`, `product:write`, `product:publish`, `product:delete`, `supplier_profile:write`), and plan-gated features. Currently `GET /api/v1/session/context` (`docs/openapi.yaml:1857-1869`) is unmounted (`404`) and `seed.ts:51-66` assigns permissions only to `ADMIN`.
 - **Proposed Contract:**
@@ -153,11 +164,31 @@
       "data": {
         "userId": "uuid",
         "platformRole": "USER",
-        "businesses": [{ "id": "uuid", "name": "Acme Ltd", "slug": "acme-ltd", "type": "SUPPLIER", "status": "ACTIVE" }],
-        "activeBusiness": { "id": "uuid", "name": "Acme Ltd", "slug": "acme-ltd", "type": "SUPPLIER", "status": "ACTIVE" },
+        "businesses": [
+          {
+            "id": "uuid",
+            "name": "Acme Ltd",
+            "slug": "acme-ltd",
+            "type": "SUPPLIER",
+            "status": "ACTIVE"
+          }
+        ],
+        "activeBusiness": {
+          "id": "uuid",
+          "name": "Acme Ltd",
+          "slug": "acme-ltd",
+          "type": "SUPPLIER",
+          "status": "ACTIVE"
+        },
         "supplierStatus": "PENDING_REVIEW",
         "plan": "ENTERPRISE",
-        "permissions": ["supplier.dashboard.view", "supplier.profile.edit", "supplier.products.view", "supplier.products.create", "supplier.products.edit"],
+        "permissions": [
+          "supplier.dashboard.view",
+          "supplier.profile.edit",
+          "supplier.products.view",
+          "supplier.products.create",
+          "supplier.products.edit"
+        ],
         "features": ["supplier-portal", "product-catalogue", "inventory", "pricing"]
       }
     }
@@ -167,6 +198,7 @@
 ---
 
 ### `BE-006` — Implement Admin Supplier Review Queue & Moderation Actions
+
 - **Priority:** **P1 (High)**
 - **Why Frontend Needs It:** `/admin/suppliers` and `/admin/suppliers/[id]` (`SupplierQueue.tsx`, `SupplierReview.tsx`, `apps/web/src/lib/workspace/adminApi.ts`) are fully built against `docs/openapi.yaml:1886-1913` (`PaginatedAdminSuppliers`, `AdminSupplierDetail`), but no `/api/v1/admin/*` router exists, so supplier profiles submitted via `POST /api/v1/supplier/:businessId/profile/submit` (`PENDING_REVIEW`) have no way to be approved or assigned `ENTERPRISE` vs `ENTERPRISE_PLUS` plans except via raw SQL.
 - **Proposed Contract:**
@@ -181,6 +213,7 @@
 ---
 
 ### `BE-007` — Add JSON 404 Catch-All, Standardize Error Envelopes, and Fix `docs/openapi.yaml` Drift
+
 - **Priority:** **P1 (High)**
 - **Why Frontend Needs It:**
   1. `apps/api/src/main.ts:15-21` has no catch-all 404 middleware, so Express 5 returns `text/html` (`<!DOCTYPE html>...Cannot GET /api/v1/...`) on unmatched routes instead of `ErrorResponse`.
@@ -201,6 +234,7 @@
 ---
 
 ### `BE-008` — Implement Resend Email Verification & Session Refresh
+
 - **Priority:** **P2 (Medium)**
 - **Why Frontend Needs It:** `VerifyEmailPage` (`apps/web/src/app/auth/verify-email/page.tsx:167`, `apps/web/src/lib/auth/api.ts:69-77`) provides a "Resend verification link" button with a 30s cooldown, but `POST /api/v1/auth/resend-verification` does not exist. `POST /api/v1/auth/refresh` (`openapi.yaml:275-294`) is also unmounted.
 - **Proposed Contract:**
@@ -212,6 +246,7 @@
 ---
 
 ### `BE-009` — Implement Business Member Invitations & "Join an Existing Business"
+
 - **Priority:** **P2 (Medium)**
 - **Why Frontend Needs It:** `CreateBusinessForm.tsx:271-283` includes a "Join an existing business" CTA (currently showing a coming-soon notice), and multi-user supplier teams need a way to add `MANAGER` and `STAFF` memberships (`Membership.role`).
 - **Proposed Contract:**
@@ -221,6 +256,7 @@
 ---
 
 ### `BE-010` — Implement In-App Notifications
+
 - **Priority:** **P2 (Medium)**
 - **Why Frontend Needs It:** `DashboardShell.tsx:388-395` includes a header notifications trigger so suppliers know when their profile is approved/rejected or orders arrive.
 - **Proposed Contract:**
@@ -229,6 +265,7 @@
 ---
 
 ### `BE-011` — Expand Development Seed Fixtures (`apps/api/prisma/seed.ts`)
+
 - **Priority:** **P2 (Medium)**
 - **Why Frontend Needs It:** `seed.ts` currently creates only `admin@sellonit.local` (`onboardingIntent: null`, 0 businesses). Adding deterministic non-production fixtures (`if (process.env.NODE_ENV !== 'production')`) lets engineers immediately test every UI state:
   1. `admin@sellonit.local` / `ChangeMe123!` — Platform `ADMIN`.
@@ -242,6 +279,7 @@
 ---
 
 ### `BE-012` — Retailer Workspace & Remaining Supplier Workspace Modules
+
 - **Priority:** **P3 (Roadmap)**
 - **Why Frontend Needs It:** Unblocks flipping `NON_SUPPLIER_BUSINESS_CREATION_ENABLED` (`apps/web/src/lib/onboarding/businessApi.ts:20`) and replacing `PlaceholderWorkspace` on `/dashboard/{inventory,pricing,website,orders,customers,wallet,analytics,settings}`.
 - **Proposed Contract:** Implement per `docs/openapi.yaml` domain tags (`Retailers`, `Stores`, `Catalogue`, `Commerce`, `Payments`, `Fulfillment`, `Logistics`, `Analytics`).
@@ -249,6 +287,7 @@
 ---
 
 ### `BE-013` — Google/Apple OAuth & Phone-Identifier Login / Password Reset
+
 - **Priority:** **P3 (Roadmap)**
 - **Why Frontend Needs It:** `SignupMethodChooser.tsx` and `LoginForm.tsx` render disabled Google/Apple buttons, and login/forgot-password inputs accept phone numbers with a polite "use your email address" fallback (`authService.ts:109-111,163-165`).
 - **Proposed Contract:** Either implement OAuth redirect/callback routes and verified-phone login/OTP reset, or confirm email-only auth for v1.

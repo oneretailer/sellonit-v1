@@ -5,10 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SupplierSetupScreen } from './SupplierSetupScreen';
-import {
-  clearOnboardingBusiness,
-  writeOnboardingBusiness,
-} from '@/lib/auth/flowState';
+import { clearOnboardingBusiness, writeOnboardingBusiness } from '@/lib/auth/flowState';
 import { SUPPLIER_SETUP_STEPS } from '@/lib/onboarding/supplierSetup';
 
 const mocks = vi.hoisted(() => ({ router: { push: vi.fn(), replace: vi.fn() } }));
@@ -53,8 +50,12 @@ describe('Supplier Setup screen', () => {
     expect(screen.getByText('Your supplier setup')).toBeTruthy();
     SUPPLIER_SETUP_STEPS.forEach((step) => expect(screen.getByText(step.label)).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Complete setup' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe('/dashboard/overview');
-    expect(screen.getByRole('link', { name: 'skip' }).getAttribute('href')).toBe('/dashboard/overview');
+    expect(screen.getByRole('link', { name: 'Back' }).getAttribute('href')).toBe(
+      '/dashboard/overview',
+    );
+    expect(screen.getByRole('link', { name: 'skip' }).getAttribute('href')).toBe(
+      '/dashboard/overview',
+    );
   });
 
   it('continues to the first incomplete step (Business information) when nothing is done', async () => {
@@ -78,9 +79,7 @@ describe('Supplier Setup screen', () => {
   it('shows a success state and a dashboard button when every step is complete', async () => {
     writeOnboardingBusiness(draft);
     const user = userEvent.setup();
-    render(
-      <SupplierSetupScreen completedStepIds={SUPPLIER_SETUP_STEPS.map((step) => step.id)} />,
-    );
+    render(<SupplierSetupScreen completedStepIds={SUPPLIER_SETUP_STEPS.map((step) => step.id)} />);
     expect(screen.getAllByText('completed')).toHaveLength(6);
     expect(screen.getByRole('status')).toBeTruthy();
     const button = screen.getByRole('button', { name: 'Go to dashboard' });

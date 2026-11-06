@@ -74,45 +74,66 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
     setActiveBusinessId(activeBusiness?.id ?? null);
   }, [activeBusiness?.id]);
 
-  const switchBusiness = useCallback((id: string) => {
-    if (id === activeBusiness?.id) {
+  const switchBusiness = useCallback(
+    (id: string) => {
+      if (id === activeBusiness?.id) {
+        setSwitcherOpen(false);
+        return;
+      }
+      setActiveId(id);
+      setActiveBusinessId(id);
       setSwitcherOpen(false);
-      return;
-    }
-    setActiveId(id);
-    setActiveBusinessId(id);
-    setSwitcherOpen(false);
-    for (const prefix of BUSINESS_SCOPED_CACHE_PREFIXES) {
-      queryClient.removeQueries({ queryKey: [...prefix] });
-    }
-    // Always land on Overview: an edit page belongs to the previous business.
-    if (pathname !== '/dashboard/overview') router.push('/dashboard/overview');
-  }, [activeBusiness?.id, pathname, queryClient, router]);
+      for (const prefix of BUSINESS_SCOPED_CACHE_PREFIXES) {
+        queryClient.removeQueries({ queryKey: [...prefix] });
+      }
+      // Always land on Overview: an edit page belongs to the previous business.
+      if (pathname !== '/dashboard/overview') router.push('/dashboard/overview');
+    },
+    [activeBusiness?.id, pathname, queryClient, router],
+  );
 
-  const can = useCallback((permission: BusinessPermission) => {
-    // TODO(BE-005): replace with server-resolved permission grants once exposed.
-    // Mirrors backend `requireOwnedBusiness` (`OWNER | MANAGER`) for management
-    // actions, restricts destructive deletes to `OWNER`, and keeps `STAFF` read-only.
-    const role = activeBusiness?.role;
-    if (role === 'OWNER') return true;
-    if (role === 'MANAGER') return permission !== 'product:delete';
-    if (role === 'STAFF') return permission === 'product:read';
-    return false;
-  }, [activeBusiness?.role]);
+  const can = useCallback(
+    (permission: BusinessPermission) => {
+      // TODO(BE-005): replace with server-resolved permission grants once exposed.
+      // Mirrors backend `requireOwnedBusiness` (`OWNER | MANAGER`) for management
+      // actions, restricts destructive deletes to `OWNER`, and keeps `STAFF` read-only.
+      const role = activeBusiness?.role;
+      if (role === 'OWNER') return true;
+      if (role === 'MANAGER') return permission !== 'product:delete';
+      if (role === 'STAFF') return permission === 'product:read';
+      return false;
+    },
+    [activeBusiness?.role],
+  );
 
-  const refetch = useCallback(() => { void query.refetch(); }, [query]);
+  const refetch = useCallback(() => {
+    void query.refetch();
+  }, [query]);
 
-  const value = useMemo<BusinessContextValue>(() => ({
-    businesses,
-    activeBusiness,
-    isLoading: query.isPending && status === 'authenticated',
-    error: query.error,
-    refetch,
-    switchBusiness,
-    switcherOpen,
-    setSwitcherOpen,
-    can,
-  }), [businesses, activeBusiness, query.isPending, query.error, status, refetch, switchBusiness, switcherOpen, can]);
+  const value = useMemo<BusinessContextValue>(
+    () => ({
+      businesses,
+      activeBusiness,
+      isLoading: query.isPending && status === 'authenticated',
+      error: query.error,
+      refetch,
+      switchBusiness,
+      switcherOpen,
+      setSwitcherOpen,
+      can,
+    }),
+    [
+      businesses,
+      activeBusiness,
+      query.isPending,
+      query.error,
+      status,
+      refetch,
+      switchBusiness,
+      switcherOpen,
+      can,
+    ],
+  );
 
   return <BusinessContext.Provider value={value}>{children}</BusinessContext.Provider>;
 }

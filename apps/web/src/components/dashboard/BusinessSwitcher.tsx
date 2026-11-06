@@ -11,13 +11,18 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
 import { DashboardIcon } from './icons';
 import { useBusiness } from '@/lib/business/BusinessProvider';
-import { businessPlanLabel, businessRoleLabel, businessTypeLabel } from '@/lib/business/businessesApi';
+import {
+  businessPlanLabel,
+  businessRoleLabel,
+  businessTypeLabel,
+} from '@/lib/business/businessesApi';
 import { useOptionalNavigationGuard } from '@/components/workspace/NavigationGuard';
 
 const FALLBACK_BUSINESS_NAME = 'Your business';
 
 export function BusinessSwitcher() {
-  const { businesses, activeBusiness, switcherOpen, setSwitcherOpen, switchBusiness } = useBusiness();
+  const { businesses, activeBusiness, switcherOpen, setSwitcherOpen, switchBusiness } =
+    useBusiness();
   const guard = useOptionalNavigationGuard();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +76,10 @@ export function BusinessSwitcher() {
   }, [switcherOpen, setSwitcherOpen]);
 
   function select(id: string) {
-    if (id === activeBusiness?.id) { setSwitcherOpen(false); return; }
+    if (id === activeBusiness?.id) {
+      setSwitcherOpen(false);
+      return;
+    }
     const target = businesses.find((business) => business.id === id);
     const run = () => switchBusiness(id);
     if (guard) {
@@ -107,13 +115,26 @@ export function BusinessSwitcher() {
       >
         <DashboardIcon name="business" className="size-4 shrink-0 text-subtle" />
         <span className="hidden max-w-28 truncate min-[420px]:inline sm:max-w-48">{name}</span>
-        <DashboardIcon name="chevron-down" className={cn('size-4 shrink-0 text-subtle transition-transform', switcherOpen && 'rotate-180')} />
+        <DashboardIcon
+          name="chevron-down"
+          className={cn(
+            'size-4 shrink-0 text-subtle transition-transform',
+            switcherOpen && 'rotate-180',
+          )}
+        />
       </button>
 
       {switcherOpen ? (
         <>
           {/* Backdrop only for the small-screen bottom sheet. */}
-          <div className="fixed inset-0 z-40 bg-black/40 sm:hidden" role="presentation" onMouseDown={() => { setSwitcherOpen(false); pillRef.current?.focus(); }} />
+          <div
+            className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+            role="presentation"
+            onMouseDown={() => {
+              setSwitcherOpen(false);
+              pillRef.current?.focus();
+            }}
+          />
           <div
             ref={menuRef}
             role="menu"
@@ -121,41 +142,67 @@ export function BusinessSwitcher() {
             className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-3xl border border-line bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:bottom-auto sm:z-50 sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl sm:p-2 sm:pb-2"
           >
             <p className="px-2 py-2 text-xs font-medium text-subtle">Your businesses</p>
-            <div className={cn('flex flex-col', businesses.length > 6 && 'max-h-80 overflow-y-auto')}>
+            <div
+              className={cn('flex flex-col', businesses.length > 6 && 'max-h-80 overflow-y-auto')}
+            >
               {businesses.length === 0 ? (
                 <p className="px-2 py-3 text-sm text-subtle">No businesses yet.</p>
-              ) : businesses.map((business) => {
-                const active = business.id === activeBusiness?.id;
-                return (
-                  <button
-                    key={business.id}
-                    type="button"
-                    role="menuitem"
-                    aria-current={active ? 'true' : undefined}
-                    onClick={() => select(business.id)}
-                    className={cn('flex min-h-12 items-center gap-3 rounded-xl px-2 text-left transition-colors hover:bg-orange-50', active && 'bg-orange-50/60')}
-                  >
-                    <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-canvas text-subtle">
-                      <DashboardIcon name="business" className="size-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-ink">{business.name}</span>
-                      <span className="block truncate text-xs text-subtle">
-                        {businessTypeLabel(business.type)} · {businessRoleLabel(business.role)}
-                        {businessPlanLabel(business.plan) ? ` · ${businessPlanLabel(business.plan)}` : ''}
-                        {business.status === 'SUSPENDED' ? ' · Suspended' : ''}
+              ) : (
+                businesses.map((business) => {
+                  const active = business.id === activeBusiness?.id;
+                  return (
+                    <button
+                      key={business.id}
+                      type="button"
+                      role="menuitem"
+                      aria-current={active ? 'true' : undefined}
+                      onClick={() => select(business.id)}
+                      className={cn(
+                        'flex min-h-12 items-center gap-3 rounded-xl px-2 text-left transition-colors hover:bg-orange-50',
+                        active && 'bg-orange-50/60',
+                      )}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-canvas text-subtle"
+                      >
+                        <DashboardIcon name="business" className="size-4" />
                       </span>
-                    </span>
-                    {active ? (
-                      <span aria-hidden="true" className="text-primary"><DashboardIcon name="check-circle" className="size-5" /></span>
-                    ) : null}
-                  </button>
-                );
-              })}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-ink">
+                          {business.name}
+                        </span>
+                        <span className="block truncate text-xs text-subtle">
+                          {businessTypeLabel(business.type)} · {businessRoleLabel(business.role)}
+                          {businessPlanLabel(business.plan)
+                            ? ` · ${businessPlanLabel(business.plan)}`
+                            : ''}
+                          {business.status === 'SUSPENDED' ? ' · Suspended' : ''}
+                        </span>
+                      </span>
+                      {active ? (
+                        <span aria-hidden="true" className="text-primary">
+                          <DashboardIcon name="check-circle" className="size-5" />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
             </div>
             <div className="mt-2 border-t border-line pt-2">
-              <button type="button" role="menuitem" onClick={addBusiness} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left text-sm font-medium text-ink transition-colors hover:bg-orange-50">
-                <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-lg bg-orange-50 text-primary"><DashboardIcon name="plus" className="size-4" /></span>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={addBusiness}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left text-sm font-medium text-ink transition-colors hover:bg-orange-50"
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex size-9 items-center justify-center rounded-lg bg-orange-50 text-primary"
+                >
+                  <DashboardIcon name="plus" className="size-4" />
+                </span>
                 Add business
               </button>
             </div>

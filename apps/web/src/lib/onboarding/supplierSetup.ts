@@ -121,8 +121,7 @@ export function useSupplierSetupProgress(
 ): SupplierSetupProgress {
   const businessContext = useContext(BusinessContext);
   const activeBusiness = businessContext?.activeBusiness ?? null;
-  const supplierBusinessId =
-    activeBusiness?.type === 'SUPPLIER' ? activeBusiness.id : null;
+  const supplierBusinessId = activeBusiness?.type === 'SUPPLIER' ? activeBusiness.id : null;
   const supplierProfile = useOptionalSupplierProfile(supplierBusinessId);
 
   const raw = useSyncExternalStore(

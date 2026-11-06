@@ -4,22 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProductsListPage } from './ProductsListPage';
-import {
-  navMocks,
-  polyfillProductsEnv,
-  renderProducts,
-  resetProductsMocks,
-} from './testSupport';
+import { navMocks, polyfillProductsEnv, renderProducts, resetProductsMocks } from './testSupport';
 import { productsApi } from '@/lib/products/productsApi';
 import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, NetworkError } from '@/lib/api-client';
 import type { Paginated, Product, ProductSummary } from '@/lib/products/types';
 
 vi.mock('next/navigation', async () => (await import('./testState')).navigationMockFactory());
-vi.mock('@/lib/business/BusinessProvider', async () => (await import('./testState')).businessMockFactory());
+vi.mock('@/lib/business/BusinessProvider', async () =>
+  (await import('./testState')).businessMockFactory(),
+);
 vi.mock('next/link', async () => {
   const React = await import('react');
   return {
-    default: ({ href, children, ...props }: { href: unknown; children?: React.ReactNode } & Record<string, unknown>) =>
+    default: ({
+      href,
+      children,
+      ...props
+    }: { href: unknown; children?: React.ReactNode } & Record<string, unknown>) =>
       React.createElement('a', { href: String(href), ...props }, children),
   };
 });
@@ -42,7 +43,10 @@ function product(overrides: Partial<Product> = {}): Product {
 }
 
 function page(rows: Product[], total = rows.length): Paginated<Product> {
-  return { data: rows, meta: { page: 1, pageSize: 10, total, totalPages: Math.max(1, Math.ceil(total / 10)) } };
+  return {
+    data: rows,
+    meta: { page: 1, pageSize: 10, total, totalPages: Math.max(1, Math.ceil(total / 10)) },
+  };
 }
 
 const summary: ProductSummary = { total: 2, published: 1, drafts: 1, lowStock: 1, outOfStock: 0 };
@@ -60,10 +64,22 @@ afterEach(() => {
 
 describe('products list', () => {
   it('renders rows with formatted price, stock and status plus the range footer', async () => {
-    vi.spyOn(productsApi, 'list').mockResolvedValue(page([
-      product(),
-      product({ id: 'prod-2', name: 'Denim jacket', sku: 'DNM-JKT-002', status: 'draft', stockQuantity: 4, wholesalePrice: 123456 }),
-    ], 2));
+    vi.spyOn(productsApi, 'list').mockResolvedValue(
+      page(
+        [
+          product(),
+          product({
+            id: 'prod-2',
+            name: 'Denim jacket',
+            sku: 'DNM-JKT-002',
+            status: 'draft',
+            stockQuantity: 4,
+            wholesalePrice: 123456,
+          }),
+        ],
+        2,
+      ),
+    );
     renderProducts(<ProductsListPage />);
     await waitFor(() => expect(screen.getAllByText('Cotton polo shirt').length).toBeGreaterThan(0));
     expect(screen.getAllByText('₦2,500').length).toBeGreaterThan(0);
@@ -73,14 +89,24 @@ describe('products list', () => {
     // Summary stat cards + tab count pills.
     expect(screen.getByText('1 published · 1 drafts')).toBeTruthy();
     const tabs = screen.getByRole('tablist', { name: 'Product status' });
-    expect(within(tabs).getByRole('tab', { name: /All/ }).getAttribute('aria-selected')).toBe('true');
+    expect(within(tabs).getByRole('tab', { name: /All/ }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
   });
 
   it('shows the true-empty state with an Add product action when there are no products', async () => {
     vi.spyOn(productsApi, 'list').mockResolvedValue(page([]));
-    vi.spyOn(productsApi, 'summary').mockResolvedValue({ total: 0, published: 0, drafts: 0, lowStock: 0, outOfStock: 0 });
+    vi.spyOn(productsApi, 'summary').mockResolvedValue({
+      total: 0,
+      published: 0,
+      drafts: 0,
+      lowStock: 0,
+      outOfStock: 0,
+    });
     renderProducts(<ProductsListPage />);
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'No products yet' })).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'No products yet' })).toBeTruthy(),
+    );
     expect(screen.getAllByRole('link', { name: 'Add product' }).length).toBeGreaterThan(0);
   });
 
@@ -88,7 +114,9 @@ describe('products list', () => {
     navMocks.search = 'q=nonexistent';
     vi.spyOn(productsApi, 'list').mockResolvedValue(page([]));
     renderProducts(<ProductsListPage />);
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'No products match your filters' })).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'No products match your filters' })).toBeTruthy(),
+    );
     const userEventSession = userEvent.setup();
     await userEventSession.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(navMocks.replace).toHaveBeenCalledWith('/dashboard/products', { scroll: false });
@@ -96,11 +124,14 @@ describe('products list', () => {
 
   it('shows the error state and retries the list request', async () => {
     const userEventSession = userEvent.setup();
-    const list = vi.spyOn(productsApi, 'list')
+    const list = vi
+      .spyOn(productsApi, 'list')
       .mockRejectedValueOnce(new NetworkError())
       .mockResolvedValue(page([product()]));
     renderProducts(<ProductsListPage />);
-    await waitFor(() => expect(screen.getByRole('heading', { name: "We couldn't load your products" })).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: "We couldn't load your products" })).toBeTruthy(),
+    );
     await userEventSession.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.getAllByText('Cotton polo shirt').length).toBeGreaterThan(0));
     expect(list).toHaveBeenCalledTimes(2);
@@ -114,7 +145,13 @@ describe('products list', () => {
     const box = await screen.findByRole('searchbox', { name: 'Search by product name or SKU' });
     await userEventSession.type(box, 'polo');
     expect(navMocks.replace).not.toHaveBeenCalled();
-    await waitFor(() => expect(navMocks.replace).toHaveBeenCalledWith('/dashboard/products?q=polo', { scroll: false }), { timeout: 2000 });
+    await waitFor(
+      () =>
+        expect(navMocks.replace).toHaveBeenCalledWith('/dashboard/products?q=polo', {
+          scroll: false,
+        }),
+      { timeout: 2000 },
+    );
   });
 
   it('switches tab and pages through the URL', async () => {
@@ -122,7 +159,9 @@ describe('products list', () => {
     renderProducts(<ProductsListPage />);
     const userEventSession = userEvent.setup();
     await userEventSession.click(await screen.findByRole('tab', { name: /Drafts/ }));
-    expect(navMocks.replace).toHaveBeenCalledWith('/dashboard/products?status=draft', { scroll: false });
+    expect(navMocks.replace).toHaveBeenCalledWith('/dashboard/products?status=draft', {
+      scroll: false,
+    });
     await waitFor(() => expect(screen.getByText('Showing 1–10 of 25 products')).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Previous' }).hasAttribute('disabled')).toBe(true);
     await userEventSession.click(screen.getByRole('button', { name: 'Next' }));
@@ -135,11 +174,15 @@ describe('products list', () => {
     renderProducts(<ProductsListPage />);
     const userEventSession = userEvent.setup();
     // jsdom renders both the md+ table and the mobile cards; use the first menu.
-    const menus = await screen.findAllByRole('button', { name: 'More actions for Cotton polo shirt' });
+    const menus = await screen.findAllByRole('button', {
+      name: 'More actions for Cotton polo shirt',
+    });
     await userEventSession.click(menus[0]!);
     await userEventSession.click(screen.getByRole('menuitem', { name: 'Delete' }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(/"Cotton polo shirt" will be permanently removed/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(/"Cotton polo shirt" will be permanently removed/),
+    ).toBeTruthy();
     expect(remove).not.toHaveBeenCalled();
     await userEventSession.click(within(dialog).getByRole('button', { name: 'Delete product' }));
     await waitFor(() => expect(remove).toHaveBeenCalledWith('prod-1'));
@@ -150,7 +193,9 @@ describe('products list', () => {
     const publish = vi.spyOn(productsApi, 'publish').mockResolvedValue(product());
     renderProducts(<ProductsListPage />);
     const userEventSession = userEvent.setup();
-    const menus = await screen.findAllByRole('button', { name: 'More actions for Cotton polo shirt' });
+    const menus = await screen.findAllByRole('button', {
+      name: 'More actions for Cotton polo shirt',
+    });
     await userEventSession.click(menus[0]!);
     await userEventSession.click(screen.getByRole('menuitem', { name: 'Publish' }));
     await waitFor(() => expect(publish).toHaveBeenCalledWith('prod-1'));
@@ -172,7 +217,9 @@ describe('products list', () => {
     );
     renderProducts(<ProductsListPage />);
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Product catalogue is coming soon' })).toBeTruthy(),
+      expect(
+        screen.getByRole('heading', { name: 'Product catalogue is coming soon' }),
+      ).toBeTruthy(),
     );
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Add product' })).toBeNull();

@@ -13,7 +13,8 @@ vi.mock('@/lib/workspace/api', () => ({
   confirmIdentity: (): Promise<boolean> => mocks.identity() as Promise<boolean>,
 }));
 vi.mock('@/lib/business/businessesApi', () => ({
-  listBusinesses: (): Promise<SwitcherBusiness[]> => mocks.businesses() as Promise<SwitcherBusiness[]>,
+  listBusinesses: (): Promise<SwitcherBusiness[]> =>
+    mocks.businesses() as Promise<SwitcherBusiness[]>,
 }));
 
 const persistedBusiness: SwitcherBusiness = {

@@ -85,16 +85,25 @@ export function ProductRowMenu({
           <button
             type="button"
             role="menuitem"
-            onClick={() => { close(); onTogglePublish(product); }}
+            onClick={() => {
+              close();
+              onTogglePublish(product);
+            }}
             className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-gray-50"
           >
-            <DashboardIcon name={product.status === 'published' ? 'box' : 'check-circle'} className="size-4 text-subtle" />
+            <DashboardIcon
+              name={product.status === 'published' ? 'box' : 'check-circle'}
+              className="size-4 text-subtle"
+            />
             {product.status === 'published' ? 'Unpublish' : 'Publish'}
           </button>
           <button
             type="button"
             role="menuitem"
-            onClick={() => { close(false); onDelete(product); }}
+            onClick={() => {
+              close(false);
+              onDelete(product);
+            }}
             className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-danger transition-colors hover:bg-red-50"
           >
             <DashboardIcon name="trash" className="size-4" />

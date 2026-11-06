@@ -23,7 +23,10 @@ export function useDashboardAccess(permission?: BusinessPermission): DashboardAc
   if (isLoading) state = 'loading';
   else if (error) state = mapDashboardError(error);
   else if (businesses.length === 0) state = 'no-business';
-  else if (activeBusiness?.status === 'SUSPENDED' || (activeBusiness && activeBusiness.type !== 'SUPPLIER')) {
+  else if (
+    activeBusiness?.status === 'SUSPENDED' ||
+    (activeBusiness && activeBusiness.type !== 'SUPPLIER')
+  ) {
     state = 'business-unavailable';
   } else if (permission && activeBusiness && !can(permission)) state = 'page-forbidden';
 

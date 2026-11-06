@@ -84,7 +84,9 @@ async function readErrorBody(response: Response): Promise<ApiError> {
         // Additive PROPOSED 422/409 envelopes use the existing ErrorDetail[] shape.
         if (!fields && Array.isArray(body.error.details)) {
           const entries = body.error.details.flatMap((detail: unknown) =>
-            isRecord(detail) && typeof detail.field === 'string' && typeof detail.message === 'string'
+            isRecord(detail) &&
+            typeof detail.field === 'string' &&
+            typeof detail.message === 'string'
               ? [[detail.field, detail.message] as [string, string]]
               : [],
           );
@@ -129,11 +131,13 @@ export async function apiFetchResponse(path: string, init: RequestInit = {}): Pr
     // Merge through Headers so callers may pass plain objects, tuples or a
     // Headers instance (openapi-fetch supplies Headers; spreading one loses all entries).
     const headers = new Headers(init.headers);
-    if (init.body !== undefined && !headers.has('content-type')) headers.set('content-type', 'application/json');
+    if (init.body !== undefined && !headers.has('content-type'))
+      headers.set('content-type', 'application/json');
     // TODO(BE-004): Live backend supplier routes resolve tenancy via `:businessId`
     // path/body; keep X-Business-Id attached for forward compatibility.
     const businessId = getActiveBusinessId();
-    if (businessId && !headers.has(ACTIVE_BUSINESS_HEADER)) headers.set(ACTIVE_BUSINESS_HEADER, businessId);
+    if (businessId && !headers.has(ACTIVE_BUSINESS_HEADER))
+      headers.set(ACTIVE_BUSINESS_HEADER, businessId);
     response = await fetch(`${API_BASE_PATH}${path}`, {
       ...init,
       credentials: 'same-origin',

@@ -11,10 +11,12 @@ function stubFetch(status: number, body: unknown): { calls: string[] } {
   const calls: string[] = [];
   vi.stubGlobal('fetch', (url: string) => {
     calls.push(String(url));
-    return Promise.resolve(new Response(JSON.stringify(body), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    }));
+    return Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
   });
   return { calls };
 }
@@ -27,7 +29,10 @@ describe('supplier dashboard API adapter', () => {
   it('requests GET /supplier/dashboard with the date range and unwraps data', async () => {
     const payload = { ...EMPTY_SUPPLIER_DASHBOARD, businessName: 'Okechukwu Fashion' };
     const { calls } = stubFetch(200, { data: payload });
-    const result = await supplierDashboardApi.getDashboard({ from: '2026-10-01', to: '2026-10-26' });
+    const result = await supplierDashboardApi.getDashboard({
+      from: '2026-10-01',
+      to: '2026-10-26',
+    });
     expect(calls[0]).toContain('/api/v1/supplier/dashboard?from=2026-10-01&to=2026-10-26');
     expect(result).toEqual(payload);
   });

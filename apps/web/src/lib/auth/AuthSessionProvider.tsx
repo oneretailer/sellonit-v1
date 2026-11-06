@@ -153,8 +153,14 @@ export function AuthSessionProvider({
         : workspace
           ? 'ready'
           : 'loading';
-  const can = useCallback((permission: Permission) => workspace?.permissions.includes(permission) ?? false, [workspace]);
-  const hasFeature = useCallback((feature: Feature) => workspace?.features.includes(feature) ?? false, [workspace]);
+  const can = useCallback(
+    (permission: Permission) => workspace?.permissions.includes(permission) ?? false,
+    [workspace],
+  );
+  const hasFeature = useCallback(
+    (feature: Feature) => workspace?.features.includes(feature) ?? false,
+    [workspace],
+  );
   const enableWorkspaceContext = useCallback(() => setWorkspaceRequested(true), []);
   const { refetch: refetchWorkspace } = contextQuery;
   const refreshWorkspace = useCallback(async () => {
@@ -168,12 +174,15 @@ export function AuthSessionProvider({
     () => null,
   );
 
-  const acceptAuthenticatedUser = useCallback((nextUser: AuthUser) => {
-    writeSessionHint(nextUser);
-    setUser(nextUser);
-    setStatus('authenticated');
-    void queryClient.invalidateQueries({ queryKey: ['session'] });
-  }, [queryClient]);
+  const acceptAuthenticatedUser = useCallback(
+    (nextUser: AuthUser) => {
+      writeSessionHint(nextUser);
+      setUser(nextUser);
+      setStatus('authenticated');
+      void queryClient.invalidateQueries({ queryKey: ['session'] });
+    },
+    [queryClient],
+  );
 
   const refreshSession = useCallback(async () => {
     setStatus('checking');
@@ -218,8 +227,36 @@ export function AuthSessionProvider({
   }, [initialSession, refreshSession]);
 
   const value = useMemo(
-    () => ({ status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, workspaceError: contextQuery.error, can, hasFeature, enableWorkspaceContext, refreshWorkspace, signOut }),
-    [status, user, cachedDisplayName, refreshSession, acceptAuthenticatedUser, workspace, workspaceStatus, contextQuery.error, can, hasFeature, enableWorkspaceContext, refreshWorkspace, signOut],
+    () => ({
+      status,
+      user,
+      cachedDisplayName,
+      refreshSession,
+      acceptAuthenticatedUser,
+      workspace,
+      workspaceStatus,
+      workspaceError: contextQuery.error,
+      can,
+      hasFeature,
+      enableWorkspaceContext,
+      refreshWorkspace,
+      signOut,
+    }),
+    [
+      status,
+      user,
+      cachedDisplayName,
+      refreshSession,
+      acceptAuthenticatedUser,
+      workspace,
+      workspaceStatus,
+      contextQuery.error,
+      can,
+      hasFeature,
+      enableWorkspaceContext,
+      refreshWorkspace,
+      signOut,
+    ],
   );
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
 }

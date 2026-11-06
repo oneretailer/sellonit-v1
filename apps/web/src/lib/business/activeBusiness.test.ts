@@ -33,9 +33,12 @@ describe('active business scope', () => {
     const calls: { url: string; headers: Headers }[] = [];
     vi.stubGlobal('fetch', (url: string, init: RequestInit = {}) => {
       calls.push({ url: String(url), headers: new Headers(init.headers) });
-      return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
-        status: 200, headers: { 'content-type': 'application/json' },
-      }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
     });
     await apiFetch('/supplier/products');
     expect(calls[0]?.headers.get(ACTIVE_BUSINESS_HEADER)).toBe('biz-9');
