@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function RoleSelectionPage() {
   return (
     <AuthPage rightLink={{ label: 'Role selection', variant: 'text', className: 'text-base' }}>
-      <div className="pt-15 w-full flex items-center justify-center">
+      <div className="pt-15 w-full flex items-center justify-center md:pt-0">
         <RequireAuthenticatedSession>
           <RoleSelectionForm />
         </RequireAuthenticatedSession>

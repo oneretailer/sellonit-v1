@@ -5,11 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { SupplierDashboardOverview, formatNaira } from './SupplierDashboardOverview';
 import { getDateRangeOptions, getTimeGreeting } from '@/lib/dashboard/dateRanges';
-import {
-  EMPTY_SUPPLIER_DASHBOARD,
-  localSupplierDashboardApi,
-  SETUP_STEPS,
-} from '@/lib/dashboard/supplierDashboard';
+import { EMPTY_SUPPLIER_DASHBOARD, SETUP_STEPS } from '@/lib/dashboard/supplierDashboard';
 import { getSetupProgress } from './DashboardShell';
 import type { AuthUser } from '@/lib/auth/types';
 import type { SupplierDashboardData } from '@/lib/dashboard/supplierDashboard';
@@ -61,9 +57,8 @@ function cardWithLabel(label: string) {
 }
 
 describe('supplier dashboard overview', () => {
-  it('uses empty local data, renders zero summaries and empty states, and contains no design samples', async () => {
-    const data = await localSupplierDashboardApi.getDashboard(selectedRange.range);
-    render(<SupplierDashboardOverview {...emptyProps} data={data} />);
+  it('renders zero summaries and empty states from empty data, with no design samples', () => {
+    render(<SupplierDashboardOverview {...emptyProps} data={EMPTY_SUPPLIER_DASHBOARD} />);
 
     expect(cardWithLabel('Total sales').getByText('₦0')).toBeTruthy();
     expect(cardWithLabel('Orders').getByText('0')).toBeTruthy();
@@ -101,7 +96,7 @@ describe('supplier dashboard overview', () => {
     const data: SupplierDashboardData = {
       ...EMPTY_SUPPLIER_DASHBOARD,
       summary: {
-        totalSales: 1_000_000,
+        totalSales: 100_000_000,
         orderCount: 1,
         retailerOrderCount: 1,
         awaitingFulfilment: 1,
@@ -109,7 +104,7 @@ describe('supplier dashboard overview', () => {
         lowStock: 0,
         outOfStock: 1,
       },
-      salesTrend: [{ date: '2026-10-26', value: 12_345 }],
+      salesTrend: [{ date: '2026-10-26', value: 1_234_500 }],
       stockAlerts: [
         {
           id: 'real-stock-1',
@@ -126,7 +121,7 @@ describe('supplier dashboard overview', () => {
           retailerLocation: 'Lagos',
           itemCount: 1,
           orderedAt: '2026-10-26T08:00:00.000Z',
-          amount: 12_345,
+          amount: 1_234_500,
           status: 'awaiting_fulfilment',
         },
         {
@@ -135,7 +130,7 @@ describe('supplier dashboard overview', () => {
           retailerLocation: 'Abuja',
           itemCount: 2,
           orderedAt: '2026-10-25T08:00:00.000Z',
-          amount: 23_450,
+          amount: 2_345_000,
           status: 'shipped',
         },
         {
@@ -144,7 +139,7 @@ describe('supplier dashboard overview', () => {
           retailerLocation: 'Kano',
           itemCount: 3,
           orderedAt: '2026-10-24T08:00:00.000Z',
-          amount: 34_560,
+          amount: 3_456_000,
           status: 'delivered',
         },
       ],
@@ -167,7 +162,7 @@ describe('supplier dashboard overview', () => {
     const point = screen.getByRole('img', { name: '26 Oct · ₦12,345' });
     fireEvent.focus(point);
     expect(screen.getByRole('status').textContent).toContain('26 Oct · ₦12,345');
-    expect(formatNaira(1_000_000)).toBe('₦1,000,000');
+    expect(formatNaira(100_000_000)).toBe('₦1,000,000');
   });
 
   it('uses a time-based greeting and falls back to no first-name suffix', () => {
@@ -208,12 +203,20 @@ describe('supplier dashboard overview', () => {
     );
   });
 
-  it('derives setup completion from the typed setup list', () => {
-    expect(SETUP_STEPS).toHaveLength(5);
-    expect(getSetupProgress(EMPTY_SUPPLIER_DASHBOARD)).toEqual({
-      completed: 1,
-      total: 5,
-      percent: 20,
+  it('derives setup completion from the typed six-step setup list', () => {
+    expect(SETUP_STEPS).toHaveLength(6);
+    expect(SETUP_STEPS.map((step) => step.label)).toEqual([
+      'Business information',
+      'Supplier profile',
+      'Product catalogue',
+      'Inventory',
+      'Pricing',
+      'Website',
+    ]);
+    expect(getSetupProgress(EMPTY_SUPPLIER_DASHBOARD, null)).toEqual({
+      completed: 0,
+      total: 6,
+      percent: 0,
     });
   });
 });

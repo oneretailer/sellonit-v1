@@ -70,17 +70,29 @@ function BarChartIcon() {
   );
 }
 
+function ZapIcon() {
+  return (
+    <svg {...panelIconProps} className="size-5">
+      <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />
+    </svg>
+  );
+}
+
 const FEATURES = [
   {
     icon: <ShieldCheckIcon />,
     title: 'Secure & reliable',
     description: 'Your data is always protected.',
   },
-
   {
     icon: <BarChartIcon />,
     title: 'Grow your business',
     description: 'Access tools to manage and scale.',
+  },
+  {
+    icon: <ZapIcon />,
+    title: 'Quick setup',
+    description: 'Get started in just a few minutes.',
   },
 ];
 
@@ -182,7 +194,7 @@ export default function AccountDetailsPage() {
         <Navbar rightLink={{ label: 'Account details', variant: 'text' }} />
       </div>
 
-      <main className="flex flex-1 items-start justify-center px-0 pt-8 pb-12 sm:px-6 sm:pt-16 md:items-center md:px-4 md:py-6 lg:px-6 lg:py-8 [@media(max-height:820px)]:md:py-4">
+      <main className="flex flex-1 items-start justify-center px-0 pt-8 pb-12 sm:px-6 sm:pt-16 md:items-center-safe md:px-4 md:py-6 lg:px-6 lg:py-8 [@media(max-height:820px)]:md:py-4">
         <div className="flex w-full items-center justify-center pt-15 md:pt-0">
           <AuthCard
             gapClassName="gap-6 md:gap-12"
@@ -197,10 +209,16 @@ export default function AccountDetailsPage() {
 
             <SignupWelcomePanel />
 
-            {/* Form column. The [&_...] rules restyle the inputs to the prototype's
-                pill shape and compact the form on short screens, scoped to this
-                page only (no shared component is edited). */}
-            <div className="flex w-full min-w-0 flex-col gap-6 md:w-auto md:flex-1 md:gap-6 md:bg-white md:p-6 lg:gap-7 lg:p-8 xl:gap-9 xl:p-12 md:[&_label]:font-medium md:[&_input:not([type=checkbox])]:h-11 md:[&_input:not([type=checkbox])]:rounded-full md:[&_input:not([type=checkbox])]:px-5 xl:[&_input:not([type=checkbox])]:h-14 [@media(max-height:820px)]:md:gap-4 [@media(max-height:820px)]:md:py-6 [@media(max-height:820px)]:[&_form]:gap-3 [@media(max-height:820px)]:xl:[&_input:not([type=checkbox])]:h-12">
+            {/* Form column. CreateAccountForm renders each field as a bordered
+                WRAPPER div around a bare <input>, so the pill radius/height must
+                target the wrapper (div:has(>input)), NOT the inner input — the
+                old inner-input overrides produced a pill inside a rounded rect.
+                The inner input is reset to transparent/borderless/rounded-none
+                and autofill is neutralised so it matches a normal field. The
+                orange focus ring stays on the wrapper (focus-within). All rules
+                are md+ and scoped to this page; no shared component is edited
+                and every class is a full literal. */}
+            <div className="flex w-full min-w-0 flex-col gap-6 md:w-auto md:flex-1 md:gap-6 md:bg-white md:p-6 lg:gap-7 lg:p-8 xl:gap-9 xl:p-12 md:[&_label]:font-medium md:[&_div:has(>input:not([type=checkbox]))]:rounded-full md:[&_div:has(>input:not([type=checkbox]))]:h-11 xl:[&_div:has(>input:not([type=checkbox]))]:h-14 [@media(max-height:820px)]:md:gap-4 [@media(max-height:820px)]:md:py-6 [@media(max-height:820px)]:[&_form]:gap-3 [@media(max-height:820px)]:xl:[&_div:has(>input:not([type=checkbox]))]:h-12 md:[&_input:not([type=checkbox])]:h-full md:[&_input:not([type=checkbox])]:rounded-none md:[&_input:not([type=checkbox])]:border-0 md:[&_input:not([type=checkbox])]:bg-transparent md:[&_input:not([type=checkbox])]:px-0 md:[&_input:not([type=checkbox])]:outline-none md:[&_input:not([type=checkbox])]:ring-0 md:[&_input:not([type=checkbox])]:focus:ring-0 md:[&_input:not([type=checkbox])]:focus:outline-none md:[&_input:not([type=checkbox]):-webkit-autofill]:[box-shadow:0_0_0_1000px_white_inset] md:[&_input:not([type=checkbox]):-webkit-autofill]:[-webkit-text-fill-color:inherit] md:[&_input:not([type=checkbox]):-webkit-autofill]:[transition:background-color_5000s]">
               <div className="hidden md:flex md:flex-col md:gap-1.5 md:text-left xl:gap-2">
                 <h1 className="text-2xl font-bold tracking-tight text-ink lg:text-3xl xl:text-4xl">
                   Account details

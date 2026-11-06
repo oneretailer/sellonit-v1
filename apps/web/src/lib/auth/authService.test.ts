@@ -67,6 +67,7 @@ describe('endpoint paths match the backend router', () => {
       verifyResetCode: '/auth/verification-codes/verify',
       resetPassword: '/auth/reset-password',
       businessIntent: '/auth/business-intent',
+      logout: '/auth/logout',
     });
   });
 });

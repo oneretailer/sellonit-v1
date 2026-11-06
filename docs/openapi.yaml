@@ -72,6 +72,8 @@ tags:
   - name: Notifications
   - name: Analytics
   - name: Health
+  - name: Frontend Workspace
+  - name: Admin Supplier Review
 
 security:
   - bearerAuth: []
@@ -493,6 +495,7 @@ paths:
 
   /businesses/{businessId}:
     parameters:
+
       - $ref: '#/components/parameters/BusinessId'
     get:
       tags: [Businesses]
@@ -1656,6 +1659,347 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponseSupplierAnalytics'
 
+  # ---------------------------------------------------------------------------
+  # PROPOSED frontend-readiness additions. Backend review required; none of the
+  # existing paths or schemas above are changed. /v1 comes from servers.url.
+  # ---------------------------------------------------------------------------
+  /session/context:
+    get:
+      tags: [Frontend Workspace]
+      summary: Get authoritative workspace capabilities (PROPOSED)
+      description: 'PROPOSED. Server-resolved grants for the active business. Clients must fail closed when grants are absent; membership labels are never authorization grants.'
+      x-contract-status: PROPOSED
+      responses:
+        '200':
+          description: Current workspace context
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: {$ref: '#/components/schemas/WorkspaceSessionContext'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
+  /onboarding/businesses:
+    post:
+      tags: [Frontend Workspace]
+      summary: Complete business signup without losing contact details (PROPOSED)
+      description: 'PROPOSED. Additive alternative to POST /businesses, which currently drops contact field values in the implementation. Atomically creates the business, owner membership and draft supplier profile when accountType is supplier. Reuses the original response for the same authenticated user and Idempotency-Key.'
+      x-contract-status: PROPOSED
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CompleteBusinessSignupRequest'}
+      responses:
+        '201':
+          description: Business and membership created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseBusiness'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+
+  /admin/suppliers:
+    get:
+      tags: [Admin Supplier Review]
+      summary: List supplier review queue (PROPOSED)
+      description: 'PROPOSED. Platform ADMIN only.'
+      x-contract-status: PROPOSED
+      parameters:
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/SupplierReviewStatus'}
+          description: Defaults to PENDING_REVIEW.
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, default: 1}
+        - name: pageSize
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Paginated suppliers
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PaginatedAdminSuppliers'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
+  /admin/suppliers/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    get:
+      tags: [Admin Supplier Review]
+      summary: Get supplier profile and audit history (PROPOSED)
+      description: 'PROPOSED. Platform ADMIN only. id is the supplier business ID.'
+      x-contract-status: PROPOSED
+      responses:
+        '200':
+          description: Supplier review detail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseAdminSupplierDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /admin/suppliers/{id}/approve:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    post:
+      tags: [Admin Supplier Review]
+      summary: Approve a pending supplier (PROPOSED)
+      description: 'PROPOSED. PENDING_REVIEW -> APPROVED. Other states return INVALID_STATE_TRANSITION.'
+      x-contract-status: PROPOSED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: {$ref: '#/components/schemas/SupplierPlan'}
+      responses:
+        '200':
+          description: Updated supplier
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseAdminSupplierDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+
+  /admin/suppliers/{id}/reject:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    post:
+      tags: [Admin Supplier Review]
+      summary: Reject a pending supplier (PROPOSED)
+      description: 'PROPOSED. PENDING_REVIEW -> REJECTED. Other states return INVALID_STATE_TRANSITION.'
+      x-contract-status: PROPOSED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SupplierReasonRequest'}
+      responses:
+        '200':
+          description: Updated supplier
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseAdminSupplierDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+
+  /admin/suppliers/{id}/suspend:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    post:
+      tags: [Admin Supplier Review]
+      summary: Suspend an approved supplier (PROPOSED)
+      description: 'PROPOSED. APPROVED -> SUSPENDED. Other states return INVALID_STATE_TRANSITION.'
+      x-contract-status: PROPOSED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SupplierReasonRequest'}
+      responses:
+        '200':
+          description: Updated supplier
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseAdminSupplierDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+
+  /admin/suppliers/{id}/reinstate:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    post:
+      tags: [Admin Supplier Review]
+      summary: Reinstate a suspended supplier (PROPOSED)
+      description: 'PROPOSED. SUSPENDED -> APPROVED. Other states return INVALID_STATE_TRANSITION.'
+      x-contract-status: PROPOSED
+      responses:
+        '200':
+          description: Updated supplier
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseAdminSupplierDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /supplier/products:
+    get:
+      tags: [Frontend Workspace]
+      summary: List active-business products (PROPOSED)
+      description: 'PROPOSED. Requires product:read. Business scope comes from the authenticated session, never a client-supplied business ID.'
+      x-contract-status: PROPOSED
+      parameters:
+        - name: search
+          in: query
+          schema: {type: string, maxLength: 200}
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/ProductStatus'}
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, default: 1}
+        - name: pageSize
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Paginated products
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PaginatedWorkspaceProducts'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      tags: [Frontend Workspace]
+      summary: Create a product with one default variant (PROPOSED)
+      description: 'PROPOSED. Requires product:write. No physical stock fields. SKU uniqueness is scoped to the active business.'
+      x-contract-status: PROPOSED
+      parameters:
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateWorkspaceProductRequest'}
+      responses:
+        '201':
+          description: Draft product created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseWorkspaceProduct'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+
+  /supplier/products/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    get:
+      tags: [Frontend Workspace]
+      summary: Get an active-business product (PROPOSED)
+      description: 'PROPOSED. Requires product:read. Includes the current markup rule so the edit form needs no uncontracted pricing GET.'
+      x-contract-status: PROPOSED
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseWorkspaceProduct'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Frontend Workspace]
+      summary: Update a non-archived product (PROPOSED)
+      description: 'PROPOSED. Requires product:write. Archived products are read-only.'
+      x-contract-status: PROPOSED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateWorkspaceProductRequest'}
+      responses:
+        '200':
+          description: Updated product
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseWorkspaceProduct'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+
+  /supplier/products/{id}/pricing-rule:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    put:
+      tags: [Frontend Workspace]
+      summary: Replace the maximum markup rule (PROPOSED)
+      description: 'PROPOSED. Requires pricing:set. null means no ceiling; zero means fixed base price; a positive integer is the maximum markup in kobo.'
+      x-contract-status: PROPOSED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SetMaximumMarkupRequest'}
+      responses:
+        '200':
+          description: Updated product including its pricing rule
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseWorkspaceProduct'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+
+  /supplier/products/{id}/publish:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    post:
+      tags: [Frontend Workspace]
+      summary: Publish a product (PROPOSED)
+      description: 'PROPOSED. Requires product:publish and APPROVED supplier status. DRAFT/UNPUBLISHED -> PUBLISHED; ARCHIVED is immutable.'
+      x-contract-status: PROPOSED
+      responses:
+        '200':
+          description: Published product
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseWorkspaceProduct'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /supplier/products/{id}/unpublish:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    post:
+      tags: [Frontend Workspace]
+      summary: Unpublish a product (PROPOSED)
+      description: 'PROPOSED. Requires product:publish and APPROVED supplier status. PUBLISHED -> UNPUBLISHED; other states return INVALID_STATE_TRANSITION.'
+      x-contract-status: PROPOSED
+      responses:
+        '200':
+          description: Unpublished product
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseWorkspaceProduct'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
 components:
 
   securitySchemes:
@@ -1666,6 +2010,12 @@ components:
       description: Short-lived access token. Refresh handled through /auth/refresh.
 
   parameters:
+    WorkspaceResourceId:
+      name: id
+      in: path
+      required: true
+      description: Resource UUID.
+      schema: {type: string, format: uuid}
     BusinessId:
       name: businessId
       in: path
@@ -1821,6 +2171,217 @@ components:
       schema: {type: string}
 
   schemas:
+
+    # PROPOSED additive schemas for the frontend workspace. Existing product,
+    # pricing, supplier-profile and user schemas remain untouched.
+    PlatformRole:
+      type: string
+      description: PROPOSED. Platform identity, separate from business membership.
+      enum: [USER, ADMIN]
+    WorkspacePermission:
+      type: string
+      description: PROPOSED. Explicit server grant; never infer from a membership label.
+      enum: ['product:read', 'product:write', 'pricing:set', 'product:publish', 'supplier:review']
+    WorkspaceFeature:
+      type: string
+      description: PROPOSED. Server-enabled workspace feature.
+      enum: [supplier-workspace, product-catalogue, admin-supplier-review]
+    WorkspaceBusiness:
+      type: object
+      description: PROPOSED. Actual persisted membership, not a browser draft.
+      required: [id, name, type]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        type: {$ref: '#/components/schemas/BusinessType'}
+    SupplierReviewStatus:
+      type: string
+      description: PROPOSED. Supplier review lifecycle.
+      enum: [DRAFT, PENDING_REVIEW, APPROVED, REJECTED, SUSPENDED]
+    SupplierPlan:
+      type: string
+      description: PROPOSED. Plan selected on approval.
+      enum: [ENTERPRISE, ENTERPRISE_PLUS]
+    WorkspaceSessionContext:
+      type: object
+      description: PROPOSED. Authorization inputs resolved by the server for the current cookie session.
+      required: [platformRole, permissions, features, businesses, activeBusiness, supplierStatus]
+      properties:
+        platformRole: {$ref: '#/components/schemas/PlatformRole'}
+        permissions:
+          type: array
+          items: {$ref: '#/components/schemas/WorkspacePermission'}
+        features:
+          type: array
+          items: {$ref: '#/components/schemas/WorkspaceFeature'}
+        businesses:
+          type: array
+          items: {$ref: '#/components/schemas/WorkspaceBusiness'}
+        activeBusiness:
+          oneOf:
+            - {$ref: '#/components/schemas/WorkspaceBusiness'}
+            - {type: 'null'}
+        supplierStatus:
+          oneOf:
+            - {$ref: '#/components/schemas/SupplierReviewStatus'}
+            - {type: 'null'}
+    CompleteBusinessSignupRequest:
+      type: object
+      description: PROPOSED. Full contact payload; supplier maps to ENTERPRISE.
+      required: [name, phone, email, accountType]
+      properties:
+        name: {type: string, minLength: 2, maxLength: 160}
+        phone: {type: string, minLength: 11, maxLength: 30}
+        email: {type: string, format: email}
+        description: {type: string, maxLength: 3000}
+        accountType: {type: string, enum: [entrepreneur, retailer, supplier]}
+    AdminSupplierSummary:
+      type: object
+      description: PROPOSED. id is the supplier business ID.
+      required: [id, businessName, ownerPhone, submittedAt, status]
+      properties:
+        id: {type: string, format: uuid}
+        businessName: {type: string}
+        ownerPhone: {type: string}
+        submittedAt: {type: [string, 'null'], format: date-time}
+        status: {$ref: '#/components/schemas/SupplierReviewStatus'}
+    SupplierAuditEvent:
+      type: object
+      description: PROPOSED. Immutable review-history entry.
+      required: [id, action, actorName, fromStatus, toStatus, reason, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        action: {type: string, enum: [SUBMITTED, APPROVED, REJECTED, SUSPENDED, REINSTATED]}
+        actorName: {type: string}
+        fromStatus:
+          oneOf:
+            - {$ref: '#/components/schemas/SupplierReviewStatus'}
+            - {type: 'null'}
+        toStatus: {$ref: '#/components/schemas/SupplierReviewStatus'}
+        reason: {type: [string, 'null']}
+        createdAt: {type: string, format: date-time}
+    AdminSupplierDetail:
+      type: object
+      description: PROPOSED. Supplier profile and immutable audit trail.
+      required: [id, businessName, ownerName, ownerPhone, ownerEmail, description, submittedAt, status, plan, auditHistory]
+      properties:
+        id: {type: string, format: uuid}
+        businessName: {type: string}
+        ownerName: {type: string}
+        ownerPhone: {type: string}
+        ownerEmail: {type: string, format: email}
+        description: {type: string}
+        submittedAt: {type: [string, 'null'], format: date-time}
+        status: {$ref: '#/components/schemas/SupplierReviewStatus'}
+        plan:
+          oneOf:
+            - {$ref: '#/components/schemas/SupplierPlan'}
+            - {type: 'null'}
+        auditHistory:
+          type: array
+          items: {$ref: '#/components/schemas/SupplierAuditEvent'}
+    SupplierReasonRequest:
+      type: object
+      description: PROPOSED. Required non-blank decision reason.
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 1, maxLength: 2000}
+    WorkspaceDefaultVariant:
+      type: object
+      description: PROPOSED. Single default variant; no inventory/stock fields.
+      required: [sku, basePriceKobo]
+      properties:
+        sku: {type: string, minLength: 1, maxLength: 100}
+        basePriceKobo: {type: integer, minimum: 1, maximum: 9007199254740991}
+    MaximumMarkupPricingRule:
+      type: object
+      description: PROPOSED. null is no ceiling; zero is fixed base price.
+      required: [maxMarkupKobo]
+      properties:
+        maxMarkupKobo: {type: [integer, 'null'], minimum: 0, maximum: 9007199254740991}
+    WorkspaceProduct:
+      type: object
+      description: PROPOSED. Active-business product with one default variant.
+      required: [id, businessId, name, description, category, defaultVariant, status, pricingRule, publishedAt, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        businessId: {type: string, format: uuid}
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 5000}
+        category: {type: string, minLength: 1, maxLength: 120}
+        defaultVariant: {$ref: '#/components/schemas/WorkspaceDefaultVariant'}
+        status: {$ref: '#/components/schemas/ProductStatus'}
+        pricingRule: {$ref: '#/components/schemas/MaximumMarkupPricingRule'}
+        publishedAt: {type: [string, 'null'], format: date-time}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    CreateWorkspaceProductRequest:
+      type: object
+      description: PROPOSED. Server assigns businessId, DRAFT status and an uncapped pricing rule.
+      required: [name, category, defaultVariant]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 5000}
+        category: {type: string, minLength: 1, maxLength: 120}
+        defaultVariant: {$ref: '#/components/schemas/WorkspaceDefaultVariant'}
+    UpdateWorkspaceProductRequest:
+      type: object
+      description: PROPOSED. At least one editable field; archived products cannot be updated.
+      minProperties: 1
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: string, maxLength: 5000}
+        category: {type: string, minLength: 1, maxLength: 120}
+        defaultVariant: {$ref: '#/components/schemas/WorkspaceDefaultVariant'}
+    SetMaximumMarkupRequest:
+      type: object
+      description: PROPOSED. Whole kobo only; base price plus markup must remain a safe integer.
+      required: [maxMarkupKobo]
+      properties:
+        maxMarkupKobo: {type: [integer, 'null'], minimum: 0, maximum: 9007199254740991}
+    PaginatedAdminSuppliers:
+      type: object
+      description: PROPOSED.
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/AdminSupplierSummary'}}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    PaginatedWorkspaceProducts:
+      type: object
+      description: PROPOSED.
+      required: [data, meta]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/WorkspaceProduct'}}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    ApiResponseAdminSupplierDetail:
+      type: object
+      description: PROPOSED.
+      required: [data]
+      properties:
+        data: {$ref: '#/components/schemas/AdminSupplierDetail'}
+    ApiResponseWorkspaceProduct:
+      type: object
+      description: PROPOSED.
+      required: [data]
+      properties:
+        data: {$ref: '#/components/schemas/WorkspaceProduct'}
+    FieldValidationErrorResponse:
+      type: object
+      description: 'PROPOSED additive 422 envelope. fields maps contract paths (for example defaultVariant.sku) to a display message; details preserves the existing ErrorDetail shape.'
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: {type: string, enum: [VALIDATION_FAILED]}
+            message: {type: string}
+            requestId: {type: string}
+            fields: {type: object, additionalProperties: {type: string}}
+            details:
+              type: array
+              items: {$ref: '#/components/schemas/ErrorDetail'}
+
 
     UserRole:
       type: string
@@ -2906,6 +3467,11 @@ components:
         meta: {$ref: '#/components/schemas/PaginationMeta'}
 
   responses:
+    FieldValidationFailed:
+      description: PROPOSED. Field-level validation failed; display fields beside their inputs.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/FieldValidationErrorResponse'}
     ValidationError:
       description: Request validation failed
       content:

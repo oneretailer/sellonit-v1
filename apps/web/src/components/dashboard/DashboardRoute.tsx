@@ -16,7 +16,7 @@ import { SupplierDashboardOverview } from './SupplierDashboardOverview';
 
 export type DashboardRouteMode = 'overview' | 'section';
 
-function DashboardSessionSkeleton({
+export function DashboardSessionSkeleton({
   displayName,
   onRetry,
 }: {
@@ -85,6 +85,7 @@ function OverviewWorkspace({ user }: { user: AuthUser }) {
         data={dashboard.data}
         isLoading={dashboard.isLoading}
         error={dashboard.error}
+        unavailable={dashboard.unavailable}
         retry={dashboard.retry}
         selectedRange={selected}
         rangeOptions={options}

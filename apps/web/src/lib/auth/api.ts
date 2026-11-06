@@ -36,9 +36,6 @@ import type {
   VerifyPhoneResponse,
 } from './types';
 
-/** FOR REMOVAL — dev mock switch (NEXT_PUBLIC_MOCK_AUTH=true). Default OFF. */
-const MOCK_AUTH = process.env.NEXT_PUBLIC_MOCK_AUTH === 'true';
-
 async function registerUserRequest(input: RegisterUserRequest): Promise<RegisterUserResponse> {
   const fullName = input.fullName.trim();
   const { firstName, lastName } = splitFullName(fullName);
@@ -62,20 +59,14 @@ async function registerUserRequest(input: RegisterUserRequest): Promise<Register
  * for anything beyond success.
  */
 export async function registerUser(input: RegisterUserRequest): Promise<RegisterUserResponse> {
-  if (MOCK_AUTH) {
-    const { mockRegisterUser } = await import('./auth.mock');
-    return mockRegisterUser(input);
-  }
   return registerUserRequest(input);
 }
 
 /**
  * Asks for a new verification email.
  *
- * BACKEND GAP: docs/auth-registration-contract.md §4 specifies
- * `POST /auth/resend-verification` (202, rate limited), but the route is not
- * implemented. The app therefore makes no request and reports a clear,
- * non-enumerating message; it will be wired here once the endpoint exists.
+ * TODO(BE-008): `POST /auth/resend-verification` is not yet implemented on the
+ * backend (see docs/backend-handoff.md). Rejects locally without faking success.
  */
 export function resendVerification(
   _input: ResendVerificationRequest,
@@ -103,10 +94,6 @@ async function verifyEmailRequest(token: string): Promise<VerifyEmailResponse> {
  * show the standalone success screen before the onboarding gate.
  */
 export async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
-  if (MOCK_AUTH) {
-    const { mockVerifyEmail } = await import('./auth.mock');
-    return mockVerifyEmail(token);
-  }
   return verifyEmailRequest(token);
 }
 

@@ -12,6 +12,7 @@ import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { AppleMark, GoogleMark } from '@/components/reuseable/SocialProviderMarks';
 import { AlertCircleIcon, RefreshIcon } from '@/components/reuseable/icons';
 import { TextField } from '@/components/reuseable/TextField';
+import { cn } from '@/lib/cn';
 import {
   AUTH_MESSAGES,
   authMessageFor,
@@ -34,6 +35,17 @@ export type LoginFormProps = {
   /** Pre-filled identifier from `?email=` (e.g. after the "already exists" redirect). */
   initialIdentifier?: string;
 };
+
+/*
+ * md+ only: the shared TextField/PasswordField render a bordered wrapper div
+ * around a bare <input>. These page-scoped selectors restyle that WRAPPER (the
+ * element with the border) to the login design — ~16px radius, ~56px height
+ * that clamps down on short viewports — without touching the shared components
+ * or anything below md. Every class is a full literal so Tailwind can read it.
+ */
+const loginFieldWrapperClass =
+  'md:[&_div:has(>input:not([type=checkbox]))]:rounded-2xl md:[&_div:has(>input:not([type=checkbox]))]:h-[clamp(44px,7vh,56px)]';
+const loginButtonClass = 'md:h-[clamp(44px,7vh,56px)] md:rounded-xl md:text-lg md:font-bold';
 
 /**
  * Login (Figma: Welcome back). One card with the identifier and password
@@ -121,13 +133,24 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
   }
 
   return (
-    <AuthCard gapClassName="gap-6 sm:gap-12">
-      <StepHeader title="Welcome back" align="center" icon={<BagMark />}>
+    <AuthCard
+      gapClassName="gap-6 sm:gap-12"
+      className={cn('auth-card--login', loginFieldWrapperClass)}
+    >
+      {/* Mobile keeps the centred heading + bag mark; from md the heading is
+          left-aligned and the artwork is dropped (login design). */}
+      <StepHeader
+        title="Welcome back"
+        align="center"
+        className="md:text-left"
+        icon={<BagMark />}
+        iconClassName="md:hidden"
+      >
         Log in to continue to your Sellonit account
       </StepHeader>
 
       <form
-        className="flex w-full flex-col gap-6 text-left"
+        className="flex w-full flex-col gap-6 text-left md:gap-4"
         onSubmit={(e) => void handleSubmit(e)}
         noValidate
       >
@@ -203,7 +226,7 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
           </label>
           <Link
             href="/auth/forgot-password"
-            className="text-sm font-semibold text-subtle underline underline-offset-2 hover:text-ink"
+            className="text-sm font-semibold text-subtle underline underline-offset-2 hover:text-ink md:text-primary md:no-underline md:hover:text-primary-hover"
           >
             Forgot password?
           </Link>
@@ -211,10 +234,9 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
 
         {formError ? <InlineError>{formError}</InlineError> : null}
 
-        {/* TODO(google-auth): supply OAuth handler/redirect before enabling provider controls. */}
-        {/* TODO(apple-auth): supply OAuth handler/redirect before enabling provider controls. */}
+        {/* TODO(BE-013): wire Google and Apple OAuth redirect/callback routes once implemented on the backend. */}
         <div className="flex w-full flex-col gap-4">
-          <PrimaryButton type="submit" loading={submitting}>
+          <PrimaryButton type="submit" loading={submitting} className={loginButtonClass}>
             {submitting ? 'Logging in…' : 'Log In'}
           </PrimaryButton>
           <p className="py-1 text-center text-sm font-bold text-ink">OR</p>

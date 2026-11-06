@@ -46,6 +46,15 @@ const isDev = process.env.NODE_ENV !== 'production';
  *   debug build and the HMR socket.
  * - Fonts are self-hosted by `next/font`, so no Google Fonts origins are needed.
  */
+/*
+ * Opt-in, dev-only escape hatch for embedding the app in a remote preview
+ * iframe (e.g. a sandbox proxy). It is OFF by default and never enabled in a
+ * production build, so the strict `frame-ancestors 'none'` / `X-Frame-Options:
+ * DENY` policy is unchanged for real deployments and normal local dev. Set
+ * WEB_ALLOW_FRAME_PREVIEW=1 only when serving a trusted preview.
+ */
+const allowFramePreview = isDev && process.env.WEB_ALLOW_FRAME_PREVIEW === '1';
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
@@ -56,12 +65,12 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
+  allowFramePreview ? 'frame-ancestors *' : "frame-ancestors 'none'",
 ].join('; ');
 
 const securityHeaders = [
   { key: 'Content-Security-Policy', value: contentSecurityPolicy },
-  { key: 'X-Frame-Options', value: 'DENY' },
+  ...(allowFramePreview ? [] : [{ key: 'X-Frame-Options', value: 'DENY' }]),
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
@@ -76,7 +85,9 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // Monorepo: trace/bundle workspace packages from the repository root.
   outputFileTracingRoot: repoRoot,
-  turbopack: { root: repoRoot },
+  turbopack: {
+    root: repoRoot,
+  },
   poweredByHeader: false,
   reactStrictMode: true,
   typedRoutes: true,

@@ -67,8 +67,12 @@ vi.mock('@/lib/auth/AuthSessionProvider', () => ({
     cachedDisplayName: 'Person Example',
     acceptAuthenticatedUser: mocks.acceptAuthenticatedUser,
     refreshSession: mocks.refreshSession,
+    refreshWorkspace: vi.fn().mockResolvedValue(null),
   }),
 }));
+
+vi.mock('@/lib/workspace/api', () => ({ confirmIdentity: vi.fn().mockResolvedValue(true) }));
+vi.mock('@/lib/business/businessesApi', () => ({ listBusinesses: vi.fn().mockResolvedValue([]) }));
 
 vi.mock('@/lib/auth/api', () => ({
   getMe: mocks.getMe,
@@ -206,7 +210,7 @@ describe('role selection screen', () => {
     await waitFor(() => expect(document.activeElement).toBe(heading));
   });
 
-  it('saves the role on Continue, refreshes the session with the API user, then replaces to the dashboard', async () => {
+  it('saves the role on Continue, refreshes the session with the API user, then replaces to Create Business', async () => {
     const savedUser = {
       id: 'user-1',
       email: 'person@example.com',
@@ -222,7 +226,8 @@ describe('role selection screen', () => {
 
     await waitFor(() => expect(mocks.saveRole).toHaveBeenCalledWith('retailer'));
     expect(mocks.acceptAuthenticatedUser).toHaveBeenCalledWith(savedUser);
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/dashboard/overview'));
+    // Every role continues to Create Business immediately after the role saves.
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/auth/create-business'));
     expect(mocks.router.replace).toHaveBeenCalledTimes(1);
   });
 

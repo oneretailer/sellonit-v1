@@ -12,19 +12,13 @@ import {
 } from '@/lib/dashboard/dateRanges';
 import type { SupplierDashboardData } from '@/lib/dashboard/supplierDashboard';
 import { DashboardIcon } from './icons';
+import { formatNaira } from '@/lib/money';
 
-const currencyFormat = new Intl.NumberFormat('en-NG', {
-  style: 'currency',
-  currency: 'NGN',
-  maximumFractionDigits: 0,
-  minimumFractionDigits: 0,
-});
+// Compatibility export. Money values are integer kobo, including legacy dashboard data.
+export { formatNaira } from '@/lib/money';
+
 const countFormat = new Intl.NumberFormat('en-NG', { maximumFractionDigits: 0 });
 const shortDateFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
-
-export function formatNaira(amount: number): string {
-  return currencyFormat.format(amount);
-}
 
 export function formatCount(count: number): string {
   return countFormat.format(count);
@@ -603,6 +597,7 @@ export function SupplierDashboardOverview({
   data,
   isLoading,
   error,
+  unavailable = false,
   retry,
   selectedRange,
   rangeOptions,
@@ -612,6 +607,7 @@ export function SupplierDashboardOverview({
   data: SupplierDashboardData;
   isLoading: boolean;
   error: boolean;
+  unavailable?: boolean;
   retry: () => void;
   selectedRange: DateRangeOption;
   rangeOptions: DateRangeOption[];
@@ -636,7 +632,24 @@ export function SupplierDashboardOverview({
           onChange={onRangeChange}
         />
       </div>
-      {error ? (
+      {unavailable ? (
+        // TODO(BE-003): remove once GET /supplier/:businessId/dashboard is mounted on the backend.
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-orange-50 px-4 py-3"
+        >
+          <p className="text-sm text-ink">
+            Sales and order analytics are coming soon. You can complete your{' '}
+            <Link
+              href="/dashboard/business-profile"
+              className="font-semibold text-primary underline"
+            >
+              business profile
+            </Link>{' '}
+            and supplier setup in the meantime.
+          </p>
+        </div>
+      ) : error ? (
         <div
           role="alert"
           className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/20 bg-red-50 px-4 py-3"

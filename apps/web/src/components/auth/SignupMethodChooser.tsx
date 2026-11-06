@@ -12,15 +12,14 @@ import { AppleMark, GoogleMark } from '@/components/reuseable/SocialProviderMark
 export function SignupMethodChooser() {
   const router = useRouter();
   return (
-    <div className="pt-15 w-full flex items-center justify-center">
+    <div className="pt-15 w-full flex items-center justify-center md:pt-0">
       <AuthCard gapClassName="gap-9 pt-10 md:gap-12">
         <AuthCardHeader icon={<BagMark />} title="Create your sellonit account">
           <span className="text-[15px]"> Choose how you&apos;d like to get started</span>
         </AuthCardHeader>
 
         <div className="flex w-full flex-col  text-left">
-          {/* TODO(google-auth): provide a provider handler or OAuth redirect URL. */}
-          {/* TODO(apple-auth): provide a provider handler or OAuth redirect URL. */}
+          {/* TODO(BE-013): wire Google and Apple OAuth redirect/callback routes once implemented on the backend. */}
           <div className="flex w-full flex-col gap-4">
             <SecondaryButton
               shape="rounded"

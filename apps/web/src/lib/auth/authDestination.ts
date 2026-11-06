@@ -33,11 +33,14 @@ export const AUTH_ROUTE = {
   login: '/auth/login',
   verifyEmail: '/auth/verify-email',
   roleSelection: '/auth/role-selection',
+  createBusiness: '/auth/create-business',
   dashboard: '/dashboard/overview',
 } as const satisfies Record<string, Route>;
 
 /** Every dashboard page lives under this prefix. */
 export const DASHBOARD_BASE = '/dashboard';
+/** Capability-guarded workspace families share the authenticated destination. */
+export const WORKSPACE_BASES = [DASHBOARD_BASE, '/products', '/admin'] as const;
 
 export type AuthDestination =
   | { kind: 'loading'; path: null }
@@ -84,7 +87,10 @@ export function redirectTarget(
   if (destination.path === null) return null;
   if (pathname) {
     if (destination.path === pathname) return null;
-    if (destination.kind === 'dashboard' && isWithin(pathname, DASHBOARD_BASE)) {
+    if (
+      destination.kind === 'dashboard' &&
+      WORKSPACE_BASES.some((base) => isWithin(pathname, base))
+    ) {
       return null;
     }
   }

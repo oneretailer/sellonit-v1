@@ -12,6 +12,7 @@ import {
 } from './AuthSessionProvider';
 import { RequireAuthenticatedSession } from '@/components/auth/RequireAuthenticatedSession';
 import { clearOnboardingRole } from './flowState';
+import { QueryProvider } from '@/lib/providers/QueryProvider';
 
 const mocks = vi.hoisted(() => ({
   getMe: vi.fn(),
@@ -50,7 +51,11 @@ function TestApp({
   initialSession: InitialAuthSession;
   children: ReactNode;
 }) {
-  return <AuthSessionProvider initialSession={initialSession}>{children}</AuthSessionProvider>;
+  return (
+    <QueryProvider>
+      <AuthSessionProvider initialSession={initialSession}>{children}</AuthSessionProvider>
+    </QueryProvider>
+  );
 }
 
 afterEach(() => cleanup());
