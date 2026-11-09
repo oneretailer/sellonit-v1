@@ -3607,8 +3607,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List supplier review queue (PROPOSED)
-         * @description PROPOSED. Platform ADMIN only.
+         * List supplier review queue
+         * @description Platform ADMIN only.
          */
         get: {
             parameters: {
@@ -3656,8 +3656,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get supplier profile and audit history (PROPOSED)
-         * @description PROPOSED. Platform ADMIN only. id is the supplier business ID.
+         * Get supplier profile and audit history
+         * @description Platform ADMIN only. id is the supplier business ID.
          */
         get: {
             parameters: {
@@ -3706,8 +3706,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Approve a pending supplier (PROPOSED)
-         * @description PROPOSED. PENDING_REVIEW -> APPROVED. Other states return INVALID_STATE_TRANSITION.
+         * Approve a pending supplier
+         * @description PENDING_REVIEW -> APPROVED. Other states return INVALID_STATE_TRANSITION.
          */
         post: {
             parameters: {
@@ -3762,8 +3762,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reject a pending supplier (PROPOSED)
-         * @description PROPOSED. PENDING_REVIEW -> REJECTED. Other states return INVALID_STATE_TRANSITION.
+         * Reject a pending supplier
+         * @description PENDING_REVIEW -> REJECTED. Other states return INVALID_STATE_TRANSITION.
          */
         post: {
             parameters: {
@@ -3816,8 +3816,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Suspend an approved supplier (PROPOSED)
-         * @description PROPOSED. APPROVED -> SUSPENDED. Other states return INVALID_STATE_TRANSITION.
+         * Suspend an approved supplier
+         * @description APPROVED -> SUSPENDED. Other states return INVALID_STATE_TRANSITION.
          */
         post: {
             parameters: {
@@ -3870,8 +3870,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reinstate a suspended supplier (PROPOSED)
-         * @description PROPOSED. SUSPENDED -> APPROVED. Other states return INVALID_STATE_TRANSITION.
+         * Reinstate a suspended supplier
+         * @description SUSPENDED -> APPROVED. Other states return INVALID_STATE_TRANSITION.
          */
         post: {
             parameters: {
@@ -4309,6 +4309,7 @@ export interface components {
             /** Format: email */
             ownerEmail: string;
             description: string;
+            profile: components["schemas"]["SupplierProfile"];
             /** Format: date-time */
             submittedAt: string | null;
             status: components["schemas"]["SupplierReviewStatus"];

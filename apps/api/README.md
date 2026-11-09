@@ -29,15 +29,19 @@ The Prisma client is generated into `src/generated/prisma` (git-ignored) by `npm
 
 ## Scripts
 
-| Script                     | What it does                                                      |
-| -------------------------- | ----------------------------------------------------------------- |
-| `npm run dev`              | Watch mode with `tsx`, loads the root `.env`                      |
-| `npm run build` / `start`  | Compile to `dist/` / run `dist/main.js`                           |
-| `npm test`                 | Unit tests (`src/**/*.test.ts`)                                   |
-| `npm run test:integration` | Integration tests (needs PostgreSQL + Redis)                      |
-| `npm run db:migrate`       | Create and apply a development migration                          |
-| `npm run db:deploy`        | Apply committed migrations                                        |
-| `npm run db:seed`          | Seed the admin account, plans, transitions, roles and permissions |
+| Script                                 | What it does                                                     |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| `npm run dev`                          | Watch mode with `tsx`, loads the root `.env`                     |
+| `npm run build` / `start`              | Compile to `dist/` / run `dist/main.js`                          |
+| `npm test`                             | Unit tests (`src/**/*.test.ts`)                                  |
+| `npm run test:integration`             | Integration tests (needs PostgreSQL + Redis)                     |
+| `npm run db:migrate`                   | Create and apply a development migration                         |
+| `npm run db:deploy`                    | Apply committed migrations                                       |
+| `npm run db:seed`                      | Run all database seed scripts                                    |
+| `npm run db:seed:roles`                | Seed roles, permissions and administrator permission assignments |
+| `npm run db:seed:plans`                | Seed plans and plan transitions                                  |
+| `npm run db:seed:supplier-transitions` | Seed supplier profile status transitions                         |
+| `npm run db:seed:admin`                | Seed the verified administrator account and global admin role    |
 
-`db:seed` reads `ADMIN_EMAIL` and `ADMIN_PASSWORD` from the environment, defaulting
+The seed scripts read `ADMIN_EMAIL` and `ADMIN_PASSWORD` from the environment, defaulting
 to `admin@sellonit.local` and `ChangeMe123!` for local development.

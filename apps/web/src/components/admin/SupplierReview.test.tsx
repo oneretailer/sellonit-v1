@@ -32,6 +32,7 @@ function supplier(overrides: Partial<SupplierDetail> = {}): SupplierDetail {
     ownerPhone: '08031234567',
     ownerEmail: 'ada@example.com',
     description: 'Fashion wholesaler',
+    profile: { businessId: 'sup-1', status: 'PENDING_REVIEW' },
     status: 'PENDING_REVIEW',
     plan: null,
     submittedAt: '2026-10-26T00:00:00.000Z',
