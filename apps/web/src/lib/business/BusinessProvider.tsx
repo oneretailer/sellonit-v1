@@ -35,6 +35,8 @@ export const BUSINESS_SCOPED_CACHE_PREFIXES = [
   ['products'],
   ['product-summary'],
   ['product-categories'],
+  ['inventory'],
+  ['inventory-summary'],
   ['supplier-dashboard'],
   ['supplier-profile'],
   ['workspace'],
@@ -100,7 +102,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
       const role = activeBusiness?.role;
       if (role === 'OWNER') return true;
       if (role === 'MANAGER') return permission !== 'product:delete';
-      if (role === 'STAFF') return permission === 'product:read';
+      if (role === 'STAFF') return permission === 'product:read' || permission === 'inventory:read';
       return false;
     },
     [activeBusiness?.role],

@@ -22,8 +22,11 @@
 | `BE-009` | **P2**   | Team Onboarding        | Implement business member invitations & "Join an existing business" acceptance                           |
 | `BE-010` | **P2**   | Notifications          | Implement `GET /api/v1/notifications` and `POST /api/v1/notifications/:id/read`                          |
 | `BE-011` | **P2**   | Seed Fixtures          | Expand `apps/api/prisma/seed.ts` with dev accounts covering supplier/multi-business/role states          |
-| `BE-012` | **P3**   | Retailer & Commerce    | Implement Retailer onboarding and Supplier Inventory / Pricing / Website / Orders / Wallet modules       |
+| `BE-012` | **P3**   | Retailer & Commerce    | Implement Retailer onboarding and Supplier Pricing / Website / Orders / Wallet modules                   |
 | `BE-013` | **P3**   | OAuth & Phone Auth     | Implement Google/Apple OAuth and phone-identifier login / password reset (or remove from v1 spec)        |
+| `BE-014` | **P0**   | Supplier Inventory     | Implement `GET /supplier/inventory`, `GET /supplier/inventory/summary`, and atomic delta adjustments      |
+| `BE-015` | **P1**   | Warehouses & Stock     | Implement Warehouse CRUD, auto-created default warehouse (+ backfill), and per-variant/warehouse levels   |
+| `BE-016` | **P2**   | Inventory CSV Import   | Implement `POST /api/v1/supplier/inventory/import` for bulk CSV stock updates                             |
 
 ---
 
@@ -281,7 +284,7 @@
 ### `BE-012` — Retailer Workspace & Remaining Supplier Workspace Modules
 
 - **Priority:** **P3 (Roadmap)**
-- **Why Frontend Needs It:** Unblocks flipping `NON_SUPPLIER_BUSINESS_CREATION_ENABLED` (`apps/web/src/lib/onboarding/businessApi.ts:20`) and replacing `PlaceholderWorkspace` on `/dashboard/{inventory,pricing,website,orders,customers,wallet,analytics,settings}`.
+- **Why Frontend Needs It:** Unblocks flipping `NON_SUPPLIER_BUSINESS_CREATION_ENABLED` (`apps/web/src/lib/onboarding/businessApi.ts:20`) and replacing `PlaceholderWorkspace` on `/dashboard/{pricing,website,orders,customers,wallet,analytics,settings}`.
 - **Proposed Contract:** Implement per `docs/openapi.yaml` domain tags (`Retailers`, `Stores`, `Catalogue`, `Commerce`, `Payments`, `Fulfillment`, `Logistics`, `Analytics`).
 
 ---
@@ -291,3 +294,76 @@
 - **Priority:** **P3 (Roadmap)**
 - **Why Frontend Needs It:** `SignupMethodChooser.tsx` and `LoginForm.tsx` render disabled Google/Apple buttons, and login/forgot-password inputs accept phone numbers with a polite "use your email address" fallback (`authService.ts:109-111,163-165`).
 - **Proposed Contract:** Either implement OAuth redirect/callback routes and verified-phone login/OTP reset, or confirm email-only auth for v1.
+
+---
+
+### `BE-014` — Implement Supplier Inventory List, Summary & Atomic Delta Adjustments
+
+- **Priority:** **P0 (Critical — Week 2 Day 1)**
+- **Why Frontend Needs It:** `/dashboard/inventory` (`apps/web/src/components/inventory/InventoryPage.tsx`, `AdjustStockDialog.tsx`, `apps/web/src/lib/inventory/inventoryApi.ts`) is built and wired to `/api/v1/supplier/inventory*`, showing an honest `"Inventory management is coming soon"` state until the backend mounts these endpoints. Note also that `docs/openapi.yaml` currently only defines a legacy product-nested `/supplier-products/{supplierProductId}/inventory` (`lines 830-866`) with `{ delta, reason }` (`lines 3031-3041`) and has no paginated supplier inventory list or summary endpoint.
+- **Proposed Contract (reconciling `inventoryApi.ts` and `docs/openapi.yaml`):**
+  - **Tenancy & Auth:** `requireAuth` + `requireBusinessMembership` (`business.type === 'SUPPLIER'`). Resolve business from `X-Business-Id` header and/or `businessId` query/body parameter (must reject cross-business reads/writes with `403`/`404`). Require `OWNER | MANAGER` (`inventory:write`) for `POST .../adjustments`; allow `STAFF` (`inventory:read`) for `GET`.
+  - **Endpoints:**
+    1. `GET /api/v1/supplier/inventory`
+       - Query: `page` (int, default `1`), `pageSize` (int, default `10`, max `100`), `q` (optional search matching product `name` or `sku`), `status` (`all | low | out | in`; `out` = `availableQuantity === 0`, `low` = `1..10`, `in` = `> 10`).
+       - Response `200`:
+         ```json
+         {
+           "data": [
+             {
+               "productId": "uuid",
+               "name": "Linen shirt",
+               "sku": "SF-LS-014",
+               "imageUrl": null,
+               "availableQuantity": 3,
+               "reservedQuantity": 0,
+               "stockStatus": "low-stock"
+             }
+           ],
+           "meta": { "page": 1, "pageSize": 10, "total": 124, "totalPages": 13 }
+         }
+         ```
+         *(Note: `reservedQuantity` is system-managed and nullable; if reservations are not yet computed for a row, return `null` rather than a misleading `0`.)*
+    2. `GET /api/v1/supplier/inventory/summary`
+       - Response `200`: `{ "data": { "total": 124, "low": 3, "out": 1, "inStock": 120 } }`
+    3. `POST /api/v1/supplier/inventory/:productId/adjustments`
+       - Headers: `Idempotency-Key` (UUID; deduplicate retries inside the DB transaction).
+       - Body: `{ "direction": "increase" | "decrease", "quantity": 12, "reason"?: "MANUAL_ADJUSTMENT" }` (equivalent to signed `delta = direction === 'increase' ? quantity : -quantity`).
+       - Concurrency & Validation:
+         - Run inside a serializable/row-locked PostgreSQL transaction (`SELECT ... FOR UPDATE`).
+         - Never allow manual edits to `reservedQuantity` (reserved stock is strictly order/payment-managed).
+         - `400 VALIDATION_ERROR` with `fields: { quantity: "..." }` for invalid quantities.
+         - `404 NOT_FOUND` if `:productId` does not belong to the active supplier business.
+         - `409 INVENTORY_CONFLICT` if optimistic version or idempotency key payload conflicts.
+         - `422 INSUFFICIENT_INVENTORY` (with `fields: { quantity: "You can't remove more than the available stock (n)." }`) if `availableQuantity - quantity < 0`.
+       - Response `200`: `{ "data": InventoryItem }`.
+
+---
+
+### `BE-015` — Warehouses CRUD, Auto-Created Default Warehouse & Variant-Warehouse Inventory Levels
+
+- **Priority:** **P1 (High — Week 2 Day 1 Data Model Foundation)**
+- **Why Frontend Needs It:** Establishes the physical multi-warehouse schema underlying `BE-014` so inventory levels are stored per `(productVariantId, warehouseId)` rather than as a flat integer on `SupplierProduct`.
+- **Proposed Schema & Contract:**
+  - **Prisma Models:**
+    - `Warehouse`: `id`, `businessId`, `name`, `code`, `address` (`Json?`), `isDefault` (`Boolean`), `active` (`Boolean`), `createdAt`, `updatedAt`; partial unique index ensuring exactly one `isDefault = true` warehouse per supplier `businessId`.
+    - `InventoryLevel`: `id`, `businessId`, `variantId`, `warehouseId`, `availableQuantity` (`Int >= 0`), `reservedQuantity` (`Int >= 0`, system-only), `version` (`Int`), `updatedAt`; `@@unique([variantId, warehouseId])`.
+  - **Default Warehouse Lifecycle:** Auto-create `"Main Warehouse"` (`isDefault: true`) inside the same transaction when a `SUPPLIER` `Business` is created (`POST /api/v1/businesses`), plus a one-time backfill migration creating default warehouses for any existing `SUPPLIER` businesses lacking one.
+  - **Endpoints:**
+    - `GET /api/v1/supplier/warehouses`
+    - `POST /api/v1/supplier/warehouses`
+    - `PATCH /api/v1/supplier/warehouses/:warehouseId`
+    - `POST /api/v1/supplier/warehouses/:warehouseId/set-default`
+    - Enforce supplier business membership on all warehouse reads (`STAFF+`) and writes (`OWNER | MANAGER`), preventing any cross-business access.
+
+---
+
+### `BE-016` — Implement Inventory Bulk CSV Import (`POST /api/v1/supplier/inventory/import`)
+
+- **Priority:** **P2 (Medium — Week 2 Follow-up)**
+- **Why Frontend Needs It:** `/dashboard/inventory` (`InventoryPage.tsx`) renders a disabled `"Import CSV"` primary button (`title="CSV import is coming soon"`). Once implemented, the frontend will wire a minimal CSV file picker and row-level result summary.
+- **Proposed Contract:**
+  - **Method & Path:** `POST /api/v1/supplier/inventory/import` (`multipart/form-data`, field `file`, `.csv` ≤ 5 MB).
+  - **CSV Columns:** `sku`, `direction` (`increase | decrease`) or signed `delta`, `quantity`, optional `warehouseCode`, optional `reason`.
+  - **Response `200`:** `{ "data": { "processed": 50, "updated": 48, "failed": 2, "errors": [{ "row": 14, "sku": "SF-LS-014", "message": "..." }] } }`.
+

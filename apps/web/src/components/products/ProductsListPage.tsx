@@ -178,7 +178,7 @@ export function ProductsListPage() {
           value={summary.data?.lowStock ?? 0}
           icon="alert"
           tone="orange"
-          href="/dashboard/inventory"
+          href="/dashboard/inventory?tab=low-stock"
           isLoading={summary.isPending}
         />
         <ProductStatCard
@@ -186,7 +186,7 @@ export function ProductsListPage() {
           value={summary.data?.outOfStock ?? 0}
           icon="box"
           tone="red"
-          href="/dashboard/inventory"
+          href="/dashboard/inventory?tab=out-of-stock"
           isLoading={summary.isPending}
         />
       </div>

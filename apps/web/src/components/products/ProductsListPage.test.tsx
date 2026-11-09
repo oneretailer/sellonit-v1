@@ -209,6 +209,11 @@ describe('products list', () => {
     const edits = screen.getAllByRole('link', { name: 'Edit' });
     expect(views[0]?.getAttribute('href')).toBe('/dashboard/products/prod-1/edit');
     expect(edits[0]?.getAttribute('href')).toBe('/dashboard/products/prod-1/edit');
+    const reviewLinks = screen.getAllByRole('link', { name: /Review in inventory/i });
+    expect(reviewLinks.map((link) => link.getAttribute('href'))).toEqual([
+      '/dashboard/inventory?tab=low-stock',
+      '/dashboard/inventory?tab=out-of-stock',
+    ]);
   });
 
   it('shows an honest coming-soon state without fake retry when the products endpoint is not implemented', async () => {
