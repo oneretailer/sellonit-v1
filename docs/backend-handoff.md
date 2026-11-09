@@ -21,7 +21,7 @@
 | `BE-008` | **P2**   | Auth Verification      | Implement `POST /api/v1/auth/resend-verification` and `POST /api/v1/auth/refresh`                        |
 | `BE-009` | **P2**   | Team Onboarding        | Implement business member invitations & "Join an existing business" acceptance                           |
 | `BE-010` | **P2**   | Notifications          | Implement `GET /api/v1/notifications` and `POST /api/v1/notifications/:id/read`                          |
-| `BE-011` | **P2**   | Seed Fixtures          | Expand `apps/api/prisma/seed.ts` with dev accounts covering supplier/multi-business/role states          |
+| `BE-011` | **P2**   | Seed Fixtures          | Expand `apps/api/scripts/seed.ts` with dev accounts covering supplier/multi-business/role states         |
 | `BE-012` | **P3**   | Retailer & Commerce    | Implement Retailer onboarding and Supplier Inventory / Pricing / Website / Orders / Wallet modules       |
 | `BE-013` | **P3**   | OAuth & Phone Auth     | Implement Google/Apple OAuth and phone-identifier login / password reset (or remove from v1 spec)        |
 
@@ -264,7 +264,7 @@
 
 ---
 
-### `BE-011` — Expand Development Seed Fixtures (`apps/api/prisma/seed.ts`)
+### `BE-011` — Expand Development Seed Fixtures (`apps/api/scripts/seed.ts`)
 
 - **Priority:** **P2 (Medium)**
 - **Why Frontend Needs It:** `seed.ts` currently creates only `admin@sellonit.local` (`onboardingIntent: null`, 0 businesses). Adding deterministic non-production fixtures (`if (process.env.NODE_ENV !== 'production')`) lets engineers immediately test every UI state:
