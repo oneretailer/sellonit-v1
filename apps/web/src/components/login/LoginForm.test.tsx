@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
   loginWithIdentifier: vi.fn(),
   acceptAuthenticatedUser: vi.fn(),
+  refreshWorkspace: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => mocks.router }));
@@ -36,7 +37,10 @@ vi.mock('next/image', () => ({
   ),
 }));
 vi.mock('@/lib/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({ acceptAuthenticatedUser: mocks.acceptAuthenticatedUser }),
+  useAuthSession: () => ({
+    acceptAuthenticatedUser: mocks.acceptAuthenticatedUser,
+    refreshWorkspace: mocks.refreshWorkspace,
+  }),
 }));
 vi.mock('@/lib/auth/authService', () => ({
   AUTH_MESSAGES: { accountNotVerified: 'Your account is not verified.' },
@@ -54,6 +58,7 @@ beforeEach(() => {
   clearPendingVerificationEmail();
   clearOnboardingRole();
   vi.clearAllMocks();
+  mocks.refreshWorkspace.mockResolvedValue(null);
   mocks.loginWithIdentifier.mockResolvedValue({
     user: {
       id: 'user-1',
@@ -122,5 +127,18 @@ describe('post-login onboarding destination', () => {
     setPendingVerificationEmail('jane@example.com');
     await completeLogin();
     expect(getPendingVerificationEmail()).toBeNull();
+  });
+
+  it('routes a verified platform ADMIN without onboardingIntent directly to /admin/suppliers', async () => {
+    mocks.refreshWorkspace.mockResolvedValue({
+      platformRole: 'ADMIN',
+      permissions: ['supplier:review'],
+      features: [],
+      businesses: [],
+      activeBusiness: null,
+      supplierStatus: null,
+    });
+    await completeLogin();
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith('/admin/suppliers'));
   });
 });

@@ -73,6 +73,7 @@ export function presentError(error: unknown): ErrorPresentation {
       };
     case 'BUSINESS_REQUIRED':
     case 'PROFILE_REQUIRED':
+    case 'PLAN_NOT_FOUND':
       return {
         message: error.message || 'Complete the required business details and try again.',
         retryable: true,

@@ -464,7 +464,11 @@ export function DashboardShell({
             >
               <DashboardIcon name="menu" className="size-6" />
             </button>
-            <Link href="/dashboard/overview" aria-label="Sellonit dashboard" className="shrink-0">
+            <Link
+              href={variant === 'admin' ? '/admin/suppliers' : '/dashboard/overview'}
+              aria-label={variant === 'admin' ? 'Sellonit admin' : 'Sellonit dashboard'}
+              className="shrink-0"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- brand wordmark served locally. */}
               <img src="/wordmark.svg" alt="Sellonit" className="h-7 w-auto sm:h-8" />
             </Link>

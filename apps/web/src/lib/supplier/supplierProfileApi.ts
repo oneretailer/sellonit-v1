@@ -17,7 +17,7 @@ import { apiFetch } from '@/lib/api-client';
 
 type Schemas = components['schemas'];
 
-export type SupplierProfileStatus = Schemas['SupplierProfileStatus'];
+export type SupplierProfileStatus = Schemas['SupplierReviewStatus'];
 export type RetailerAccessMode = NonNullable<Schemas['SupplierProfile']['retailerAccess']>;
 export type SupplierOriginAddress = Partial<Schemas['Address']>;
 
@@ -36,6 +36,8 @@ export type SupplierProfileRecord = {
   originLocation?: SupplierOriginAddress | null;
   retailerAccess?: RetailerAccessMode;
   submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedByUserId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };

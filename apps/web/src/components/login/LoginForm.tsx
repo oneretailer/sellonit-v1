@@ -54,7 +54,7 @@ const loginButtonClass = 'md:h-[clamp(44px,7vh,56px)] md:rounded-xl md:text-lg m
  */
 export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
   const router = useRouter();
-  const { acceptAuthenticatedUser } = useAuthSession();
+  const { acceptAuthenticatedUser, refreshWorkspace } = useAuthSession();
   const [identifier, setIdentifier] = useState(initialIdentifier);
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -93,9 +93,15 @@ export function LoginForm({ initialIdentifier = '' }: LoginFormProps) {
       const response = await loginWithIdentifier({ ...target, password });
       acceptAuthenticatedUser(response.user);
       clearPendingVerificationEmail();
+      const workspaceContext =
+        response.user.emailVerifiedAt &&
+        !response.user.onboardingIntent &&
+        typeof refreshWorkspace === 'function'
+          ? await refreshWorkspace().catch(() => null)
+          : null;
       // Stays disabled while the app navigates through the onboarding gate.
-      // The saved onboarding intent from `user` wins over this browser's role.
-      router.replace(getPostAuthDestination(response.user));
+      // Platform admins without a business intent route directly to /admin/suppliers.
+      router.replace(getPostAuthDestination(response.user, workspaceContext));
     } catch (error) {
       inFlight.current = false;
       setSubmitting(false);

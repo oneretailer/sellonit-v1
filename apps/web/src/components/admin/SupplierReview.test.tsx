@@ -32,7 +32,22 @@ function supplier(overrides: Partial<SupplierDetail> = {}): SupplierDetail {
     ownerPhone: '08031234567',
     ownerEmail: 'ada@example.com',
     description: 'Fashion wholesaler',
-    profile: { businessId: 'sup-1', status: 'PENDING_REVIEW' },
+    profile: {
+      businessId: 'sup-1',
+      status: 'PENDING_REVIEW',
+      legalName: 'Okechukwu Fashion Ltd',
+      contactPhone: '+2348031234567',
+      retailerAccess: 'APPROVAL_REQUIRED',
+      description: 'Wholesale textiles and ready-to-wear garments across Lagos.',
+      originLocation: {
+        recipientName: 'Okechukwu Fashion Ltd',
+        phone: '+2348031234567',
+        addressLine1: '12 Marina Road',
+        city: 'Lagos',
+        state: 'Lagos',
+        country: 'NG',
+      },
+    },
     status: 'PENDING_REVIEW',
     plan: null,
     submittedAt: '2026-10-26T00:00:00.000Z',
@@ -48,15 +63,67 @@ afterEach(() => {
 beforeEach(() => polyfillDialog());
 
 describe('supplier review (spied API, no mocks server)', () => {
-  it('loads a supplier and shows only status-valid actions', async () => {
+  it('loads a supplier, displays verification profile fields, and shows only status-valid actions', async () => {
     vi.spyOn(adminApi, 'getSupplier').mockResolvedValue(supplier());
     renderWorkspace(<SupplierReview id="sup-1" />);
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Okechukwu Fashion' })).toBeTruthy(),
     );
+    expect(screen.getByText('Okechukwu Fashion Ltd')).toBeTruthy();
+    expect(screen.getByText('+2348031234567')).toBeTruthy();
+    expect(screen.getByText('Approval required')).toBeTruthy();
+    expect(screen.getByText('12 Marina Road, Lagos, Lagos, NG')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Approve supplier' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reject supplier' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Suspend supplier' })).toBeNull();
+  });
+
+  it('approves a pending supplier with selected plan and optional audit note', async () => {
+    const userEventSession = userEvent.setup();
+    const approvedSupplier = supplier({
+      status: 'APPROVED',
+      plan: 'ENTERPRISE_PLUS',
+      profile: { businessId: 'sup-1', status: 'APPROVED' },
+      auditHistory: [
+        {
+          id: 'evt-1',
+          action: 'APPROVED',
+          actorName: 'Sellonit Admin',
+          fromStatus: 'PENDING_REVIEW',
+          toStatus: 'APPROVED',
+          reason: 'CAC & dispatch address verified',
+          createdAt: '2026-11-05T12:00:00.000Z',
+        },
+      ],
+    });
+    vi.spyOn(adminApi, 'getSupplier')
+      .mockResolvedValueOnce(supplier())
+      .mockResolvedValue(approvedSupplier);
+    const transition = vi
+      .spyOn(adminApi, 'transitionSupplier')
+      .mockResolvedValue(approvedSupplier);
+
+    renderWorkspace(<SupplierReview id="sup-1" />);
+    await userEventSession.click(await screen.findByRole('button', { name: 'Approve supplier' }));
+    await userEventSession.selectOptions(screen.getByLabelText('Approval plan'), 'ENTERPRISE_PLUS');
+    await userEventSession.type(
+      screen.getByLabelText('Approval note (optional)'),
+      'CAC & dispatch address verified',
+    );
+    const confirmButtons = screen.getAllByRole('button', { name: 'Approve supplier' });
+    await userEventSession.click(confirmButtons[confirmButtons.length - 1]!);
+
+    await waitFor(() =>
+      expect(transition).toHaveBeenCalledWith('sup-1', 'approve', {
+        reason: '',
+        plan: 'ENTERPRISE_PLUS',
+        note: 'CAC & dispatch address verified',
+      }),
+    );
+    expect((await screen.findAllByText('APPROVED')).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('ENTERPRISE PLUS')).toBeTruthy();
+    expect(screen.getByText('CAC & dispatch address verified')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Suspend supplier' })).toBeTruthy();
   });
 
   it('requires a reason before rejecting and calls the real API adapter', async () => {

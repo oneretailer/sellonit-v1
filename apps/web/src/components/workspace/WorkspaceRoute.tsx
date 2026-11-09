@@ -29,21 +29,29 @@ export function WorkspaceRoute({
   const session = useSession();
   const { enableWorkspaceContext } = session;
   const destination = resolveAuthDestination(session);
-  const target = redirectTarget(destination, pathname);
+  const target =
+    admin && destination.kind === 'role-selection' ? null : redirectTarget(destination, pathname);
+  const canResolveWorkspace =
+    !target &&
+    (destination.kind === 'dashboard' || (admin && destination.kind === 'role-selection'));
+
   useEffect(() => {
     if (target) router.replace(target);
   }, [router, target]);
+
   useEffect(() => {
-    if (!target && destination.kind === 'dashboard') enableWorkspaceContext?.();
-  }, [destination.kind, enableWorkspaceContext, target]);
+    if (canResolveWorkspace) enableWorkspaceContext?.();
+  }, [canResolveWorkspace, enableWorkspaceContext]);
+
   if (destination.kind === 'login') return null;
-  if (destination.kind !== 'dashboard' || !session.user)
+  if (!canResolveWorkspace || !session.user) {
     return (
       <DashboardSessionSkeleton
         displayName={session.cachedDisplayName}
         onRetry={session.status === 'error' ? () => void session.refreshSession() : undefined}
       />
     );
+  }
   const user = session.user;
   let content: ReactNode = children;
   if (permission)
@@ -53,7 +61,7 @@ export function WorkspaceRoute({
     content = (
       <LoadingState label={admin ? 'Checking administrator access' : 'Loading workspace'} />
     );
-  // TODO(BE-005, BE-006): surface an honest state while GET /session/context and /admin/suppliers* are not yet mounted.
+  // TODO(BE-005): surface an honest state when GET /session/context (or the admin fallback) is unavailable.
   if (session.workspaceStatus === 'error') {
     content = isEndpointNotImplemented(session.workspaceError) ? (
       <StatePanel

@@ -38,8 +38,8 @@ export function RedirectAuthenticatedUser({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { status, user, refreshSession } = useAuthSession();
-  const destination = resolveAuthDestination({ status, user });
+  const { status, user, workspace, refreshSession } = useAuthSession();
+  const destination = resolveAuthDestination({ status, user, workspace });
   // Public pages are FOR signed-out visitors: `login` is not a redirect target
   // here, only the answer to "who is allowed to see this page". Redirecting on
   // it bounced `/` and `/auth/register` straight back to `/auth/login`.

@@ -15,8 +15,8 @@
 | `BE-002` | **P0**   | Supplier Products      | Implement Supplier Products CRUD, publish/unpublish, categories, image uploads, and summary              |
 | `BE-003` | **P1**   | Supplier Dashboard     | Implement `GET /api/v1/supplier/:businessId/dashboard` metrics + setup step completion                   |
 | `BE-004` | **P1**   | Tenancy & Businesses   | Expose `activeSubscription`/`plan`, enforce `OWNER \| MANAGER` & `SUSPENDED` checks, unify tenancy       |
-| `BE-005` | **P1**   | RBAC / Session Context | Implement `GET /api/v1/session/context` (or return role permission grants on `/businesses` + `/auth/me`) |
-| `BE-006` | **P1**   | Admin Moderation       | Implement `/api/v1/admin/suppliers*` queue, detail, approve/reject/suspend/reinstate                     |
+| `BE-005` | **P1**   | RBAC / Session Context | Implement `GET /api/v1/session/context` (admin routes currently fall back to probing `/admin/suppliers`)  |
+| `BE-006` | **DONE** | Admin Moderation       | Implemented in PR #17 (`8e46870`) & synced in `apps/web` (`/admin/suppliers*` + `SupplierStatusTransition`) |
 | `BE-007` | **P1**   | API & OpenAPI Hygiene  | Add JSON 404 catch-all, standardize `requestId` + field validation details, fix `openapi.yaml` drift     |
 | `BE-008` | **P2**   | Auth Verification      | Implement `POST /api/v1/auth/resend-verification` and `POST /api/v1/auth/refresh`                        |
 | `BE-009` | **P2**   | Team Onboarding        | Implement business member invitations & "Join an existing business" acceptance                           |
@@ -200,18 +200,13 @@
 
 ---
 
-### `BE-006` — Implement Admin Supplier Review Queue & Moderation Actions
+### `BE-006` — Admin Supplier Review Queue & Moderation Actions *(Implemented in PR #17 · Synced)*
 
-- **Priority:** **P1 (High)**
-- **Why Frontend Needs It:** `/admin/suppliers` and `/admin/suppliers/[id]` (`SupplierQueue.tsx`, `SupplierReview.tsx`, `apps/web/src/lib/workspace/adminApi.ts`) are fully built against `docs/openapi.yaml:1886-1913` (`PaginatedAdminSuppliers`, `AdminSupplierDetail`), but no `/api/v1/admin/*` router exists, so supplier profiles submitted via `POST /api/v1/supplier/:businessId/profile/submit` (`PENDING_REVIEW`) have no way to be approved or assigned `ENTERPRISE` vs `ENTERPRISE_PLUS` plans except via raw SQL.
-- **Proposed Contract:**
-  - Guard all routes with `requireAuth` + `requirePermission('admin:read')` (for `GET`) / `requirePermission('admin:write')` (for `POST`).
-  - `GET /api/v1/admin/suppliers?status=PENDING_REVIEW&search=&page=1&pageSize=20` → `PaginatedAdminSuppliers`
-  - `GET /api/v1/admin/suppliers/:id` → `ApiResponseAdminSupplierDetail`
-  - `POST /api/v1/admin/suppliers/:id/approve` (`{ plan: 'ENTERPRISE' | 'ENTERPRISE_PLUS', note? }`) → sets `SupplierProfile.status = 'APPROVED'`, updates `BusinessSubscription` to selected `Plan`, records audit event.
-  - `POST /api/v1/admin/suppliers/:id/reject` (`{ reason }`) → sets `SupplierProfile.status = 'REJECTED'`.
-  - `POST /api/v1/admin/suppliers/:id/suspend` (`{ reason }`) → sets `Business.status = 'SUSPENDED'` (and reconcile `SupplierProfileStatus` vs `SupplierReviewStatus` in `schema.prisma` / `openapi.yaml`).
-  - `POST /api/v1/admin/suppliers/:id/reinstate` (`{ note? }`) → sets `Business.status = 'ACTIVE'`.
+- **Status:** **RESOLVED on `main` (`8e46870`) & synced on frontend**
+- **Implemented Backend Surface:**
+  - `apps/api/src/http/routes/admin.routes.ts` & `apps/api/src/modules/admin/admin.handlers.ts`: `GET /api/v1/admin/suppliers`, `GET /api/v1/admin/suppliers/:id`, and `POST /api/v1/admin/suppliers/:id/{approve,reject,suspend,reinstate}` guarded by `requirePermission('admin:read')` / `requirePermission('admin:write')`.
+  - `apps/api/src/modules/suppliers/supplier-approval.service.ts` + migrations `20261109180000_supplier_review_events` & `20261109193000_supplier_approval_workflow`: `SupplierProfileStatus.SUSPENDED`, `SupplierStatusTransition` DB state machine (`DRAFT -> PENDING_REVIEW`, `PENDING_REVIEW -> APPROVED | REJECTED`, `APPROVED <-> SUSPENDED`), `SupplierReviewEvent` audit trail, and `BusinessSubscription` plan assignment (`ENTERPRISE` / `ENTERPRISE_PLUS`).
+- **Optional Backend Follow-Up:** `supplierApprovalService.submit` currently checks `profile != null` and valid `DRAFT -> PENDING_REVIEW` transition; mirroring the frontend's strict required-field checks (`legalName`, `contactPhone`, `description`, `originLocation`) server-side on `POST /supplier/:businessId/profile/submit` would prevent raw API callers from submitting incomplete profiles.
 
 ---
 
