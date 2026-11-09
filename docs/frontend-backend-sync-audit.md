@@ -157,14 +157,14 @@ Only four routers and one standalone route are mounted in `apps/api`:
   - Updated in `f689d3d2`: `roleApi.test.ts`, `authDestination.test.ts`, `postAuthDestination.test.ts`, `LoginForm.test.tsx`, `onboardingScreens.test.tsx`, `AuthenticatedAuthRouteGate.test.tsx`, `DashboardRoute.test.tsx`, `verify-email/page.test.tsx`.
   - **Missed and broken / stale:** `CreateBusinessForm.test.tsx:32,36,65` (uses `'ENTERPRISE'`, failing 2 tests), `businessesApi.test.ts` (tests `'ENTERPRISE'`, `'ENTREPRENEUR'`, `'ADMIN'`, `'MEMBER'` instead of `'SUPPLIER'`, `'MANAGER'`, `'STAFF'`).
 
-#### A.7 Seed Data (`apps/api/prisma/seed.ts`)
+#### A.7 Seed Data (`apps/api/scripts/seed.ts`)
 
-Running `npm run db:seed` (`apps/api/prisma/seed.ts:39-118`) creates:
+Running `npm run db:seed` (`apps/api/scripts/seed.ts`) creates:
 
-1. **Roles (`Role`):** `ADMIN`, `OWNER`, `SUPPLIER`, `RETAILER` (`seed.ts:14-19,40-43`).
-2. **Permissions (`Permission`):** `admin:read`, `admin:write`, `business:write`, `supplier_profile:write` (`seed.ts:21-26,45-48`) — **assigned only to `ADMIN`** via `RolePermission` (`seed.ts:51-66`); `OWNER`, `SUPPLIER`, and `RETAILER` receive zero `RolePermission` rows.
-3. **Subscription Plans (`Plan` & `PlanTransition`):** `ENTERPRISE` ("Enterprise") and `ENTERPRISE_PLUS` ("Enterprise_plus"), plus transition `ENTERPRISE -> ENTERPRISE_PLUS` (`seed.ts:68-91`). Note: `Plan(key='ENTERPRISE')` is **mandatory** for `POST /api/v1/businesses` (`businesses.handlers.ts:82`) to succeed.
-4. **Seeded User Account (1 total, `seed.ts:28-36,93-117`):**
+1. **Roles (`Role`):** `ADMIN`, `OWNER`, `SUPPLIER`, `RETAILER` (`scripts/seed-roles-permissions.ts`).
+2. **Permissions (`Permission`):** `admin:read`, `admin:write`, `business:write`, `supplier_profile:write` (`scripts/seed-roles-permissions.ts`) — **assigned only to `ADMIN`** via `RolePermission`; `OWNER`, `SUPPLIER`, and `RETAILER` receive zero `RolePermission` rows.
+3. **Subscription Plans (`Plan` & `PlanTransition`):** `ENTERPRISE` ("Enterprise") and `ENTERPRISE_PLUS` ("Enterprise_plus"), plus transition `ENTERPRISE -> ENTERPRISE_PLUS` (`scripts/seed-plans.ts`). Note: `Plan(key='ENTERPRISE')` is **mandatory** for `POST /api/v1/businesses` (`businesses.handlers.ts:82`) to succeed.
+4. **Seeded User Account (1 total, `scripts/seed-admin.ts`):**
    - **Email:** `admin@sellonit.local` (overridable via `ADMIN_EMAIL`)
    - **Password:** `ChangeMe123!` (overridable via `ADMIN_PASSWORD`)
    - **State:** `status: 'ACTIVE'`, `emailVerifiedAt: <now>`, `onboardingIntent: null`, global `UserRoleAssignment` → `ADMIN`, **0 businesses**, **0 memberships**, **0 supplier profiles**.
@@ -293,7 +293,7 @@ Running `npm run db:seed` (`apps/api/prisma/seed.ts:39-118`) creates:
 - **Runtime result today:** Static bell icon with hardcoded unread indicator dot and no endpoint.
 - **Recommended backend contract:** Implement `/api/v1/notifications` and `/api/v1/notifications/:id/read` (`openapi.yaml:1661-1683`) with unread count in `meta`.
 
-#### `BE-011` — Comprehensive Development Seed Fixtures (`apps/api/prisma/seed.ts`)
+#### `BE-011` — Comprehensive Development Seed Fixtures (`apps/api/scripts/seed.ts`)
 
 - **Frontend need:** Immediate manual/automated QA of Supplier Setup (`DRAFT` vs `PENDING_REVIEW` vs `APPROVED`), Business Switcher (multi-business), Role permissions (`OWNER` vs `MANAGER` vs `STAFF`), and Retailer/Unverified/Suspended edge cases without manual DB setup.
 - **Runtime result today:** Only `admin@sellonit.local` (no businesses) is seeded.

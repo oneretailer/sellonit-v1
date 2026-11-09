@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { prisma } from '../../infrastructure/db.js';
 import { AuthError } from '../auth/auth.js';
 import { requireBusinessMembership } from '../tenancy/tenant.repository.js';
+import { supplierApprovalService } from './supplier-approval.service.js';
 
 const profileFields = [
   'legalName',
@@ -108,19 +109,9 @@ export async function submitSupplierProfileHandler(req: Request, res: Response):
   }
   try {
     const businessId = await businessIdForRequest(req);
-    const profile = await prisma.supplierProfile.update({
-      where: { businessId },
-      data: { status: 'PENDING_REVIEW', submittedAt: new Date() },
-    });
+    const profile = await supplierApprovalService.submit(businessId, req.userId);
     res.status(200).json({ data: profile });
   } catch (error) {
-    if ((error as { code?: string }).code === 'P2025') {
-      sendError(
-        res,
-        new AuthError('PROFILE_REQUIRED', 'Save the supplier profile before submitting', 400),
-      );
-      return;
-    }
     sendError(res, error);
   }
 }

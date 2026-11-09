@@ -1709,9 +1709,8 @@ paths:
   /admin/suppliers:
     get:
       tags: [Admin Supplier Review]
-      summary: List supplier review queue (PROPOSED)
-      description: 'PROPOSED. Platform ADMIN only.'
-      x-contract-status: PROPOSED
+      summary: List supplier review queue
+      description: 'Platform ADMIN only.'
       parameters:
         - name: status
           in: query
@@ -1737,9 +1736,8 @@ paths:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
     get:
       tags: [Admin Supplier Review]
-      summary: Get supplier profile and audit history (PROPOSED)
-      description: 'PROPOSED. Platform ADMIN only. id is the supplier business ID.'
-      x-contract-status: PROPOSED
+      summary: Get supplier profile and audit history
+      description: 'Platform ADMIN only. id is the supplier business ID.'
       responses:
         '200':
           description: Supplier review detail
@@ -1755,9 +1753,8 @@ paths:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
     post:
       tags: [Admin Supplier Review]
-      summary: Approve a pending supplier (PROPOSED)
-      description: 'PROPOSED. PENDING_REVIEW -> APPROVED. Other states return INVALID_STATE_TRANSITION.'
-      x-contract-status: PROPOSED
+      summary: Approve a pending supplier
+      description: 'PENDING_REVIEW -> APPROVED. Other states return INVALID_STATE_TRANSITION.'
       requestBody:
         required: true
         content:
@@ -1784,9 +1781,8 @@ paths:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
     post:
       tags: [Admin Supplier Review]
-      summary: Reject a pending supplier (PROPOSED)
-      description: 'PROPOSED. PENDING_REVIEW -> REJECTED. Other states return INVALID_STATE_TRANSITION.'
-      x-contract-status: PROPOSED
+      summary: Reject a pending supplier
+      description: 'PENDING_REVIEW -> REJECTED. Other states return INVALID_STATE_TRANSITION.'
       requestBody:
         required: true
         content:
@@ -1809,9 +1805,8 @@ paths:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
     post:
       tags: [Admin Supplier Review]
-      summary: Suspend an approved supplier (PROPOSED)
-      description: 'PROPOSED. APPROVED -> SUSPENDED. Other states return INVALID_STATE_TRANSITION.'
-      x-contract-status: PROPOSED
+      summary: Suspend an approved supplier
+      description: 'APPROVED -> SUSPENDED. Other states return INVALID_STATE_TRANSITION.'
       requestBody:
         required: true
         content:
@@ -1834,9 +1829,8 @@ paths:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
     post:
       tags: [Admin Supplier Review]
-      summary: Reinstate a suspended supplier (PROPOSED)
-      description: 'PROPOSED. SUSPENDED -> APPROVED. Other states return INVALID_STATE_TRANSITION.'
-      x-contract-status: PROPOSED
+      summary: Reinstate a suspended supplier
+      description: 'SUSPENDED -> APPROVED. Other states return INVALID_STATE_TRANSITION.'
       responses:
         '200':
           description: Updated supplier
@@ -2263,7 +2257,7 @@ components:
     AdminSupplierDetail:
       type: object
       description: PROPOSED. Supplier profile and immutable audit trail.
-      required: [id, businessName, ownerName, ownerPhone, ownerEmail, description, submittedAt, status, plan, auditHistory]
+      required: [id, businessName, ownerName, ownerPhone, ownerEmail, description, profile, submittedAt, status, plan, auditHistory]
       properties:
         id: {type: string, format: uuid}
         businessName: {type: string}
@@ -2271,6 +2265,7 @@ components:
         ownerPhone: {type: string}
         ownerEmail: {type: string, format: email}
         description: {type: string}
+        profile: {$ref: '#/components/schemas/SupplierProfile'}
         submittedAt: {type: [string, 'null'], format: date-time}
         status: {$ref: '#/components/schemas/SupplierReviewStatus'}
         plan:
