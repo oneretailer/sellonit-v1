@@ -3,7 +3,7 @@
 /**
  * `/dashboard/inventory` — supplier inventory management list.
  * Reuses the dashboard shell, `ProductStatCard`, `StockStatusPill`,
- * `ProductsTableSkeleton`, `StatePanel`, `Dialog`, and `ToastProvider`.
+ * `ProductsTableSkeleton`, `StatePanel`, `AdjustStockDialog`, and `ImportCsvDialog`.
  */
 import Link from 'next/link';
 import { useState } from 'react';
@@ -20,6 +20,7 @@ import { useInventoryList, useInventorySummary } from '@/lib/inventory/queries';
 import type { InventoryItem, InventoryTab } from '@/lib/inventory/types';
 import { PRODUCT_ROUTES } from '@/lib/products/constants';
 import { AdjustStockDialog } from './AdjustStockDialog';
+import { ImportCsvDialog } from './ImportCsvDialog';
 import { useInventoryFilters } from './useInventoryFilters';
 
 const countFormat = new Intl.NumberFormat('en-NG', { maximumFractionDigits: 0 });
@@ -37,14 +38,14 @@ function InventoryThumb({ item }: { item: InventoryItem }) {
     <img
       src={item.imageUrl}
       alt=""
-      className="size-12 shrink-0 rounded-xl border border-line object-cover"
+      className="size-10 shrink-0 rounded-ws-control border border-line object-cover"
     />
   ) : (
     <span
       aria-hidden="true"
-      className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-subtle"
+      className="flex size-10 shrink-0 items-center justify-center rounded-ws-control bg-canvas text-caption"
     >
-      <DashboardIcon name="image" className="size-5" />
+      <DashboardIcon name="image" className="size-4" />
     </span>
   );
 }
@@ -60,6 +61,10 @@ export function InventoryPage() {
     item: InventoryItem;
     trigger: HTMLElement | null;
   } | null>(null);
+  const [csvState, setCsvState] = useState<{
+    open: boolean;
+    trigger: HTMLElement | null;
+  }>({ open: false, trigger: null });
 
   const canAdjust = can('inventory:write');
   const canCreateProduct = can('product:write');
@@ -83,45 +88,45 @@ export function InventoryPage() {
   const isTrueEmpty = !isLoading && !list.isError && total === 0 && !hasActiveFilters;
   const isSearchOrTabEmpty = !isLoading && !list.isError && rows.length === 0 && hasActiveFilters;
 
-  // Keep the open dialog's item synced if background refetch updates the row.
   const activeDialogItem = adjustState
     ? (rows.find((row) => row.productId === adjustState.item.productId) ?? adjustState.item)
     : null;
+
+  const statsLoading = summary.isPending || (isLoading && !summary.data);
 
   return (
     <>
       {/* Page header row */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-ink md:text-[28px]">Inventory</h1>
-          <p className="mt-1 text-sm text-subtle">
+          <h1 className="font-heading text-[length:var(--text-ws-page-title)] font-semibold text-ink">
+            Inventory
+          </h1>
+          <p className="mt-1 text-[length:var(--text-ws-body)] text-subtle">
             Manage available stock manually or through CSV import.
           </p>
         </div>
-        {/* TODO(BE-016): wire POST /api/v1/supplier/inventory/import once bulk CSV import lands on the backend. */}
-        <span title="CSV import is coming soon" className="inline-flex">
+        {canAdjust && !apiUnavailable ? (
           <button
             type="button"
-            disabled
-            title="CSV import is coming soon"
-            aria-label="Import CSV (coming soon)"
-            className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-xl bg-primary-disabled px-5 text-sm font-semibold text-subtle"
+            onClick={(event) => setCsvState({ open: true, trigger: event.currentTarget })}
+            className="inline-flex min-h-10 items-center gap-2 rounded-ws-control bg-primary px-4 text-[length:var(--text-ws-body)] font-semibold text-on-primary transition-colors hover:bg-primary-hover"
           >
             <DashboardIcon name="upload" className="size-4" />
             Import CSV
           </button>
-        </span>
+        ) : null}
       </div>
 
-      {/* Three stat cards (no links) */}
-      <div className="grid gap-4 sm:grid-cols-3" aria-busy={summary.isPending}>
+      {/* Three stat cards */}
+      <div className="grid gap-4 sm:grid-cols-3" aria-busy={statsLoading}>
         <ProductStatCard
           label="Total products"
           value={countFormat.format(summary.data?.total ?? 0)}
           subline="Products in your catalogue"
           icon="products"
           tone="gray"
-          isLoading={summary.isPending}
+          isLoading={statsLoading}
         />
         <ProductStatCard
           label="Low stock"
@@ -129,7 +134,7 @@ export function InventoryPage() {
           subline="Products needing attention"
           icon="alert"
           tone="orange"
-          isLoading={summary.isPending}
+          isLoading={statsLoading}
         />
         <ProductStatCard
           label="Out of stock"
@@ -137,12 +142,12 @@ export function InventoryPage() {
           subline="Products with no available stock"
           icon="box"
           tone="red"
-          isLoading={summary.isPending}
+          isLoading={statsLoading}
         />
       </div>
 
       {/* Main list card */}
-      <section className="overflow-hidden rounded-2xl border border-line bg-white">
+      <section className="overflow-hidden rounded-ws-card border border-line bg-surface shadow-ws-card">
         {/* Single-row horizontally scrollable tabs */}
         <nav
           aria-label="Inventory stock status"
@@ -160,8 +165,8 @@ export function InventoryPage() {
                 aria-current={active ? 'true' : undefined}
                 onClick={() => setFilters({ tab: tab.id })}
                 className={cn(
-                  'relative flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-t-lg px-3 text-sm font-medium transition-colors',
-                  active ? 'font-semibold text-primary' : 'text-subtle hover:text-ink',
+                  'relative flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-t-ws-control px-3 text-[length:var(--text-ws-body)] transition-colors',
+                  active ? 'font-semibold text-ink' : 'font-medium text-subtle hover:text-ink',
                 )}
               >
                 {label}
@@ -181,7 +186,7 @@ export function InventoryPage() {
           <div className="relative min-w-0">
             <DashboardIcon
               name="search"
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle"
+              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-caption"
             />
             <input
               type="search"
@@ -189,7 +194,7 @@ export function InventoryPage() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by product name or SKU"
               aria-label="Search by product name or SKU"
-              className="min-h-11 w-full rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-subtle/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="min-h-11 w-full rounded-ws-control border border-line bg-surface pl-10 pr-3.5 text-[length:var(--text-ws-body)] text-ink placeholder:text-caption focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>
@@ -197,7 +202,7 @@ export function InventoryPage() {
         {/* Body */}
         <div aria-busy={isLoading} aria-live="polite">
           {isLoading ? (
-            <ProductsTableSkeleton rows={7} />
+            <ProductsTableSkeleton rows={6} />
           ) : apiUnavailable ? (
             // TODO(BE-014): remove once /api/v1/supplier/inventory* is mounted on the backend.
             <div className="p-4 sm:p-6">
@@ -224,7 +229,7 @@ export function InventoryPage() {
                       void list.refetch();
                       void summary.refetch();
                     }}
-                    className="min-h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-ink transition-colors hover:bg-primary-hover"
+                    className="min-h-11 rounded-ws-control bg-primary px-6 text-[length:var(--text-ws-body)] font-semibold text-on-primary transition-colors hover:bg-primary-hover"
                   >
                     Try again
                   </button>
@@ -243,7 +248,7 @@ export function InventoryPage() {
                   canCreateProduct ? (
                     <Link
                       href={PRODUCT_ROUTES.new}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-ink transition-colors hover:bg-primary-hover"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-ws-control bg-primary px-6 text-[length:var(--text-ws-body)] font-semibold text-on-primary transition-colors hover:bg-primary-hover"
                     >
                       <DashboardIcon name="plus" className="size-4" />
                       Add product
@@ -264,7 +269,7 @@ export function InventoryPage() {
                   <button
                     type="button"
                     onClick={clearSearch}
-                    className="min-h-11 rounded-xl border border-line bg-white px-6 text-sm font-semibold text-ink transition-colors hover:bg-gray-50"
+                    className="min-h-11 rounded-ws-control border border-line bg-surface px-6 text-[length:var(--text-ws-body)] font-semibold text-ink transition-colors hover:bg-canvas"
                   >
                     Clear search
                   </button>
@@ -277,7 +282,7 @@ export function InventoryPage() {
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-line text-left text-xs font-medium uppercase tracking-wide text-subtle">
+                    <tr className="border-b border-line bg-canvas text-left text-[length:var(--text-ws-caption)] font-medium text-subtle">
                       <th scope="col" className="px-5 py-3">
                         Product / SKU
                       </th>
@@ -286,7 +291,7 @@ export function InventoryPage() {
                       </th>
                       <th scope="col" className="px-4 py-3">
                         <span>Reserved</span>
-                        <span className="block text-[11px] font-normal normal-case tracking-normal text-subtle">
+                        <span className="block text-[11px] font-normal text-caption">
                           System-managed
                         </span>
                       </th>
@@ -302,21 +307,25 @@ export function InventoryPage() {
                     {rows.map((item) => (
                       <tr
                         key={item.productId}
-                        className="border-b border-line last:border-b-0 hover:bg-gray-50/50"
+                        className="h-[72px] border-b border-line last:border-b-0 hover:bg-canvas/60"
                       >
                         <td className="px-5 py-3">
                           <div className="flex min-w-0 items-center gap-3">
                             <InventoryThumb item={item} />
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-ink">{item.name}</p>
-                              <p className="truncate text-xs text-subtle">{item.sku}</p>
+                              <p className="truncate text-[length:var(--text-ws-body)] font-medium text-ink">
+                                {item.name}
+                              </p>
+                              <p className="truncate text-[length:var(--text-ws-caption)] text-caption">
+                                {item.sku}
+                              </p>
                             </div>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-ink">
+                        <td className="whitespace-nowrap px-4 py-3 text-[length:var(--text-ws-body)] font-medium text-ink">
                           {countFormat.format(item.availableQuantity)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-subtle">
+                        <td className="whitespace-nowrap px-4 py-3 text-[length:var(--text-ws-body)] text-subtle">
                           {typeof item.reservedQuantity === 'number' ? (
                             <span className="font-medium text-ink">
                               {countFormat.format(item.reservedQuantity)}
@@ -340,7 +349,7 @@ export function InventoryPage() {
                               onClick={(event) =>
                                 setAdjustState({ item, trigger: event.currentTarget })
                               }
-                              className="inline-flex min-h-9 items-center justify-center rounded-xl border border-line bg-white px-3.5 text-sm font-medium text-ink transition-colors hover:bg-gray-50"
+                              className="inline-flex min-h-9 items-center justify-center rounded-ws-control border border-primary bg-surface px-3.5 text-[length:var(--text-ws-body)] font-medium text-primary transition-colors hover:bg-primary-tint"
                             >
                               Adjust stock
                             </button>
@@ -367,8 +376,12 @@ export function InventoryPage() {
                     <div className="flex items-start gap-3">
                       <InventoryThumb item={item} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-ink">{item.name}</p>
-                        <p className="truncate text-xs text-subtle">{item.sku}</p>
+                        <p className="truncate text-[length:var(--text-ws-body)] font-medium text-ink">
+                          {item.name}
+                        </p>
+                        <p className="truncate text-[length:var(--text-ws-caption)] text-caption">
+                          {item.sku}
+                        </p>
                       </div>
                       <StockStatusPill
                         quantity={item.availableQuantity}
@@ -376,16 +389,20 @@ export function InventoryPage() {
                         lowStock={item.lowStock}
                       />
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-[length:var(--text-ws-body)]">
                       <div>
-                        <span className="text-xs text-subtle">Available: </span>
+                        <span className="text-[length:var(--text-ws-caption)] text-caption">
+                          Available:{' '}
+                        </span>
                         <span className="font-medium text-ink">
                           {countFormat.format(item.availableQuantity)}
                         </span>
                       </div>
                       {typeof item.reservedQuantity === 'number' ? (
                         <div>
-                          <span className="text-xs text-subtle">Reserved: </span>
+                          <span className="text-[length:var(--text-ws-caption)] text-caption">
+                            Reserved:{' '}
+                          </span>
                           <span className="font-medium text-ink">
                             {countFormat.format(item.reservedQuantity)}
                           </span>
@@ -396,10 +413,8 @@ export function InventoryPage() {
                       <button
                         type="button"
                         aria-label={`Adjust stock for ${item.name}`}
-                        onClick={(event) =>
-                          setAdjustState({ item, trigger: event.currentTarget })
-                        }
-                        className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-line bg-white px-4 text-sm font-medium text-ink transition-colors hover:bg-gray-50"
+                        onClick={(event) => setAdjustState({ item, trigger: event.currentTarget })}
+                        className="inline-flex min-h-10 w-full items-center justify-center rounded-ws-control border border-primary bg-surface px-4 text-[length:var(--text-ws-body)] font-medium text-primary transition-colors hover:bg-primary-tint"
                       >
                         Adjust stock
                       </button>
@@ -409,9 +424,9 @@ export function InventoryPage() {
               </ul>
 
               {/* Reserved stock footnote */}
-              <p className="border-t border-line px-4 py-3 text-xs text-subtle sm:px-5">
-                — Reserved quantity is unavailable here, not zero. Reserved stock is
-                system-managed and cannot be edited.
+              <p className="border-t border-line px-4 py-3 text-[length:var(--text-ws-caption)] text-caption sm:px-5">
+                — Reserved quantity is unavailable here, not zero. Reserved stock is system-managed
+                and cannot be edited.
               </p>
             </>
           )}
@@ -419,8 +434,8 @@ export function InventoryPage() {
 
         {/* Server-paginated footer */}
         {!isLoading && !list.isError && total > 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
-            <p className="text-sm text-subtle">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3.5 sm:px-5">
+            <p className="text-[length:var(--text-ws-body)] text-subtle">
               Showing {from}–{to} of {countFormat.format(total)} products
             </p>
             <div className="flex items-center gap-2">
@@ -428,7 +443,7 @@ export function InventoryPage() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setFilters({ page: page - 1 })}
-                className="min-h-10 rounded-xl border border-line bg-white px-4 text-sm font-medium text-ink transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-9 rounded-ws-control border border-line bg-surface px-3.5 text-[length:var(--text-ws-body)] font-medium text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
@@ -436,7 +451,7 @@ export function InventoryPage() {
                 type="button"
                 disabled={meta ? page >= meta.totalPages : rows.length < PRODUCTS_PAGE_SIZE}
                 onClick={() => setFilters({ page: page + 1 })}
-                className="min-h-10 rounded-xl border border-line bg-white px-4 text-sm font-medium text-ink transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-9 rounded-ws-control border border-line bg-surface px-3.5 text-[length:var(--text-ws-body)] font-medium text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -455,10 +470,16 @@ export function InventoryPage() {
           onRefreshConflict={async () => {
             const refreshed = await list.refetch();
             void summary.refetch();
-            return refreshed.data?.data.find(
-              (row) => row.productId === activeDialogItem.productId,
-            );
+            return refreshed.data?.data.find((row) => row.productId === activeDialogItem.productId);
           }}
+        />
+      ) : null}
+
+      {csvState.open ? (
+        <ImportCsvDialog
+          open={csvState.open}
+          returnFocusTo={csvState.trigger}
+          onClose={() => setCsvState({ open: false, trigger: null })}
         />
       ) : null}
     </>

@@ -13,16 +13,20 @@ import {
 import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, NetworkError } from '@/lib/api-client';
 import { SAMPLE_INVENTORY_ITEMS } from '@/lib/inventory/devMockInventory';
 import { inventoryApi } from '@/lib/inventory/inventoryApi';
-import type { InventoryItem, InventorySummary, Paginated } from '@/lib/inventory/types';
+import type {
+  CsvImportValidationResult,
+  InventoryItem,
+  InventorySummary,
+  Paginated,
+  ValidateCsvOptions,
+} from '@/lib/inventory/types';
 import { InventoryPage } from './InventoryPage';
 
-vi.mock(
-  'next/navigation',
-  async () => (await import('@/components/products/testState')).navigationMockFactory(),
+vi.mock('next/navigation', async () =>
+  (await import('@/components/products/testState')).navigationMockFactory(),
 );
-vi.mock(
-  '@/lib/business/BusinessProvider',
-  async () => (await import('@/components/products/testState')).businessMockFactory(),
+vi.mock('@/lib/business/BusinessProvider', async () =>
+  (await import('@/components/products/testState')).businessMockFactory(),
 );
 vi.mock('next/link', async () => {
   const React = await import('react');
@@ -62,8 +66,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('InventoryPage & AdjustStockDialog', () => {
-  it('renders stat cards, tab counts, sample rows, unavailable "—" reserved cells, footnote, and disabled Import CSV', async () => {
+describe('InventoryPage, AdjustStockDialog & ImportCsvDialog', () => {
+  it('renders stat cards, tab counts, sample rows, unavailable "—" reserved cells, footnote, and enabled Import CSV', async () => {
     vi.spyOn(inventoryApi, 'list').mockResolvedValue(page(SAMPLE_INVENTORY_ITEMS, 124));
     renderProducts(<InventoryPage />);
 
@@ -71,24 +75,21 @@ describe('InventoryPage & AdjustStockDialog', () => {
     expect(screen.getAllByText('Classic cotton tee').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Wide-brim hat').length).toBeGreaterThan(0);
 
-    // Tab labels include counts (including In stock).
     const tabNav = screen.getByRole('navigation', { name: 'Inventory stock status' });
     expect(
-      within(tabNav).getByRole('button', { name: 'All products · 124' }).getAttribute('aria-current'),
+      within(tabNav)
+        .getByRole('button', { name: 'All products · 124' })
+        .getAttribute('aria-current'),
     ).toBe('true');
     expect(within(tabNav).getByRole('button', { name: 'Low stock · 3' })).toBeTruthy();
     expect(within(tabNav).getByRole('button', { name: 'Out of stock · 1' })).toBeTruthy();
     expect(within(tabNav).getByRole('button', { name: 'In stock · 120' })).toBeTruthy();
 
-    // Stat cards have no links on Inventory.
     expect(screen.queryByRole('link', { name: /Review in inventory/i })).toBeNull();
 
-    // Import CSV is disabled with the coming-soon tooltip.
     const importBtn = screen.getByRole('button', { name: /Import CSV/i });
-    expect(importBtn.hasAttribute('disabled')).toBe(true);
-    expect(importBtn.getAttribute('title')).toBe('CSV import is coming soon');
+    expect(importBtn.hasAttribute('disabled')).toBe(false);
 
-    // Reserved cells render "—" (unavailable) when reservedQuantity is null, plus footnote.
     expect(screen.getAllByLabelText('Unavailable').length).toBe(SAMPLE_INVENTORY_ITEMS.length);
     expect(
       screen.getByText(
@@ -195,13 +196,14 @@ describe('InventoryPage & AdjustStockDialog', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
-  it('hides Adjust stock when can("inventory:write") is false', async () => {
+  it('hides Adjust stock and Import CSV when can("inventory:write") is false', async () => {
     businessMocks.can.mockImplementation((permission: string) => permission === 'inventory:read');
     vi.spyOn(inventoryApi, 'list').mockResolvedValue(page(SAMPLE_INVENTORY_ITEMS, 6));
     renderProducts(<InventoryPage />);
 
     await waitFor(() => expect(screen.getAllByText('Linen shirt').length).toBeGreaterThan(0));
     expect(screen.queryByRole('button', { name: /Adjust stock/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Import CSV/i })).toBeNull();
   });
 
   it('validates on blur, supports arrow-key radio switching, submits a delta adjustment, and restores focus on close', async () => {
@@ -224,8 +226,8 @@ describe('InventoryPage & AdjustStockDialog', () => {
     expect(within(dialog).getByRole('heading', { name: 'Adjust stock' })).toBeTruthy();
     expect(within(dialog).getByText('— Unavailable')).toBeTruthy();
     expect(within(dialog).getByText('Proposed change: —')).toBeTruthy();
+    expect(within(dialog).getByText('A quantity is required to continue.')).toBeTruthy();
 
-    // Primary button starts disabled with Increase label.
     const submitBtn = within(dialog).getByRole('button', { name: 'Increase stock' });
     expect(submitBtn.hasAttribute('disabled')).toBe(true);
 
@@ -250,6 +252,10 @@ describe('InventoryPage & AdjustStockDialog', () => {
     expect(
       within(dialog).getByRole('button', { name: 'Decrease stock' }).hasAttribute('disabled'),
     ).toBe(true);
+
+    await user.clear(qtyInput);
+    await user.type(qtyInput, '2');
+    expect(within(dialog).getByText('Proposed change: -2 units')).toBeTruthy();
 
     // Switch back to Increase and enter 12 -> live preview updates and submit succeeds.
     await user.click(increaseRadio);
@@ -307,5 +313,141 @@ describe('InventoryPage & AdjustStockDialog', () => {
       ).toBeTruthy(),
     );
     expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('drives the Import stock from CSV state machine through idle, selected, uploading, validating, errors, ready, complete, and failed', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(inventoryApi, 'list').mockResolvedValue(page(SAMPLE_INVENTORY_ITEMS, 6));
+
+    // Controlled promise to observe `uploading` -> `validating` -> `errors` -> `ready` -> `complete`.
+    let finishUpload!: () => void;
+    let finishValidation!: (res: CsvImportValidationResult) => void;
+    vi.spyOn(inventoryApi, 'validateCsvImport').mockImplementation(
+      (_file: File, opts?: ValidateCsvOptions) =>
+        new Promise((resolve) => {
+          opts?.onProgress?.(40);
+          finishUpload = () => {
+            opts?.onProgress?.(100);
+            opts?.onValidating?.();
+          };
+          finishValidation = resolve;
+        }),
+    );
+    const confirmSpy = vi
+      .spyOn(inventoryApi, 'confirmCsvImport')
+      .mockRejectedValueOnce(new NetworkError())
+      .mockResolvedValueOnce({ updatedCount: 2 });
+
+    renderProducts(<InventoryPage />);
+    const importTrigger = await screen.findByRole('button', { name: /Import CSV/i });
+    await user.click(importTrigger);
+
+    // 1. idle state
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'Import stock from CSV' })).toBeTruthy();
+    expect(within(dialog).getByText('Drag and drop your CSV file')).toBeTruthy();
+    expect(within(dialog).getByText('.csv files only')).toBeTruthy();
+    expect(
+      within(dialog).getByRole('button', { name: 'Upload file' }).hasAttribute('disabled'),
+    ).toBe(true);
+
+    // Non-CSV rejected inline (use applyAccept: false so userEvent keeps a valid FileList)
+    const rawUser = userEvent.setup({ applyAccept: false });
+    const fileInput = within(dialog).getByLabelText('Choose CSV file');
+    await rawUser.upload(fileInput, new File(['bad'], 'notes.txt', { type: 'text/plain' }));
+    expect(within(dialog).getByText(/Choose a \.csv file/)).toBeTruthy();
+
+    // 2. selected state
+    const badCsv = new File(['sku,quantity\nSF-BAD,abc'], 'supplier-stock.csv', {
+      type: 'text/csv',
+    });
+    await user.upload(fileInput, badCsv);
+    expect(within(dialog).getByText('supplier-stock.csv')).toBeTruthy();
+    expect(within(dialog).getByText('File selected · Ready to upload')).toBeTruthy();
+
+    // 3. uploading state
+    await user.click(within(dialog).getByRole('button', { name: 'Upload file' }));
+    expect(within(dialog).getByText('Uploading… 40%')).toBeTruthy();
+    expect(
+      within(dialog).getByRole('button', { name: 'Uploading…' }).hasAttribute('disabled'),
+    ).toBe(true);
+
+    // 4. validating state
+    finishUpload();
+    await waitFor(() =>
+      expect(within(dialog).getByText('Validating rows before import…')).toBeTruthy(),
+    );
+    expect(
+      within(dialog).getByRole('button', { name: 'Validating…' }).hasAttribute('disabled'),
+    ).toBe(true);
+
+    // 5. errors state
+    finishValidation({
+      validRows: [],
+      errors: [{ rowNumber: 2, sku: 'SF-BAD', message: 'No product matches this SKU.' }],
+    });
+    await waitFor(() => expect(within(dialog).getByText('1 row has an error')).toBeTruthy());
+    expect(within(dialog).getByText(/No product matches this SKU\./)).toBeTruthy();
+
+    // Reset and upload valid CSV -> ready state
+    await user.click(within(dialog).getByRole('button', { name: 'Choose another file' }));
+    const goodCsv = new File(['sku,quantity\nSF-LS-014,25\nSF-CT-001,10'], 'supplier-stock.csv', {
+      type: 'text/csv',
+    });
+    await user.upload(within(dialog).getByLabelText('Choose CSV file'), goodCsv);
+    await user.click(within(dialog).getByRole('button', { name: 'Upload file' }));
+    finishUpload();
+    finishValidation({
+      importId: 'imp-1',
+      validRows: [
+        { rowNumber: 2, sku: 'SF-LS-014', productName: 'Linen shirt', availableQuantity: 25 },
+        {
+          rowNumber: 3,
+          sku: 'SF-CT-001',
+          productName: 'Classic cotton tee',
+          availableQuantity: 10,
+        },
+      ],
+      errors: [],
+    });
+
+    // 6. ready state
+    await waitFor(() =>
+      expect(within(dialog).getByText('Ready to update 2 products')).toBeTruthy(),
+    );
+    expect(within(dialog).getByText('SF-LS-014')).toBeTruthy();
+
+    // 8. failed state (first confirm rejects with NetworkError) -> Try again -> ready -> complete
+    await user.click(within(dialog).getByRole('button', { name: 'Confirm import' }));
+    await waitFor(() => expect(within(dialog).getByText('Import failed')).toBeTruthy());
+
+    await user.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    finishUpload();
+    finishValidation({
+      importId: 'imp-2',
+      validRows: [
+        { rowNumber: 2, sku: 'SF-LS-014', productName: 'Linen shirt', availableQuantity: 25 },
+        {
+          rowNumber: 3,
+          sku: 'SF-CT-001',
+          productName: 'Classic cotton tee',
+          availableQuantity: 10,
+        },
+      ],
+      errors: [],
+    });
+    await waitFor(() =>
+      expect(within(dialog).getByText('Ready to update 2 products')).toBeTruthy(),
+    );
+
+    // 7. complete state
+    await user.click(within(dialog).getByRole('button', { name: 'Confirm import' }));
+    await waitFor(() => expect(within(dialog).getByText('Stock import complete')).toBeTruthy());
+    expect(confirmSpy).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Stock imported')).toBeTruthy();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(importTrigger);
   });
 });

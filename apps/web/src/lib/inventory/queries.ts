@@ -10,7 +10,7 @@ import {
 import { useBusiness } from '@/lib/business/BusinessProvider';
 import { productKeys } from '@/lib/products/queries';
 import { inventoryApi } from './inventoryApi';
-import type { InventoryListParams, StockAdjustmentInput } from './types';
+import type { CsvImportConfirmInput, InventoryListParams, StockAdjustmentInput } from './types';
 
 /** Cache keys include the active business id and filter params. */
 export const inventoryKeys = {
@@ -74,6 +74,25 @@ export function useAdjustStock() {
       signal?: AbortSignal;
       idempotencyKey?: string;
     }) => inventoryApi.adjustStock(productId, input, { signal, idempotencyKey }),
+    onSuccess: () => invalidateInventoryAndProducts(queryClient, businessId),
+  });
+}
+
+export function useConfirmCsvImport() {
+  const queryClient = useQueryClient();
+  const { activeBusiness } = useBusiness();
+  const businessId = activeBusiness?.id ?? null;
+
+  return useMutation({
+    mutationFn: ({
+      input,
+      signal,
+      idempotencyKey,
+    }: {
+      input: CsvImportConfirmInput;
+      signal?: AbortSignal;
+      idempotencyKey?: string;
+    }) => inventoryApi.confirmCsvImport(input, { signal, idempotencyKey }),
     onSuccess: () => invalidateInventoryAndProducts(queryClient, businessId),
   });
 }

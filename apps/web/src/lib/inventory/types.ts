@@ -45,3 +45,41 @@ export type StockAdjustmentInput = {
   quantity: number;
   reason?: string;
 };
+
+/** 8-stage state machine for the "Import stock from CSV" modal. */
+export type CsvImportStage =
+  'idle' | 'selected' | 'uploading' | 'validating' | 'errors' | 'ready' | 'complete' | 'failed';
+
+export type CsvImportRowPreview = {
+  rowNumber: number;
+  sku: string;
+  productName?: string;
+  availableQuantity: number;
+};
+
+export type CsvImportRowError = {
+  rowNumber: number;
+  sku: string;
+  message: string;
+};
+
+export type CsvImportValidationResult = {
+  importId?: string;
+  validRows: CsvImportRowPreview[];
+  errors: CsvImportRowError[];
+};
+
+export type CsvImportConfirmInput = {
+  importId?: string;
+  rows: CsvImportRowPreview[];
+};
+
+export type CsvImportResult = {
+  updatedCount: number;
+};
+
+export type ValidateCsvOptions = {
+  signal?: AbortSignal;
+  onProgress?: (percent: number) => void;
+  onValidating?: () => void;
+};

@@ -9,13 +9,13 @@ export function ProductStatusPill({ status }: { status: ProductStatus }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-        published ? 'bg-green-50 text-success' : 'bg-gray-100 text-subtle',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[length:var(--text-ws-caption)] font-medium',
+        published ? 'bg-success-tint text-success' : 'bg-draft-tint text-draft',
       )}
     >
       <span
         aria-hidden="true"
-        className={cn('size-1.5 rounded-full', published ? 'bg-success' : 'bg-gray-400')}
+        className={cn('size-1.5 rounded-full', published ? 'bg-success' : 'bg-draft')}
       />
       {published ? 'Published' : 'Draft'}
     </span>
@@ -24,17 +24,17 @@ export function ProductStatusPill({ status }: { status: ProductStatus }) {
 
 const STOCK_PILL_STYLES: Record<StockLevel, { wrapper: string; dot: string; label: string }> = {
   'out-of-stock': {
-    wrapper: 'bg-red-50 text-danger',
+    wrapper: 'bg-danger-tint text-danger',
     dot: 'bg-danger',
     label: 'Out of stock',
   },
   'low-stock': {
-    wrapper: 'bg-orange-50 text-primary',
+    wrapper: 'bg-primary-tint text-primary',
     dot: 'bg-primary',
     label: 'Low stock',
   },
   'in-stock': {
-    wrapper: 'bg-green-50 text-success',
+    wrapper: 'bg-success-tint text-success',
     dot: 'bg-success',
     label: 'In stock',
   },
@@ -54,7 +54,7 @@ export function StockStatusPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[length:var(--text-ws-caption)] font-medium',
         style.wrapper,
       )}
     >
@@ -69,7 +69,7 @@ export function StockText({ quantity, lowStock }: { quantity: number; lowStock?:
   return (
     <span
       className={cn(
-        'text-sm',
+        'text-[length:var(--text-ws-body)]',
         level === 'out-of-stock'
           ? 'font-medium text-danger'
           : level === 'low-stock'

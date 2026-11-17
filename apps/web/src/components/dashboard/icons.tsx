@@ -32,7 +32,9 @@ export type DashboardIconName =
   | 'shield'
   | 'logout'
   | 'chevron-down'
-  | 'close';
+  | 'close'
+  | 'refresh'
+  | 'file';
 
 const ICON_PATHS: Record<DashboardIconName, ReactNode> = {
   dashboard: (
@@ -213,6 +215,18 @@ const ICON_PATHS: Record<DashboardIconName, ReactNode> = {
   ),
   'chevron-down': <path d="m6 9 6 6 6-6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  refresh: (
+    <>
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </>
+  ),
+  file: (
+    <>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
+      <path d="M14 3v6h6M8 13h8M8 17h5" />
+    </>
+  ),
 };
 
 export function DashboardIcon({

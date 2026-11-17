@@ -44,30 +44,34 @@ function SetupProgress({ data }: { data: SupplierDashboardData }) {
   const { percent, completed, total } = useSupplierSetupProgress(data.setup.completedStepIds);
   if (percent >= 100) return null;
   return (
-    <div className="rounded-2xl border border-primary/30 bg-orange-50 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">Complete your business setup</p>
-        <span className="shrink-0 text-sm font-semibold text-primary">{percent}%</span>
+    <div className="rounded-ws-card border border-primary-border bg-primary-tint p-3.5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[length:var(--text-ws-label)] font-semibold text-ink">
+          Complete your business setup
+        </p>
+        <span className="shrink-0 text-[length:var(--text-ws-label)] font-semibold text-primary">
+          {percent}%
+        </span>
       </div>
-      <p className="mt-1 text-xs text-subtle">
-        {completed} of {total} steps completed
-      </p>
       <div
         role="progressbar"
         aria-label="Business setup progress"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent}
-        className="mt-3 h-1.5 overflow-hidden rounded-full bg-orange-100"
+        className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-primary/20"
       >
         <span
           className="block h-full rounded-full bg-primary transition-[width]"
           style={{ width: `${percent}%` }}
         />
       </div>
+      <p className="mt-2 text-[length:var(--text-ws-caption)] text-caption">
+        {completed} of {total} steps completed
+      </p>
       <Link
         href={SUPPLIER_SETUP_ROUTE}
-        className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-ink transition-colors hover:bg-primary-hover"
+        className="mt-3 flex min-h-9 w-full items-center justify-center rounded-ws-control bg-primary px-3 text-[length:var(--text-ws-label)] font-semibold text-on-primary transition-colors hover:bg-primary-hover"
       >
         Continue setup
       </Link>
@@ -104,13 +108,13 @@ function NavLink({
           onNavigate?.();
         }
       }}
-      className={`relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors ${nested ? 'ml-7' : ''} ${
+      className={`relative flex min-h-10 items-center gap-3 rounded-ws-control px-3 text-[length:var(--text-ws-body)] transition-colors ${nested ? 'ml-6' : ''} ${
         active
-          ? 'bg-orange-50 font-semibold text-ink after:absolute after:right-0 after:top-2 after:h-7 after:w-1 after:rounded-l-full after:bg-primary'
-          : 'text-subtle hover:bg-gray-50 hover:text-ink'
+          ? 'bg-primary-tint font-semibold text-ink after:absolute after:right-0 after:top-2 after:h-6 after:w-1 after:rounded-l-full after:bg-primary'
+          : 'text-subtle hover:bg-canvas hover:text-ink'
       }`}
     >
-      <DashboardIcon name={item.icon} className="size-[18px] shrink-0" />
+      {!nested ? <DashboardIcon name={item.icon} className="size-[18px] shrink-0" /> : null}
       <span className="min-w-0 truncate">{item.label}</span>
     </Link>
   );
@@ -137,7 +141,7 @@ function Navigation({
           href="/admin/suppliers"
           onClick={onNavigate}
           aria-current={activePath.startsWith('/admin/suppliers') ? 'page' : undefined}
-          className="flex min-h-11 items-center gap-3 rounded-xl bg-orange-50 px-3 text-sm font-semibold text-ink"
+          className="flex min-h-10 items-center gap-3 rounded-ws-control bg-primary-tint px-3 text-[length:var(--text-ws-body)] font-semibold text-ink"
         >
           <DashboardIcon name="business" className="size-[18px]" />
           Supplier review
@@ -146,10 +150,10 @@ function Navigation({
     );
   }
   return (
-    <nav aria-label="Supplier workspace navigation" className="flex min-h-0 flex-1 flex-col gap-5">
+    <nav aria-label="Supplier workspace navigation" className="flex min-h-0 flex-1 flex-col gap-3">
       {dashboard && overview ? (
         <div className="flex flex-col gap-1">
-          <div className="flex min-h-11 items-center gap-3 px-3 text-sm font-semibold text-ink">
+          <div className="flex min-h-10 items-center gap-3 px-3 text-[length:var(--text-ws-body)] font-semibold text-ink">
             <DashboardIcon name={dashboard.icon} className="size-[18px] shrink-0" />
             <span>{dashboard.label}</span>
           </div>
@@ -160,7 +164,7 @@ function Navigation({
         const expanded = expandedGroups.has(group.id);
         const items = DASHBOARD_NAV_ITEMS.filter((item) => item.group === group.id);
         return (
-          <section key={group.id} className="flex flex-col gap-1">
+          <section key={group.id} className="flex flex-col gap-1 border-t border-line pt-3">
             <button
               type="button"
               aria-expanded={expanded}
@@ -172,7 +176,7 @@ function Navigation({
                   return next;
                 });
               }}
-              className="flex min-h-11 items-center justify-between gap-2 px-3 text-left text-xs font-medium text-gray-500"
+              className="flex min-h-9 items-center justify-between gap-2 px-3 text-left text-[length:var(--text-ws-caption)] font-medium text-caption transition-colors hover:text-ink"
             >
               <span>{group.label}</span>
               <span
@@ -208,9 +212,6 @@ function ProfileMenu() {
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fullName = user ? getUserFullName(user) : 'Your account';
-  const initials = user
-    ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() || 'S'
-    : 'S';
 
   useEffect(() => {
     if (!open) return;
@@ -253,22 +254,28 @@ function ProfileMenu() {
         aria-expanded={open}
         aria-label="Account menu"
         onClick={() => setOpen((current) => !current)}
-        className="flex size-11 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-primary transition-colors hover:bg-orange-200"
+        className="flex size-10 items-center justify-center rounded-full border border-line bg-canvas text-subtle transition-colors hover:border-primary/60 hover:text-ink"
       >
-        {initials}
+        <DashboardIcon name="user" className="size-5" />
       </button>
       {open ? (
         <div
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-2 shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-ws-card border border-line bg-surface p-2 shadow-ws-toast"
         >
           <div className="border-b border-line px-3 py-2">
-            <p className="truncate text-sm font-semibold text-ink">{fullName}</p>
-            {user?.email ? <p className="truncate text-xs text-subtle">{user.email}</p> : null}
+            <p className="truncate text-[length:var(--text-ws-body)] font-semibold text-ink">
+              {fullName}
+            </p>
+            {user?.email ? (
+              <p className="truncate text-[length:var(--text-ws-caption)] text-subtle">
+                {user.email}
+              </p>
+            ) : null}
           </div>
           {error ? (
-            <p role="alert" className="px-3 pt-2 text-xs text-danger">
+            <p role="alert" className="px-3 pt-2 text-[length:var(--text-ws-caption)] text-danger">
               {error}
             </p>
           ) : null}
@@ -277,7 +284,7 @@ function ProfileMenu() {
             role="menuitem"
             disabled={signingOut}
             onClick={() => void onSignOut()}
-            className="mt-1 flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-medium text-ink transition-colors hover:bg-gray-50 disabled:opacity-60"
+            className="mt-1 flex min-h-10 w-full items-center gap-2 rounded-ws-control px-3 text-left text-[length:var(--text-ws-body)] font-medium text-ink transition-colors hover:bg-canvas disabled:opacity-60"
           >
             <DashboardIcon name="logout" className="size-4 text-subtle" />
             {signingOut ? 'Signing out…' : 'Log out'}
@@ -316,15 +323,19 @@ function NotificationsMenu() {
         aria-label="Notifications"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="relative flex size-11 shrink-0 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-50 hover:text-ink"
+        className="relative flex size-10 shrink-0 items-center justify-center rounded-ws-control text-subtle transition-colors hover:bg-canvas hover:text-ink"
       >
         <DashboardIcon name="bell" className="size-5" />
+        <span
+          aria-hidden="true"
+          className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-surface"
+        />
       </button>
       {open ? (
         <div
           role="status"
           aria-live="polite"
-          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-3 text-xs text-subtle shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-ws-card border border-line bg-surface p-3 text-[length:var(--text-ws-caption)] text-subtle shadow-ws-toast"
         >
           Notifications are coming soon.
         </div>
@@ -348,14 +359,16 @@ function SidebarContent({
 }) {
   return (
     <>
-      <div className="mb-5 px-3">
-        <p className="truncate text-sm font-semibold text-ink">{businessName}</p>
-        <p className="text-xs text-subtle">
+      <div className="mb-4 px-3">
+        <p className="truncate text-[length:var(--text-ws-label)] font-semibold text-ink">
+          {businessName}
+        </p>
+        <p className="text-[length:var(--text-ws-caption)] text-caption">
           {variant === 'admin' ? 'Platform workspace' : 'Supplier workspace'}
         </p>
       </div>
       {variant === 'supplier' ? (
-        <div className="mb-5 px-1">
+        <div className="mb-4 px-1">
           <SetupProgress data={data} />
         </div>
       ) : null}
@@ -389,8 +402,7 @@ export function DashboardShell({
   const resolvedBusinessName =
     businessName ?? business.activeBusiness?.name ?? (data.businessName || fullName);
 
-  // Close the drawer whenever the route changes (adjusting state during render
-  // is React's recommended alternative to a setState-in-effect cascade).
+  // Close the drawer whenever the route changes.
   const [lastPathname, setLastPathname] = useState(pathname);
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
@@ -407,7 +419,6 @@ export function DashboardShell({
     document.body.style.overflow = 'hidden';
     dialog.querySelector<HTMLElement>('a[href], button:not([disabled])')?.focus();
 
-    // Document-level so Escape/Tab work regardless of where focus sits.
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -446,12 +457,12 @@ export function DashboardShell({
     <div className="flex min-h-dvh flex-col bg-canvas">
       <a
         href="#dashboard-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-ws-control focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary focus:shadow-ws-toast"
       >
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-line bg-white">
-        <div className="flex min-h-16 items-center justify-between gap-3 px-4 sm:min-h-20 sm:px-6">
+      <header className="sticky top-0 z-30 border-b border-line bg-surface">
+        <div className="flex min-h-16 items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               ref={menuButtonRef}
@@ -460,7 +471,7 @@ export function DashboardShell({
               aria-expanded={drawerOpen}
               aria-controls={drawerId}
               onClick={() => setDrawerOpen(true)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-xl text-ink transition-colors hover:bg-gray-50 lg:hidden"
+              className="flex size-10 shrink-0 items-center justify-center rounded-ws-control text-ink transition-colors hover:bg-canvas lg:hidden"
             >
               <DashboardIcon name="menu" className="size-6" />
             </button>
@@ -469,15 +480,15 @@ export function DashboardShell({
               aria-label={variant === 'admin' ? 'Sellonit admin' : 'Sellonit dashboard'}
               className="shrink-0"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- brand wordmark served locally. */}
-              <img src="/wordmark.svg" alt="Sellonit" className="h-7 w-auto sm:h-8" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- brand wordmark served locally (swap /wordmark.svg when replacing brand asset). */}
+              <img src="/wordmark.svg" alt="Sellonit" className="h-7 w-auto" />
             </Link>
           </div>
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {variant === 'supplier' ? (
               <BusinessSwitcher />
             ) : (
-              <span className="hidden items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-ink sm:flex">
+              <span className="hidden items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-[length:var(--text-ws-label)] font-medium text-ink sm:flex">
                 <DashboardIcon name="business" className="size-4 text-subtle" />
                 Sellonit platform
               </span>
@@ -489,25 +500,30 @@ export function DashboardShell({
       </header>
 
       <div className="flex flex-1">
-        <aside className="sticky top-16 hidden max-h-[calc(100dvh-4rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-white px-3 py-6 sm:top-20 sm:max-h-[calc(100dvh-5rem)] lg:block">
+        <aside className="sticky top-16 hidden max-h-[calc(100dvh-4rem)] w-[var(--spacing-sidebar)] shrink-0 overflow-y-auto border-r border-line bg-surface px-3 py-5 lg:block">
           <SidebarContent
             businessName={resolvedBusinessName}
             variant={variant}
             data={data}
             activePath={activePath}
           />
-          <div className="mt-6 border-t border-line px-3 pt-4">
-            <p className="truncate text-sm font-medium text-ink">{fullName}</p>
-            <p className="truncate text-xs text-subtle">{user.email}</p>
+          <div className="mt-5 border-t border-line px-3 pt-4">
+            <p className="truncate text-[length:var(--text-ws-label)] font-medium text-ink">
+              {fullName}
+            </p>
+            <p className="truncate text-[length:var(--text-ws-caption)] text-caption">
+              {user.email}
+            </p>
           </div>
         </aside>
 
-        <main id="dashboard-content" className="min-w-0 flex-1 px-4 py-6 sm:px-7 sm:py-7">
+        <main id="dashboard-content" className="min-w-0 flex-1 px-4 py-6 sm:p-7">
           <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6">{children}</div>
         </main>
       </div>
 
       <dialog
+        id={drawerId}
         ref={drawerRef}
         aria-label="Supplier workspace navigation"
         onCancel={(event) => {
@@ -515,7 +531,6 @@ export function DashboardShell({
           closeDrawer();
         }}
         onClick={(event) => {
-          // Backdrop clicks target the dialog itself but land outside its box.
           if (event.target !== drawerRef.current) return;
           const rect = drawerRef.current.getBoundingClientRect();
           const outside =
@@ -525,7 +540,7 @@ export function DashboardShell({
             event.clientY > rect.bottom;
           if (outside) closeDrawer();
         }}
-        className="fixed inset-y-0 left-0 m-0 h-dvh w-[min(20rem,85vw)] max-w-none border-0 bg-white p-0 shadow-xl backdrop:bg-black/60 lg:hidden"
+        className="fixed inset-y-0 left-0 m-0 h-dvh w-[min(20rem,85vw)] max-w-none border-0 bg-surface p-0 shadow-ws-dialog backdrop:bg-backdrop lg:hidden"
       >
         <div className="flex h-full flex-col overflow-y-auto p-4">
           <div className="mb-4 flex items-center justify-between">
@@ -535,7 +550,7 @@ export function DashboardShell({
               type="button"
               aria-label="Close navigation"
               onClick={closeDrawer}
-              className="flex size-11 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-50 hover:text-ink"
+              className="flex size-10 items-center justify-center rounded-ws-control text-subtle transition-colors hover:bg-canvas hover:text-ink"
             >
               <DashboardIcon name="close" className="size-5" />
             </button>
@@ -548,8 +563,12 @@ export function DashboardShell({
             onNavigate={closeDrawer}
           />
           <div className="mt-auto border-t border-line px-3 pt-4">
-            <p className="truncate text-sm font-medium text-ink">{fullName}</p>
-            <p className="truncate text-xs text-subtle">{user.email}</p>
+            <p className="truncate text-[length:var(--text-ws-label)] font-medium text-ink">
+              {fullName}
+            </p>
+            <p className="truncate text-[length:var(--text-ws-caption)] text-caption">
+              {user.email}
+            </p>
           </div>
         </div>
       </dialog>

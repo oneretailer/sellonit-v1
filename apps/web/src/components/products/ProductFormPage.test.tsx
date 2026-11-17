@@ -31,9 +31,9 @@ function savedProduct(overrides: Partial<Product> = {}): Product {
     name: 'Cotton polo shirt',
     description: '',
     category: 'tops',
-    sku: 'POLO-CTN-001',
-    wholesalePrice: 250000,
-    stockQuantity: 25,
+    sku: 'SF-PS-022',
+    wholesalePrice: 750000,
+    stockQuantity: 60,
     status: 'draft',
     images: [],
     createdAt: '2026-10-26T00:00:00.000Z',
@@ -56,12 +56,29 @@ afterEach(() => {
 async function fillRequired(userEventSession: ReturnType<typeof userEvent.setup>) {
   await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
   await userEventSession.selectOptions(screen.getByLabelText(/Category/), 'tops');
-  await userEventSession.type(screen.getByLabelText(/^SKU/), 'POLO-CTN-001');
-  await userEventSession.type(screen.getByLabelText(/Wholesale price/), '2500');
-  await userEventSession.type(screen.getByLabelText(/Stock quantity/), '25');
+  await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
+  await userEventSession.type(screen.getByLabelText(/Wholesale price/), '7500');
+  await userEventSession.type(screen.getByLabelText(/Stock quantity/), '60');
 }
 
 describe('add product form', () => {
+  it('updates the sticky Preview card live as fields are typed', async () => {
+    const userEventSession = userEvent.setup();
+    renderProducts(<ProductFormPage />);
+
+    // Empty preview defaults
+    expect(screen.getByText('No photo yet')).toBeTruthy();
+    expect(screen.getByText('₦ –')).toBeTruthy();
+    expect(screen.getByText('– in stock')).toBeTruthy();
+    expect(screen.getByText('Category · SKU')).toBeTruthy();
+    expect(screen.getByText('Draft')).toBeTruthy();
+
+    await fillRequired(userEventSession);
+    expect(screen.getByText('Tops · SF-PS-022')).toBeTruthy();
+    expect(screen.getByText('₦7,500')).toBeTruthy();
+    expect(screen.getByText('60 in stock')).toBeTruthy();
+  });
+
   it('blocks publish with the alert, exact field errors and focus on the first invalid field', async () => {
     const userEventSession = userEvent.setup();
     const create = vi.spyOn(productsApi, 'create');
@@ -94,18 +111,19 @@ describe('add product form', () => {
     expect(screen.getByText('Fix the 5 highlighted fields and try again.')).toBeTruthy();
   });
 
-  it('saves a name-only draft, shows the toast and redirects (assumption D)', async () => {
+  it('saves a partial draft (even without name), shows the Draft saved toast, and redirects', async () => {
     const userEventSession = userEvent.setup();
     const create = vi
       .spyOn(productsApi, 'create')
-      .mockResolvedValue(savedProduct({ name: 'Half entered' }));
+      .mockResolvedValue(savedProduct({ name: 'Untitled product' }));
     renderProducts(<ProductFormPage />);
-    await userEventSession.type(screen.getByLabelText(/Product name/), 'Half entered');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
     await userEventSession.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() =>
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'Half entered',
+          name: 'Untitled product',
+          sku: 'SF-PS-022',
           wholesalePrice: 0,
           stockQuantity: 0,
           imageIds: [],
@@ -113,7 +131,8 @@ describe('add product form', () => {
       ),
     );
     await waitFor(() => expect(navMocks.push).toHaveBeenCalledWith('/dashboard/products'));
-    expect(await screen.findByText('Draft saved.')).toBeTruthy();
+    expect(await screen.findByText('Draft saved')).toBeTruthy();
+    expect(screen.getByText('Untitled product is saved as a draft.')).toBeTruthy();
   });
 
   it('asks to confirm publish, then creates + publishes and shows the success dialog', async () => {
@@ -133,29 +152,27 @@ describe('add product form', () => {
     await waitFor(() => expect(screen.getByText('Main photo')).toBeTruthy());
     await userEventSession.click(screen.getByRole('button', { name: 'Publish product' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Publish this product?')).toBeTruthy();
+    expect(within(dialog).getByText('Confirm publish')).toBeTruthy();
     expect(
       within(dialog).getByText(/"Cotton polo shirt" will be visible to retailers/),
     ).toBeTruthy();
     expect(create).not.toHaveBeenCalled();
-    // Initial focus is the safe action.
-    expect(document.activeElement).toBe(
-      within(dialog).getByRole('button', { name: 'Review again' }),
-    );
-    await userEventSession.click(within(dialog).getByRole('button', { name: 'Publish product' }));
+    // Initial focus is the safe Cancel action.
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await userEventSession.click(within(dialog).getByRole('button', { name: 'Publish' }));
     await waitFor(() =>
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Cotton polo shirt',
-          wholesalePrice: 250000,
-          stockQuantity: 25,
+          wholesalePrice: 750000,
+          stockQuantity: 60,
           imageIds: ['img-1'],
         }),
       ),
     );
     await waitFor(() => expect(publish).toHaveBeenCalledWith('prod-1'));
     const success = await screen.findByRole('dialog');
-    expect(within(success).getByText('Product published')).toBeTruthy();
+    expect(within(success).getByRole('heading', { name: 'Product published' })).toBeTruthy();
     await userEventSession.click(within(success).getByRole('button', { name: 'Back to products' }));
     expect(navMocks.push).toHaveBeenCalledWith('/dashboard/products');
   });
@@ -169,7 +186,7 @@ describe('add product form', () => {
     );
     renderProducts(<ProductFormPage />);
     await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
-    await userEventSession.type(screen.getByLabelText(/^SKU/), 'POLO-CTN-001');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
     await userEventSession.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() =>
       expect(screen.getAllByText('A product with this SKU already exists.').length).toBeGreaterThan(

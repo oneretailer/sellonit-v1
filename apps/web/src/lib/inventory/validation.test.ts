@@ -4,6 +4,7 @@ import {
   QUANTITY_MAX_ERROR,
   QUANTITY_NUMERIC_ERROR,
   formatProposedChange,
+  parseInventoryCsv,
   validateStockAdjustment,
 } from './validation';
 
@@ -67,7 +68,8 @@ describe('formatProposedChange', () => {
     ).toEqual({
       valid: true,
       headline: 'Proposed change: +12 units',
-      detail: 'Increase stock for Linen shirt by 12 units. Availability refreshes after the update.',
+      detail:
+        'Increase stock for Linen shirt by 12 units. Availability refreshes after the update.',
     });
 
     expect(
@@ -84,7 +86,7 @@ describe('formatProposedChange', () => {
     });
   });
 
-  it('formats plural and singular decreases with a true minus sign', () => {
+  it('formats plural and singular decreases', () => {
     expect(
       formatProposedChange({
         direction: 'decrease',
@@ -94,7 +96,7 @@ describe('formatProposedChange', () => {
       }),
     ).toEqual({
       valid: true,
-      headline: 'Proposed change: −2 units',
+      headline: 'Proposed change: -2 units',
       detail: 'Decrease stock for Linen shirt by 2 units. Availability refreshes after the update.',
     });
 
@@ -107,12 +109,12 @@ describe('formatProposedChange', () => {
       }),
     ).toEqual({
       valid: true,
-      headline: 'Proposed change: −1 unit',
+      headline: 'Proposed change: -1 unit',
       detail: 'Decrease stock for Linen shirt by 1 unit. Availability refreshes after the update.',
     });
   });
 
-  it('shows the neutral prompt when empty or invalid (including exceeding decrease cap)', () => {
+  it('distinguishes empty quantity from invalid quantity in the proposed change box', () => {
     expect(
       formatProposedChange({
         direction: 'increase',
@@ -123,7 +125,7 @@ describe('formatProposedChange', () => {
     ).toEqual({
       valid: false,
       headline: 'Proposed change: —',
-      detail: 'Enter a quantity to review your change.',
+      detail: 'A quantity is required to continue.',
     });
 
     expect(
@@ -138,5 +140,49 @@ describe('formatProposedChange', () => {
       headline: 'Proposed change: —',
       detail: 'Enter a quantity to review your change.',
     });
+  });
+});
+
+describe('parseInventoryCsv', () => {
+  const known = new Map([
+    ['SF-LS-014', 'Linen shirt'],
+    ['SF-CT-001', 'Classic cotton tee'],
+  ]);
+
+  it('parses valid CSV rows with a header', () => {
+    const csv = 'sku,quantity\nSF-LS-014,25\nSF-CT-001,0\n';
+    expect(parseInventoryCsv(csv, known)).toEqual({
+      validRows: [
+        { rowNumber: 2, sku: 'SF-LS-014', productName: 'Linen shirt', availableQuantity: 25 },
+        {
+          rowNumber: 3,
+          sku: 'SF-CT-001',
+          productName: 'Classic cotton tee',
+          availableQuantity: 0,
+        },
+      ],
+      errors: [],
+    });
+  });
+
+  it('flags unknown SKUs, duplicate SKUs, and invalid quantities', () => {
+    const csv = [
+      'sku,available_quantity',
+      'SF-LS-014,10',
+      'SF-LS-014,20',
+      'SF-UNKNOWN,5',
+      'SF-CT-001,abc',
+    ].join('\n');
+    const result = parseInventoryCsv(csv, known);
+    expect(result.validRows).toHaveLength(1);
+    expect(result.errors).toEqual([
+      { rowNumber: 3, sku: 'SF-LS-014', message: 'Duplicate SKU in this CSV file.' },
+      { rowNumber: 4, sku: 'SF-UNKNOWN', message: 'No product matches this SKU.' },
+      {
+        rowNumber: 5,
+        sku: 'SF-CT-001',
+        message: 'Quantity must be a whole number (0 or greater).',
+      },
+    ]);
   });
 });

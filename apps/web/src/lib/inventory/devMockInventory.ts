@@ -7,12 +7,17 @@
  */
 import { ApiError } from '@/lib/api-client';
 import { resolveInventoryStockStatus } from './stock';
+import { parseInventoryCsv } from './validation';
 import type {
+  CsvImportConfirmInput,
+  CsvImportResult,
+  CsvImportValidationResult,
   InventoryItem,
   InventoryListParams,
   InventorySummary,
   Paginated,
   StockAdjustmentInput,
+  ValidateCsvOptions,
 } from './types';
 
 export const SAMPLE_INVENTORY_ITEMS: readonly InventoryItem[] = [
@@ -78,6 +83,7 @@ export function isDevInventoryMockEnabled(): boolean {
 }
 
 const storeByBusiness = new Map<string, InventoryItem[]>();
+let csvImportSeq = 0;
 
 function rowsForBusiness(businessId: string | null): InventoryItem[] {
   const key = businessId ?? '__default__';
@@ -158,5 +164,68 @@ export const devMockInventory = {
     target.availableQuantity = nextAvailable;
     target.stockStatus = resolveInventoryStockStatus(nextAvailable);
     return Promise.resolve({ ...target });
+  },
+
+  validateCsvImport(
+    businessId: string | null,
+    file: File,
+    options: ValidateCsvOptions = {},
+  ): Promise<CsvImportValidationResult> {
+    return new Promise((resolve, reject) => {
+      if (options.signal?.aborted) {
+        reject(new DOMException('Upload cancelled', 'AbortError'));
+        return;
+      }
+      options.onProgress?.(45);
+      const uploadTimer = setTimeout(() => {
+        options.onProgress?.(100);
+        options.onValidating?.();
+        void file
+          .text()
+          .then((text) => {
+            if (options.signal?.aborted) {
+              reject(new DOMException('Upload cancelled', 'AbortError'));
+              return;
+            }
+            const knownBySku = new Map(
+              rowsForBusiness(businessId).map((row) => [row.sku.toUpperCase(), row.name]),
+            );
+            const parsed = parseInventoryCsv(text, knownBySku);
+            csvImportSeq += 1;
+            resolve({
+              importId: `dev-csv-${csvImportSeq}`,
+              validRows: parsed.validRows,
+              errors: parsed.errors,
+            });
+          })
+          .catch(reject);
+      }, 120);
+
+      options.signal?.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(uploadTimer);
+          reject(new DOMException('Upload cancelled', 'AbortError'));
+        },
+        { once: true },
+      );
+    });
+  },
+
+  confirmCsvImport(
+    businessId: string | null,
+    input: CsvImportConfirmInput,
+  ): Promise<CsvImportResult> {
+    const allRows = rowsForBusiness(businessId);
+    let updatedCount = 0;
+    for (const row of input.rows) {
+      const target = allRows.find((item) => item.sku.toUpperCase() === row.sku.toUpperCase());
+      if (target) {
+        target.availableQuantity = row.availableQuantity;
+        target.stockStatus = resolveInventoryStockStatus(row.availableQuantity);
+        updatedCount += 1;
+      }
+    }
+    return Promise.resolve({ updatedCount });
   },
 };

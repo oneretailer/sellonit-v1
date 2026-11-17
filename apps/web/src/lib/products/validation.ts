@@ -1,8 +1,9 @@
 /**
  * Product form validation — pure functions shared by the form and its tests.
- * Publish requires every field (plus ≥1 uploaded photo); a draft only needs a
- * name (ASSUMPTION DRAFT_REQUIRED_FIELDS). Money/stock text is validated here
- * and converted to kobo/integers exactly once when building the payload.
+ * Publish requires every field (plus ≥1 uploaded photo); Save draft allows any
+ * field or uploaded photo to be filled in, defaulting a blank name to
+ * "Untitled product". Money/stock text is validated here and converted to
+ * kobo/integers exactly once when building the payload.
  */
 import { nairaToKobo } from '@/lib/money';
 import { MAX_PRODUCT_IMAGES } from './constants';
@@ -22,6 +23,8 @@ export type ProductFormValues = {
 export type ProductFormIntent = 'draft' | 'publish';
 
 export type ProductFieldErrors = Partial<Record<keyof ProductFormValues | 'images', string>>;
+
+export const DEFAULT_DRAFT_PRODUCT_NAME = 'Untitled product';
 
 export const EMPTY_PRODUCT_VALUES: ProductFormValues = {
   name: '',
@@ -53,6 +56,20 @@ export const PRODUCT_FIELD_ORDER: (keyof ProductFormValues | 'images')[] = [
   'stockQuantity',
 ];
 
+function hasAnyDraftInput(values: ProductFormValues, uploadedImageCount: number): boolean {
+  return (
+    uploadedImageCount > 0 ||
+    Boolean(
+      values.name.trim() ||
+      values.description.trim() ||
+      values.category.trim() ||
+      values.sku.trim() ||
+      values.wholesalePrice.trim() ||
+      values.stockQuantity.trim(),
+    )
+  );
+}
+
 export function validateProduct(
   values: ProductFormValues,
   uploadedImageCount: number,
@@ -65,8 +82,13 @@ export function validateProduct(
   if (uploadedImageCount > MAX_PRODUCT_IMAGES)
     errors.images = `Use at most ${MAX_PRODUCT_IMAGES} photos.`;
 
-  if (!values.name.trim()) errors.name = PRODUCT_ERROR_MESSAGES.name;
-  else if (values.name.trim().length > 200) errors.name = 'Use at most 200 characters.';
+  if (publish && !values.name.trim()) {
+    errors.name = PRODUCT_ERROR_MESSAGES.name;
+  } else if (!publish && !hasAnyDraftInput(values, uploadedImageCount)) {
+    errors.name = PRODUCT_ERROR_MESSAGES.name;
+  } else if (values.name.trim().length > 200) {
+    errors.name = 'Use at most 200 characters.';
+  }
 
   if (values.description.trim().length > 5000) errors.description = 'Use at most 5,000 characters.';
 
@@ -100,8 +122,9 @@ export function validateProduct(
 }
 
 /**
- * Build the API payload. Draft blanks become empty strings / 0 so a partial
- * draft round-trips; publish values are already validated.
+ * Build the API payload. Draft blanks become empty strings / 0 (and blank name
+ * defaults to `DEFAULT_DRAFT_PRODUCT_NAME`) so any partial draft round-trips;
+ * publish values are already validated.
  */
 export function productInputFromValues(
   values: ProductFormValues,
@@ -119,7 +142,7 @@ export function productInputFromValues(
   const stockText = values.stockQuantity.trim();
   const stockQuantity = /^\d+$/.test(stockText) ? Number.parseInt(stockText, 10) : 0;
   return {
-    name: values.name.trim(),
+    name: values.name.trim() || DEFAULT_DRAFT_PRODUCT_NAME,
     description: values.description.trim(),
     category: values.category.trim(),
     sku: values.sku.trim(),
