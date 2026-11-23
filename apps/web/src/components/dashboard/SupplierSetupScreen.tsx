@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/reuseable/Navbar';
-import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { ArrowLeftIcon } from '@/components/reuseable/icons';
 import { useSupplierSetupProgress } from '@/lib/onboarding/supplierSetup';
 
@@ -78,12 +77,12 @@ export function SupplierSetupScreen({
 
             <p className="text-sm font-semibold text-ink">Your supplier setup</p>
 
-            <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-2xl border border-line">
+            <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-ws-card border border-line">
               {steps.map((step) => (
                 <li key={step.id}>
                   <Link
                     href={step.href}
-                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-canvas"
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-canvas focus-visible:bg-primary-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   >
                     <span
                       aria-hidden="true"
@@ -105,7 +104,7 @@ export function SupplierSetupScreen({
             {allComplete ? (
               <div
                 role="status"
-                className="flex items-center gap-3 rounded-2xl border border-status-published-fg/30 bg-status-published-bg px-4 py-3 text-status-published-fg"
+                className="flex items-center gap-3 rounded-ws-card border border-status-published-fg/30 bg-status-published-bg px-4 py-3 text-status-published-fg"
               >
                 <SuccessIcon />
                 <p className="text-sm font-semibold text-ink">
@@ -114,20 +113,20 @@ export function SupplierSetupScreen({
               </div>
             ) : null}
 
-            <PrimaryButton
-              shape="rounded"
-              className="md:h-14 md:font-bold"
+            <button
+              type="button"
               onClick={() => {
                 if (nextStep) router.push(nextStep.href);
                 else router.push('/dashboard/overview');
               }}
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-ws-control bg-primary px-6 text-[length:var(--text-ws-body)] font-semibold text-on-primary transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:h-14 md:font-bold"
             >
               {allComplete ? 'Go to dashboard' : 'Complete setup'}
-            </PrimaryButton>
+            </button>
 
             <Link
               href="/dashboard/overview"
-              className="inline-flex min-h-11 items-center justify-center gap-2 self-center px-4 text-base font-medium text-ink hover:text-subtle"
+              className="inline-flex min-h-11 items-center justify-center gap-2 self-center rounded-ws-control px-4 text-base font-medium text-ink hover:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <ArrowLeftIcon />
               Back
@@ -136,7 +135,7 @@ export function SupplierSetupScreen({
 
           <Link
             href="/dashboard/overview"
-            className="order-first self-end rounded-ws-pill bg-status-draft-bg px-5 py-2 text-sm font-medium text-subtle transition-colors hover:text-ink md:order-none md:self-start"
+            className="order-first self-end rounded-ws-pill bg-status-draft-bg px-5 py-2 text-sm font-medium text-subtle transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 md:order-none md:self-start"
           >
             skip
           </Link>
