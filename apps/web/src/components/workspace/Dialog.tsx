@@ -2,26 +2,22 @@
 
 /**
  * Shared modal base for every workspace overlay (confirmations, success,
- * discard, switch-business, adjust-stock). Built on the native <dialog> top
- * layer already used by the app: focus containment, Escape handling, focus
+ * discard, switch-business, adjust-stock, CSV import, product details). Built
+ * on the native <dialog> top layer: focus containment, Escape handling, focus
  * restoration, and scroll lock.
- *
- * Panel: white, 1px border, 24px radius, fluid width up to 460px (or 540px for
- * form dialogs), centered (or bottom-anchored below sm when sheetOnMobile is
- * enabled), hugging height; scrolls inside the overlay on short viewports.
  */
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { DashboardIcon } from '@/components/dashboard/icons';
 
 export type DialogTone = 'warning' | 'info' | 'success' | 'danger';
-export type DialogSize = 'md' | 'lg';
+export type DialogSize = 'md' | 'lg' | 'xl' | '2xl';
 
 const toneStyles: Record<DialogTone, string> = {
-  warning: 'bg-orange-50 text-primary',
-  info: 'bg-orange-50 text-primary',
-  success: 'bg-green-50 text-success',
-  danger: 'bg-red-50 text-danger',
+  warning: 'bg-primary-tint text-primary',
+  info: 'bg-primary-tint text-primary',
+  success: 'bg-success-tint text-success',
+  danger: 'bg-danger-tint text-danger',
 };
 
 const toneIcons: Record<DialogTone, 'alert' | 'info' | 'check-circle'> = {
@@ -29,6 +25,13 @@ const toneIcons: Record<DialogTone, 'alert' | 'info' | 'check-circle'> = {
   info: 'info',
   success: 'check-circle',
   danger: 'alert',
+};
+
+const sizeClasses: Record<DialogSize, string> = {
+  md: 'max-w-[460px]',
+  lg: 'max-w-[520px]',
+  xl: 'max-w-[560px]',
+  '2xl': 'max-w-[880px]',
 };
 
 const FOCUSABLE_SELECTOR =
@@ -53,7 +56,7 @@ export function Dialog({
 }: {
   open: boolean;
   title: string;
-  description: string;
+  description?: string;
   tone?: DialogTone;
   size?: DialogSize;
   /** Anchor toward the bottom of the screen below `sm` while staying centered from `sm` up. */
@@ -68,8 +71,8 @@ export function Dialog({
   /** Defaults to a line icon matching the tone. Marked decorative. */
   icon?: ReactNode;
   children?: ReactNode;
-  /** Action row: secondary (outlined, safe) first, primary (solid) second. */
-  actions: ReactNode;
+  /** Action row: secondary (outlined, safe) first, primary (solid) second. Optional when custom layout handles actions. */
+  actions?: ReactNode;
   /** Safe/cancel action (Escape + backdrop click). */
   onClose: () => void;
   /** Disable Escape/backdrop/close-button while a request is in flight. */
@@ -179,14 +182,13 @@ export function Dialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby={`${id}-title`}
-      aria-describedby={`${id}-description`}
+      aria-describedby={description ? `${id}-description` : undefined}
       onCancel={(event) => {
         event.preventDefault();
         if (!closeLocked) onClose();
       }}
       onClick={(event) => {
         // Backdrop clicks target the dialog itself but land outside its box.
-        // Padding clicks inside the panel must NOT close it.
         if (event.target !== ref.current || closeLocked) return;
         const rect = ref.current.getBoundingClientRect();
         const outside =
@@ -197,9 +199,9 @@ export function Dialog({
         if (outside) onClose();
       }}
       className={cn(
-        'mx-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-3xl border border-line bg-white p-6 text-left text-ink shadow-xl backdrop:bg-black/60 sm:p-8',
+        'mx-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-ws-dialog border border-line bg-surface p-6 text-left text-ink shadow-ws-dialog backdrop:bg-backdrop sm:p-8',
         sheetOnMobile ? 'mb-4 mt-auto sm:my-auto' : 'my-auto',
-        size === 'lg' ? 'max-w-[540px]' : 'max-w-[460px]',
+        sizeClasses[size],
       )}
     >
       <div className="flex flex-col gap-6">
@@ -220,7 +222,7 @@ export function Dialog({
                 aria-label={closeLabel}
                 disabled={closeLocked}
                 onClick={onClose}
-                className="flex size-9 shrink-0 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex size-9 shrink-0 items-center justify-center rounded-ws-control text-subtle transition-colors hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <DashboardIcon name="close" className="size-5" />
               </button>
@@ -228,13 +230,21 @@ export function Dialog({
           </div>
         ) : null}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-2">
-            <h2 id={`${id}-title`} className="font-heading text-xl font-semibold text-ink">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <h2
+              id={`${id}-title`}
+              className="font-heading text-[length:var(--text-ws-modal-title)] font-semibold text-ink"
+            >
               {title}
             </h2>
-            <p id={`${id}-description`} className="text-sm leading-6 text-subtle">
-              {description}
-            </p>
+            {description ? (
+              <p
+                id={`${id}-description`}
+                className="text-[length:var(--text-ws-body)] leading-6 text-subtle"
+              >
+                {description}
+              </p>
+            ) : null}
           </div>
           {hideIcon && showCloseButton ? (
             <button
@@ -242,14 +252,14 @@ export function Dialog({
               aria-label={closeLabel}
               disabled={closeLocked}
               onClick={onClose}
-              className="-mr-1 -mt-1 flex size-10 shrink-0 items-center justify-center rounded-xl text-subtle transition-colors hover:bg-gray-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+              className="-mr-1 -mt-1 flex size-9 shrink-0 items-center justify-center rounded-ws-control text-subtle transition-colors hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
             >
               <DashboardIcon name="close" className="size-5" />
             </button>
           ) : null}
         </div>
         {children}
-        <div className="flex flex-col-reverse gap-3 sm:flex-row">{actions}</div>
+        {actions ? <div className="flex flex-col-reverse gap-3 sm:flex-row">{actions}</div> : null}
       </div>
     </dialog>
   );
@@ -258,12 +268,12 @@ export function Dialog({
 /** Equal-width dialog buttons. Secondary outlined; primary solid orange.
  * Below sm they stack with the primary on top (flex-col-reverse). */
 export const dialogButtonClass =
-  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors sm:w-1/2';
+  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-ws-control px-5 text-[length:var(--text-ws-body)] font-semibold transition-colors sm:w-1/2';
 export const dialogSecondaryClass = cn(
   dialogButtonClass,
-  'border border-primary bg-white text-ink hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60',
+  'border border-line bg-surface text-ink hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60',
 );
 export const dialogPrimaryClass = cn(
   dialogButtonClass,
-  'bg-primary text-ink hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-primary-disabled disabled:text-subtle',
+  'bg-primary text-on-primary hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-primary-disabled disabled:text-on-primary',
 );

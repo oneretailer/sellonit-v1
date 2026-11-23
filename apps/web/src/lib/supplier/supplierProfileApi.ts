@@ -38,6 +38,9 @@ export type SupplierProfileRecord = {
   submittedAt?: string | null;
   reviewedAt?: string | null;
   reviewedByUserId?: string | null;
+  /** Optional moderation reason when exposed by the backend on rejected/suspended profiles. */
+  rejectionReason?: string | null;
+  latestReviewReason?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };

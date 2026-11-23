@@ -13,31 +13,59 @@
 @import '@fontsource-variable/outfit';
 
 @theme {
-  /* Self-hosted local font assets avoid runtime/build-time Google Fonts access. */
+  /* Self-hosted local font assets avoid runtime/build-time Google Fonts access.
+   * Outfit is assigned to page titles, modal titles, and big stat numbers;
+   * Poppins is used for everything else. */
   --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
 
-  /* Colour tokens — semantic names so they do not shadow Tailwind's default
-     gray/orange palettes. */
-  --color-canvas: #f3f4f6; /* page background (Gray/50) */
-  --color-surface: #ffffff; /* card background */
-  --color-line: #e5e7eb; /* card border (Gray/100) */
-  --color-subtle: #4b5563; /* secondary text and nav links (Gray/500) */
-  --color-ink: #030712; /* Gray/900 from auth design */
-  --color-primary: #ff8a00; /* orange buttons */
-  --color-primary-hover: #e67c00;
-  --color-primary-disabled: #ffe9cc; /* pale orange disabled button */
-  --color-danger: #de350b;
-  --color-success: #00875a;
+  /* Colour tokens — semantic names from Figma so no component hard-codes hex. */
+  --color-canvas: #f5f5f5; /* page background (Figma grey/50) */
+  --color-surface: #ffffff; /* card & shell surface (Figma Base/White) */
+  --color-line: #e5e5e5; /* light grey border */
+  --color-ink: #111111; /* text primary near-black */
+  --color-subtle: #6b6b6b; /* text secondary grey */
+  --color-caption: #8a8a8a; /* helper / caption grey */
 
-  /* Shape and elevation */
+  --color-primary: #f58220; /* primary orange */
+  --color-primary-hover: #df7116; /* primary orange hover */
+  --color-primary-disabled: rgb(245 130 32 / 0.4); /* primary orange at ~40% opacity */
+  --color-primary-tint: #fff4e8; /* pale orange/cream tint (radio card, active nav, setup card) */
+  --color-primary-border: #f8cfa6; /* thin orange-tinted setup card border */
+  --color-on-primary: #ffffff; /* label colour on solid primary buttons */
+
+  --color-success: #1e8e4e; /* Published chip text & success check */
+  --color-success-tint: #e8f6ee; /* Published chip & success tint */
+  --color-draft: #555555; /* Draft chip text */
+  --color-draft-tint: #f0f0f0; /* Draft chip tint */
+  --color-danger: #d92d20; /* error red text & input border */
+  --color-danger-tint: #fef3f2; /* error banner & out-of-stock tint */
+  --color-backdrop: rgb(0 0 0 / 0.6); /* modal dimmed backdrop */
+
+  /* Legacy auth shape and elevation (kept intact for AuthCard / PrimaryButton) */
   --radius-card: 36px;
   --radius-button: 16px;
   --shadow-card: 0 4px 16px rgb(0 0 0 / 0.06);
 
-  /* Layout widths (used by max-w-page / max-w-card utilities) */
+  /* Workspace shape, elevation, layout & typography tokens */
+  --radius-ws-card: 12px;
+  --radius-ws-control: 8px;
+  --radius-ws-dialog: 24px;
+  --shadow-ws-card: 0 1px 2px rgb(17 17 17 / 0.04);
+  --shadow-ws-dialog: 0 24px 48px -12px rgb(17 17 17 / 0.18);
+  --shadow-ws-toast: 0 10px 28px -4px rgb(17 17 17 / 0.12);
+
+  --spacing-sidebar: 250px;
+  --container-ws-canvas: 1440px;
   --container-page: 1200px;
   --container-card: 632px;
+
+  --text-ws-page-title: 1.625rem;
+  --text-ws-modal-title: 1.1875rem;
+  --text-ws-stat: 1.875rem;
+  --text-ws-body: 0.875rem;
+  --text-ws-label: 0.8125rem;
+  --text-ws-caption: 0.75rem;
 }
 
 @layer utilities {

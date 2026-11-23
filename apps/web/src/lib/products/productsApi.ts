@@ -20,6 +20,7 @@
  */
 import { API_BASE_PATH, ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, apiFetch } from '@/lib/api-client';
 import { ACTIVE_BUSINESS_HEADER, getActiveBusinessId } from '@/lib/business/activeBusiness';
+import { devMockProducts, isDevProductsMockEnabled } from './devMockProducts';
 import type {
   Paginated,
   Product,
@@ -66,6 +67,9 @@ function normalizeProduct(raw: Product): Product {
 
 export const productsApi = {
   async list(params: ProductListParams, signal?: AbortSignal): Promise<Paginated<Product>> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.list(getActiveBusinessId(), params);
+    }
     const response = await apiFetch<Paginated<Product>>(
       `/supplier/products${queryString(params)}`,
       {
@@ -80,6 +84,9 @@ export const productsApi = {
   },
 
   summary(signal?: AbortSignal): Promise<ProductSummary> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.summary(getActiveBusinessId());
+    }
     const query = withBusinessQuery(new URLSearchParams());
     return apiFetch<{ data: ProductSummary }>(`/supplier/products/summary${query}`, {
       method: 'GET',
@@ -88,6 +95,9 @@ export const productsApi = {
   },
 
   get(id: string, signal?: AbortSignal): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.get(getActiveBusinessId(), id);
+    }
     const query = withBusinessQuery(new URLSearchParams());
     return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}${query}`, {
       method: 'GET',
@@ -96,6 +106,9 @@ export const productsApi = {
   },
 
   create(input: ProductInput): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.create(getActiveBusinessId(), input);
+    }
     const businessId = getActiveBusinessId();
     return apiFetch<{ data: Product }>('/supplier/products', {
       method: 'POST',
@@ -104,6 +117,9 @@ export const productsApi = {
   },
 
   update(id: string, input: Partial<ProductInput>): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.update(getActiveBusinessId(), id, input);
+    }
     const businessId = getActiveBusinessId();
     return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -112,6 +128,9 @@ export const productsApi = {
   },
 
   async remove(id: string): Promise<void> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.remove(getActiveBusinessId(), id);
+    }
     const query = withBusinessQuery(new URLSearchParams());
     await apiFetch<null>(`/supplier/products/${encodeURIComponent(id)}${query}`, {
       method: 'DELETE',
@@ -119,6 +138,9 @@ export const productsApi = {
   },
 
   publish(id: string): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.setPublished(getActiveBusinessId(), id, true);
+    }
     const businessId = getActiveBusinessId();
     return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}/publish`, {
       method: 'POST',
@@ -127,6 +149,9 @@ export const productsApi = {
   },
 
   unpublish(id: string): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.setPublished(getActiveBusinessId(), id, false);
+    }
     const businessId = getActiveBusinessId();
     return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}/unpublish`, {
       method: 'POST',
@@ -135,6 +160,9 @@ export const productsApi = {
   },
 
   getCategories(signal?: AbortSignal): Promise<ProductCategory[]> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.categories();
+    }
     const query = withBusinessQuery(new URLSearchParams());
     return apiFetch<{ data: ProductCategory[] }>(`/supplier/categories${query}`, {
       method: 'GET',
@@ -148,6 +176,9 @@ export const productsApi = {
    * failures are swallowed by callers so discarding never blocks on cleanup.
    */
   async deleteImage(id: string): Promise<void> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.deleteImage(id);
+    }
     await apiFetch<null>(`/supplier/uploads/product-images/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
@@ -158,6 +189,9 @@ export const productsApi = {
    * fetch upload progress is not broadly supported. Resolves with the stored image.
    */
   uploadImage(file: File, options: UploadImageOptions = {}): Promise<UploadedImage> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.uploadImage(file, options);
+    }
     return new Promise<UploadedImage>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${API_BASE_PATH}/supplier/uploads/product-images`);

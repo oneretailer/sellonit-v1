@@ -17,9 +17,9 @@ import { InlineError } from '@/components/reuseable/InlineError';
 import { DashboardIcon } from '@/components/dashboard/icons';
 
 const controlBase =
-  'min-h-11 w-full rounded-xl border bg-white px-4 text-sm text-ink outline-none transition-colors placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-canvas disabled:text-gray-500';
+  'min-h-11 w-full rounded-ws-control border bg-surface px-3.5 text-[length:var(--text-ws-body)] text-ink outline-none transition-colors placeholder:text-caption focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-canvas disabled:text-subtle';
 const bareInput =
-  'min-h-11 w-full min-w-0 flex-1 bg-transparent px-4 text-sm text-ink outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:text-gray-500';
+  'min-h-11 w-full min-w-0 flex-1 bg-transparent px-3 text-[length:var(--text-ws-body)] text-ink outline-none placeholder:text-caption disabled:cursor-not-allowed disabled:text-subtle';
 
 export function fieldBorder(hasError: boolean): string {
   return hasError ? 'border-danger focus:border-danger focus:ring-danger/15' : 'border-line';
@@ -46,8 +46,14 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={cn('flex min-w-0 flex-col gap-2', className)}>
-      <label htmlFor={id} className={cn('text-sm font-medium text-ink', hideLabel && 'sr-only')}>
+    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
+      <label
+        htmlFor={id}
+        className={cn(
+          'text-[length:var(--text-ws-label)] font-medium text-ink',
+          hideLabel && 'sr-only',
+        )}
+      >
         {label}
         {required ? (
           <span aria-hidden="true" className="ml-0.5 text-danger">
@@ -58,9 +64,14 @@ export function Field({
       </label>
       {children}
       {error ? (
-        <InlineError id={`${id}-error`}>{error}</InlineError>
+        <InlineError id={`${id}-error`} className="text-[length:var(--text-ws-caption)]">
+          {error}
+        </InlineError>
       ) : helper ? (
-        <p id={`${id}-helper`} className="text-xs leading-5 text-subtle">
+        <p
+          id={`${id}-helper`}
+          className="text-[length:var(--text-ws-caption)] leading-5 text-caption"
+        >
           {helper}
         </p>
       ) : null}
@@ -111,14 +122,17 @@ export function Input({
       {prefix ? (
         <div
           className={cn(
-            'flex items-center rounded-xl border bg-white transition-colors focus-within:ring-4',
+            'flex items-center rounded-ws-control border bg-surface transition-colors focus-within:ring-2',
             error
               ? 'border-danger focus-within:border-danger focus-within:ring-danger/15'
-              : 'border-line focus-within:border-primary focus-within:ring-primary/15',
+              : 'border-line focus-within:border-primary focus-within:ring-primary/20',
             rest.disabled && 'bg-canvas',
           )}
         >
-          <span aria-hidden="true" className="pl-4 text-sm font-medium text-subtle">
+          <span
+            aria-hidden="true"
+            className="pl-3.5 text-[length:var(--text-ws-body)] font-medium text-subtle"
+          >
             {prefix}
           </span>
           {input}
@@ -213,7 +227,7 @@ export function Select({
           aria-required={required || undefined}
           className={cn(
             controlBase,
-            'appearance-none pr-10',
+            'appearance-none pr-9',
             fieldBorder(Boolean(error)),
             className,
           )}

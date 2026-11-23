@@ -22,6 +22,8 @@ export type SwitcherBusiness = {
   id: string;
   name: string;
   slug?: string;
+  email?: string | null;
+  phone?: string | null;
   type: BusinessType;
   status: BusinessStatus;
   role: BusinessMembershipRole;
@@ -37,6 +39,8 @@ type ApiBusiness = {
   id: string;
   name: string;
   slug?: string;
+  email?: string | null;
+  phone?: string | null;
   type: string;
   status?: string;
   role?: string;
@@ -85,6 +89,8 @@ export async function listBusinesses(
       id: business.id,
       name: business.name,
       ...(business.slug ? { slug: business.slug } : {}),
+      ...(business.email !== undefined ? { email: business.email } : {}),
+      ...(business.phone !== undefined ? { phone: business.phone } : {}),
       type: normalizeType(business.type),
       status: normalizeStatus(business.status),
       role: normalizeRole(membership?.role ?? business.role),

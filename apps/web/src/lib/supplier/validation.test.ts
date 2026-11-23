@@ -16,9 +16,13 @@ function validValues(
     description: 'Wholesale supplier of packaged foods and beverages across Lagos.',
     retailerAccess: 'APPROVAL_REQUIRED',
     addressLine1: '14 Wharf Road, Apapa',
+    addressLine2: '',
+    area: '',
     city: 'Lagos',
     state: 'Lagos',
     country: 'NG',
+    dispatchRecipientName: '',
+    dispatchPhone: '',
     ...overrides,
   };
 }
@@ -81,6 +85,20 @@ describe('supplier profile strict validation & state guards', () => {
     expect(errors.country).toBe('Enter a 2-letter ISO country code (for example, NG).');
   });
 
+  it('validates optional dispatch contact name and phone when provided', () => {
+    const errors = validateSupplierProfile(
+      validValues({
+        dispatchRecipientName: 'X',
+        dispatchPhone: '999',
+      }),
+      'save',
+    );
+    expect(errors.dispatchRecipientName).toBe(
+      'Dispatch contact name must be at least 2 characters.',
+    );
+    expect(errors.dispatchPhone).toBe('Enter a valid Nigerian phone number for dispatch.');
+  });
+
   it('strictly requires phone, description (>=10 chars), and complete dispatch address on submit', () => {
     const errors = validateSupplierProfile(
       validValues({
@@ -103,9 +121,17 @@ describe('supplier profile strict validation & state guards', () => {
     });
   });
 
-  it('normalizes Nigerian phone numbers and uppercase ISO country codes in payload', () => {
+  it('normalizes phone/country and preserves addressLine2, area, dispatch overrides, and existing coordinates', () => {
     const payload = toSupplierProfilePayload(
-      validValues({ contactPhone: '+234 803 123 4567', country: 'ng' }),
+      validValues({
+        contactPhone: '+234 803 123 4567',
+        addressLine2: 'Warehouse 4',
+        area: 'Apapa',
+        country: 'ng',
+        dispatchRecipientName: 'Chidi Warehouse Lead',
+        dispatchPhone: '0809 000 1111',
+      }),
+      { latitude: 6.4488, longitude: 3.359 },
     );
     expect(payload).toEqual({
       legalName: 'Lagos Prime Wholesale Ltd',
@@ -113,9 +139,13 @@ describe('supplier profile strict validation & state guards', () => {
       description: 'Wholesale supplier of packaged foods and beverages across Lagos.',
       retailerAccess: 'APPROVAL_REQUIRED',
       originLocation: {
-        recipientName: 'Lagos Prime Wholesale Ltd',
-        phone: '08031234567',
+        latitude: 6.4488,
+        longitude: 3.359,
+        recipientName: 'Chidi Warehouse Lead',
+        phone: '08090001111',
         addressLine1: '14 Wharf Road, Apapa',
+        addressLine2: 'Warehouse 4',
+        area: 'Apapa',
         city: 'Lagos',
         state: 'Lagos',
         country: 'NG',

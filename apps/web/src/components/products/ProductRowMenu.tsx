@@ -71,16 +71,16 @@ export function ProductRowMenu({
         aria-label={`More actions for ${product.name}`}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
-        className="flex size-9 items-center justify-center rounded-lg text-subtle transition-colors hover:bg-gray-50 hover:text-ink disabled:opacity-50"
+        className="flex size-8 items-center justify-center rounded-ws-control text-subtle transition-colors hover:bg-canvas hover:text-ink disabled:opacity-50"
       >
-        <DashboardIcon name="dots" className="size-5" />
+        <DashboardIcon name="dots" className="size-4" />
       </button>
       {open ? (
         <div
           ref={menuRef}
           role="menu"
           aria-label={`Actions for ${product.name}`}
-          className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border border-line bg-white p-1 shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1 w-44 rounded-ws-card border border-line bg-surface p-1 shadow-ws-toast"
         >
           <button
             type="button"
@@ -89,7 +89,7 @@ export function ProductRowMenu({
               close();
               onTogglePublish(product);
             }}
-            className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-ink transition-colors hover:bg-gray-50"
+            className="flex min-h-9 w-full items-center gap-2 rounded-ws-control px-3 text-left text-[length:var(--text-ws-body)] text-ink transition-colors hover:bg-canvas"
           >
             <DashboardIcon
               name={product.status === 'published' ? 'box' : 'check-circle'}
@@ -104,7 +104,7 @@ export function ProductRowMenu({
               close(false);
               onDelete(product);
             }}
-            className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-danger transition-colors hover:bg-red-50"
+            className="flex min-h-9 w-full items-center gap-2 rounded-ws-control px-3 text-left text-[length:var(--text-ws-body)] text-danger transition-colors hover:bg-danger-tint"
           >
             <DashboardIcon name="trash" className="size-4" />
             Delete

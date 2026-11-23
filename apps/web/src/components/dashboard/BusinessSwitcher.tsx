@@ -111,9 +111,8 @@ export function BusinessSwitcher() {
         aria-expanded={switcherOpen}
         aria-label={`Switch business, current: ${name}`}
         onClick={() => setSwitcherOpen(!switcherOpen)}
-        className="flex min-h-11 max-w-full items-center gap-2 rounded-full border border-line bg-white px-3 text-sm font-medium text-ink transition-colors hover:border-primary/60 sm:px-4"
+        className="flex min-h-9 max-w-full items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-[length:var(--text-ws-label)] font-medium text-ink transition-colors hover:border-primary/60"
       >
-        <DashboardIcon name="business" className="size-4 shrink-0 text-subtle" />
         <span className="hidden max-w-28 truncate min-[420px]:inline sm:max-w-48">{name}</span>
         <DashboardIcon
           name="chevron-down"
@@ -128,7 +127,7 @@ export function BusinessSwitcher() {
         <>
           {/* Backdrop only for the small-screen bottom sheet. */}
           <div
-            className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+            className="fixed inset-0 z-40 bg-backdrop sm:hidden"
             role="presentation"
             onMouseDown={() => {
               setSwitcherOpen(false);
@@ -139,14 +138,18 @@ export function BusinessSwitcher() {
             ref={menuRef}
             role="menu"
             aria-label="Your businesses"
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-3xl border border-line bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:bottom-auto sm:z-50 sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl sm:p-2 sm:pb-2"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-ws-dialog border border-line bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-ws-dialog sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:bottom-auto sm:z-50 sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)] sm:rounded-ws-card sm:p-2 sm:pb-2"
           >
-            <p className="px-2 py-2 text-xs font-medium text-subtle">Your businesses</p>
+            <p className="px-2 py-2 text-[length:var(--text-ws-caption)] font-medium text-caption">
+              Your businesses
+            </p>
             <div
               className={cn('flex flex-col', businesses.length > 6 && 'max-h-80 overflow-y-auto')}
             >
               {businesses.length === 0 ? (
-                <p className="px-2 py-3 text-sm text-subtle">No businesses yet.</p>
+                <p className="px-2 py-3 text-[length:var(--text-ws-body)] text-subtle">
+                  No businesses yet.
+                </p>
               ) : (
                 businesses.map((business) => {
                   const active = business.id === activeBusiness?.id;
@@ -158,21 +161,21 @@ export function BusinessSwitcher() {
                       aria-current={active ? 'true' : undefined}
                       onClick={() => select(business.id)}
                       className={cn(
-                        'flex min-h-12 items-center gap-3 rounded-xl px-2 text-left transition-colors hover:bg-orange-50',
-                        active && 'bg-orange-50/60',
+                        'flex min-h-12 items-center gap-3 rounded-ws-control px-2 text-left transition-colors hover:bg-primary-tint',
+                        active && 'bg-primary-tint',
                       )}
                     >
                       <span
                         aria-hidden="true"
-                        className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-canvas text-subtle"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-ws-control bg-canvas text-subtle"
                       >
                         <DashboardIcon name="business" className="size-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-ink">
+                        <span className="block truncate text-[length:var(--text-ws-body)] font-medium text-ink">
                           {business.name}
                         </span>
-                        <span className="block truncate text-xs text-subtle">
+                        <span className="block truncate text-[length:var(--text-ws-caption)] text-caption">
                           {businessTypeLabel(business.type)} · {businessRoleLabel(business.role)}
                           {businessPlanLabel(business.plan)
                             ? ` · ${businessPlanLabel(business.plan)}`
@@ -195,11 +198,11 @@ export function BusinessSwitcher() {
                 type="button"
                 role="menuitem"
                 onClick={addBusiness}
-                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left text-sm font-medium text-ink transition-colors hover:bg-orange-50"
+                className="flex min-h-11 w-full items-center gap-3 rounded-ws-control px-2 text-left text-[length:var(--text-ws-body)] font-medium text-ink transition-colors hover:bg-primary-tint"
               >
                 <span
                   aria-hidden="true"
-                  className="flex size-9 items-center justify-center rounded-lg bg-orange-50 text-primary"
+                  className="flex size-9 items-center justify-center rounded-ws-control bg-primary-tint text-primary"
                 >
                   <DashboardIcon name="plus" className="size-4" />
                 </span>

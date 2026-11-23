@@ -9,7 +9,8 @@ export type BusinessPermission =
   | 'product:publish'
   | 'product:delete'
   | 'inventory:read'
-  | 'inventory:write';
+  | 'inventory:write'
+  | 'supplier_profile:write';
 
 export type BusinessContextValue = {
   businesses: SwitcherBusiness[];

@@ -48,13 +48,10 @@ function SuccessIcon() {
  *
  * The checklist and the "Complete setup" button read the SAME progress source
  * as the dashboard widget (useSupplierSetupProgress). "Complete setup" jumps to
- * the next incomplete step; when everything is done it shows a success state.
- * "skip" and "← Back" return to the dashboard without losing progress.
+ * the next incomplete step; clicking any row opens that step directly; when
+ * everything is done it shows a success state.
  */
 export function SupplierSetupScreen({
-  // TODO(backend): pass real setup.completedStepIds from the supplier dashboard
-  // endpoint once it reports per-step status. Until then only Business
-  // information is derived locally (from the Create Business draft).
   completedStepIds = [],
 }: {
   completedStepIds?: readonly string[];
@@ -67,11 +64,8 @@ export function SupplierSetupScreen({
     <div className="flex min-h-dvh flex-col bg-canvas">
       <Navbar rightLink={{ label: 'Supplier Set up', variant: 'text' }} />
       <main className="flex flex-1 items-start justify-center px-4 py-8 md:items-center-safe md:px-6 md:py-12">
-        {/* Frame: card + a "skip" pill just outside its top-right on md+ (24px
-            gap). On narrow widths the pill moves above the card so nothing
-            overflows. */}
         <div className="flex w-full max-w-[1140px] flex-col items-center gap-4 md:flex-row md:items-start md:justify-center md:gap-6">
-          <section className="flex w-full max-w-[480px] flex-col gap-5 rounded-card border border-line bg-surface p-6 text-left shadow-lg shadow-Gray/100 md:p-8">
+          <section className="flex w-full max-w-[480px] flex-col gap-5 rounded-card border border-line bg-surface p-6 text-left shadow-ws-card md:p-8">
             <div className="flex flex-col gap-2">
               <h1 className="font-heading text-xl font-bold tracking-tight text-ink md:text-2xl">
                 Set up your supplier business
@@ -86,17 +80,24 @@ export function SupplierSetupScreen({
 
             <ul className="flex flex-col divide-y divide-line overflow-hidden rounded-2xl border border-line">
               {steps.map((step) => (
-                <li key={step.id} className="flex items-center gap-3 px-4 py-3">
-                  <span
-                    aria-hidden="true"
-                    className={`flex size-6 shrink-0 items-center justify-center rounded-full ${
-                      step.complete ? 'bg-primary text-white' : 'border-2 border-line bg-white'
-                    }`}
+                <li key={step.id}>
+                  <Link
+                    href={step.href}
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-canvas"
                   >
-                    {step.complete ? <CheckIcon /> : null}
-                  </span>
-                  <span className="min-w-0 flex-1 text-sm text-ink">{step.label}</span>
-                  <span className="sr-only">{step.complete ? 'completed' : 'not completed'}</span>
+                    <span
+                      aria-hidden="true"
+                      className={`flex size-6 shrink-0 items-center justify-center rounded-full ${
+                        step.complete
+                          ? 'bg-primary text-on-primary'
+                          : 'border-2 border-line bg-surface'
+                      }`}
+                    >
+                      {step.complete ? <CheckIcon /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm text-ink">{step.label}</span>
+                    <span className="sr-only">{step.complete ? 'completed' : 'not completed'}</span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -104,7 +105,7 @@ export function SupplierSetupScreen({
             {allComplete ? (
               <div
                 role="status"
-                className="flex items-center gap-3 rounded-2xl border border-success/30 bg-green-50 px-4 py-3 text-success"
+                className="flex items-center gap-3 rounded-2xl border border-status-published-fg/30 bg-status-published-bg px-4 py-3 text-status-published-fg"
               >
                 <SuccessIcon />
                 <p className="text-sm font-semibold text-ink">
@@ -133,11 +134,9 @@ export function SupplierSetupScreen({
             </Link>
           </section>
 
-          {/* Gray "skip" pill: above the card on small screens, just outside its
-              top-right from md up. Returns to the dashboard, progress intact. */}
           <Link
             href="/dashboard/overview"
-            className="order-first self-end rounded-full bg-gray-200 px-5 py-2 text-sm font-medium text-subtle transition-colors hover:bg-gray-300 hover:text-ink md:order-none md:self-start"
+            className="order-first self-end rounded-ws-pill bg-status-draft-bg px-5 py-2 text-sm font-medium text-subtle transition-colors hover:text-ink md:order-none md:self-start"
           >
             skip
           </Link>

@@ -2,11 +2,7 @@
 
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Spinner } from '@/components/reuseable/Spinner';
-import {
-  Dialog,
-  dialogPrimaryClass,
-  dialogSecondaryClass,
-} from '@/components/workspace/Dialog';
+import { Dialog, dialogPrimaryClass, dialogSecondaryClass } from '@/components/workspace/Dialog';
 import { Input } from '@/components/workspace/Field';
 import { useToast } from '@/components/workspace/ToastProvider';
 import { ApiError } from '@/lib/api-client';
@@ -60,7 +56,13 @@ export function AdjustStockDialog({
     availableQuantity: currentAvailable,
   });
 
-  const quantityError = serverFieldError ?? (touched ? validation.error : null);
+  // Show decrease-below-zero error immediately as typed, or numeric error after blur/submit.
+  const exceedsDecreaseCap =
+    direction === 'decrease' &&
+    /^\d+$/.test(quantityText.trim()) &&
+    Number.parseInt(quantityText.trim(), 10) > currentAvailable;
+  const quantityError =
+    serverFieldError ?? (touched || exceedsDecreaseCap ? validation.error : null);
   const submitting = adjustMutation.isPending;
   const primaryLabel = direction === 'increase' ? 'Increase stock' : 'Decrease stock';
 
@@ -109,7 +111,10 @@ export function AdjustStockDialog({
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
-      notify('Stock updated');
+      notify({
+        title: 'Stock updated',
+        description: `${item.name} available stock has been updated.`,
+      });
       onClose();
     } catch (caught) {
       if (controller.signal.aborted) return;
@@ -169,7 +174,7 @@ export function AdjustStockDialog({
             type="button"
             data-dialog-safe
             onClick={handleCancel}
-            className={cn(dialogSecondaryClass, 'border-line hover:bg-gray-50')}
+            className={dialogSecondaryClass}
           >
             Cancel
           </button>
@@ -187,33 +192,44 @@ export function AdjustStockDialog({
     >
       {/* Product block */}
       <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="truncate text-base font-medium text-ink">{item.name}</p>
-        <p className="truncate text-xs text-subtle">{item.sku}</p>
+        <p className="truncate text-[length:var(--text-ws-body)] font-medium text-ink">
+          {item.name}
+        </p>
+        <p className="truncate text-[length:var(--text-ws-caption)] text-caption">{item.sku}</p>
       </div>
 
       {/* Current available & Reserved summary box */}
-      <div className="grid grid-cols-2 gap-4 rounded-2xl bg-canvas p-4">
+      <div className="grid grid-cols-2 gap-4 rounded-ws-card bg-canvas p-4">
         <div className="min-w-0">
-          <p className="text-xs text-subtle">Current available stock</p>
+          <p className="text-[length:var(--text-ws-caption)] text-subtle">
+            Current available stock
+          </p>
           <p className="mt-1 font-heading text-2xl font-semibold text-ink">
             {countFormat.format(currentAvailable)}
           </p>
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-subtle">Reserved · System-managed</p>
+          <p className="text-[length:var(--text-ws-caption)] text-subtle">
+            Reserved · System-managed
+          </p>
           {typeof item.reservedQuantity === 'number' ? (
             <p className="mt-1 font-heading text-2xl font-semibold text-ink">
               {countFormat.format(item.reservedQuantity)}
             </p>
           ) : (
-            <p className="mt-2 text-sm font-medium text-subtle">— Unavailable</p>
+            <p className="mt-2 text-[length:var(--text-ws-body)] font-medium text-subtle">
+              — Unavailable
+            </p>
           )}
         </div>
       </div>
 
-      {/* Adjustment direction radio group */}
-      <div className="flex flex-col gap-2">
-        <span id={adjustmentLabelId} className="text-sm font-medium text-ink">
+      {/* Adjustment direction radio cards */}
+      <div className="flex flex-col gap-1.5">
+        <span
+          id={adjustmentLabelId}
+          className="text-[length:var(--text-ws-label)] font-medium text-ink"
+        >
           Adjustment
         </span>
         <div
@@ -229,10 +245,10 @@ export function AdjustStockDialog({
               <label
                 key={option.id}
                 className={cn(
-                  'flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium text-ink transition-colors focus-within:ring-2 focus-within:ring-primary/40',
+                  'flex min-h-11 cursor-pointer items-center gap-3 rounded-ws-control border px-3.5 py-2.5 text-[length:var(--text-ws-body)] font-medium text-ink transition-colors focus-within:ring-2 focus-within:ring-primary/25',
                   selected
-                    ? 'border-primary bg-orange-50'
-                    : 'border-line bg-white hover:bg-gray-50',
+                    ? 'border-primary bg-primary-tint'
+                    : 'border-line bg-surface hover:bg-canvas',
                   submitting && 'cursor-not-allowed opacity-70',
                 )}
               >
@@ -250,8 +266,8 @@ export function AdjustStockDialog({
                 <span
                   aria-hidden="true"
                   className={cn(
-                    'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors',
-                    selected ? 'border-primary bg-white' : 'border-gray-300 bg-white',
+                    'flex size-4 shrink-0 items-center justify-center rounded-full border bg-surface transition-colors',
+                    selected ? 'border-primary' : 'border-line',
                   )}
                 >
                   {selected ? <span className="size-2.5 rounded-full bg-primary" /> : null}
@@ -288,23 +304,27 @@ export function AdjustStockDialog({
       <div
         aria-live="polite"
         aria-atomic="true"
-        className="rounded-2xl border border-line bg-gray-50/70 p-4"
+        className="rounded-ws-card border border-line bg-canvas p-4"
       >
-        <p className="text-sm font-semibold text-ink">{proposed.headline}</p>
-        <p className="mt-1 text-xs leading-5 text-subtle">{proposed.detail}</p>
+        <p className="text-[length:var(--text-ws-body)] font-semibold text-ink">
+          {proposed.headline}
+        </p>
+        <p className="mt-1 text-[length:var(--text-ws-caption)] leading-5 text-subtle">
+          {proposed.detail}
+        </p>
       </div>
 
       {submitAlert ? (
         <p
           role="alert"
-          className="rounded-2xl border border-danger/30 bg-red-50 px-4 py-3 text-sm text-danger"
+          className="rounded-ws-card border border-danger/30 bg-danger-tint px-4 py-3 text-[length:var(--text-ws-body)] text-danger"
         >
           {submitAlert}
         </p>
       ) : null}
 
       {/* Footnote */}
-      <p className="text-xs text-subtle">
+      <p className="text-[length:var(--text-ws-caption)] text-caption">
         Reserved stock is read-only and cannot be changed here.
       </p>
     </Dialog>
