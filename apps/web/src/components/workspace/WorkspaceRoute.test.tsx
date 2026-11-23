@@ -4,58 +4,65 @@ import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { WorkspaceRoute } from './WorkspaceRoute';
+import { StatusBanner } from './StatusBanner';
 import type { SessionContext } from '@/lib/workspace/types';
 
-const mocks = vi.hoisted((): {
-  router: { replace: ReturnType<typeof vi.fn>; push: ReturnType<typeof vi.fn>; back: ReturnType<typeof vi.fn> };
-  pathname: string;
-  enableWorkspaceContext: ReturnType<typeof vi.fn>;
-  refreshWorkspace: ReturnType<typeof vi.fn>;
-  refreshSession: ReturnType<typeof vi.fn>;
-  workspaceStatus: 'idle' | 'loading' | 'ready' | 'error';
-  workspace: SessionContext | null;
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phone: null;
-    status: 'ACTIVE';
-    onboardingIntent: 'SUPPLIER' | 'RETAILER' | null;
-    emailVerifiedAt: string;
-    phoneVerifiedAt: null;
-    createdAt: string;
-    updatedAt: string;
-  };
-} => ({
-  router: { replace: vi.fn(), push: vi.fn(), back: vi.fn() },
-  pathname: '/admin/suppliers',
-  enableWorkspaceContext: vi.fn(),
-  refreshWorkspace: vi.fn(),
-  refreshSession: vi.fn(),
-  workspaceStatus: 'ready',
-  workspace: {
-    platformRole: 'ADMIN',
-    permissions: ['supplier:review'],
-    features: [],
-    businesses: [],
-    activeBusiness: null,
-    supplierStatus: null,
-  },
-  user: {
-    id: 'admin-1',
-    email: 'admin@sellonit.local',
-    firstName: 'Sellonit',
-    lastName: 'Admin',
-    phone: null,
-    status: 'ACTIVE',
-    onboardingIntent: null,
-    emailVerifiedAt: '2026-11-05T00:00:00.000Z',
-    phoneVerifiedAt: null,
-    createdAt: '2026-11-05T00:00:00.000Z',
-    updatedAt: '2026-11-05T00:00:00.000Z',
-  },
-}));
+const mocks = vi.hoisted(
+  (): {
+    router: {
+      replace: ReturnType<typeof vi.fn>;
+      push: ReturnType<typeof vi.fn>;
+      back: ReturnType<typeof vi.fn>;
+    };
+    pathname: string;
+    enableWorkspaceContext: ReturnType<typeof vi.fn>;
+    refreshWorkspace: ReturnType<typeof vi.fn>;
+    refreshSession: ReturnType<typeof vi.fn>;
+    workspaceStatus: 'idle' | 'loading' | 'ready' | 'error';
+    workspace: SessionContext | null;
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      phone: null;
+      status: 'ACTIVE';
+      onboardingIntent: 'SUPPLIER' | 'RETAILER' | null;
+      emailVerifiedAt: string;
+      phoneVerifiedAt: null;
+      createdAt: string;
+      updatedAt: string;
+    };
+  } => ({
+    router: { replace: vi.fn(), push: vi.fn(), back: vi.fn() },
+    pathname: '/admin/suppliers',
+    enableWorkspaceContext: vi.fn(),
+    refreshWorkspace: vi.fn(),
+    refreshSession: vi.fn(),
+    workspaceStatus: 'ready',
+    workspace: {
+      platformRole: 'ADMIN',
+      permissions: ['supplier:review'],
+      features: [],
+      businesses: [],
+      activeBusiness: null,
+      supplierStatus: null,
+    },
+    user: {
+      id: 'admin-1',
+      email: 'admin@sellonit.local',
+      firstName: 'Sellonit',
+      lastName: 'Admin',
+      phone: null,
+      status: 'ACTIVE',
+      onboardingIntent: null,
+      emailVerifiedAt: '2026-11-05T00:00:00.000Z',
+      phoneVerifiedAt: null,
+      createdAt: '2026-11-05T00:00:00.000Z',
+      updatedAt: '2026-11-05T00:00:00.000Z',
+    },
+  }),
+);
 
 vi.mock('next/navigation', () => ({
   useRouter: () => mocks.router,
@@ -111,7 +118,7 @@ beforeEach(() => {
   };
 });
 
-describe('WorkspaceRoute admin access', () => {
+describe('WorkspaceRoute admin access & StatusBanner deduplication', () => {
   it('allows a platform ADMIN with onboardingIntent=null to view /admin/suppliers without bouncing to role selection', async () => {
     render(
       <WorkspaceRoute admin>
@@ -141,10 +148,61 @@ describe('WorkspaceRoute admin access', () => {
       </WorkspaceRoute>,
     );
 
-    await waitFor(() =>
-      expect(screen.getByText('Administrator access required')).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText('Administrator access required')).toBeTruthy());
     expect(screen.queryByText('Supplier review queue')).toBeNull();
     expect(mocks.router.replace).not.toHaveBeenCalledWith('/auth/role-selection');
+  });
+
+  it('renders StatusBanner once on non-profile supplier routes when supplierStatus is non-APPROVED', async () => {
+    mocks.pathname = '/dashboard/products';
+    mocks.user.onboardingIntent = 'SUPPLIER';
+    mocks.workspace = {
+      platformRole: 'USER',
+      permissions: ['product:read'],
+      features: [],
+      businesses: [],
+      activeBusiness: {
+        id: 'biz-1',
+        name: 'Okechukwu Fashion',
+        type: 'SUPPLIER',
+      },
+      supplierStatus: 'PENDING_REVIEW',
+    };
+
+    render(
+      <WorkspaceRoute permission="product:read">
+        <p>Products body</p>
+      </WorkspaceRoute>,
+    );
+
+    expect(await screen.findByText('Products body')).toBeTruthy();
+    expect(document.querySelectorAll('[data-slot="supplier-status-banner"]')).toHaveLength(1);
+  });
+
+  it('renders StatusBanner exactly once when a child page (such as SupplierProfilePage) renders its own StatusBanner', async () => {
+    mocks.pathname = '/dashboard/business-profile';
+    mocks.user.onboardingIntent = 'SUPPLIER';
+    mocks.workspace = {
+      platformRole: 'USER',
+      permissions: [],
+      features: [],
+      businesses: [],
+      activeBusiness: {
+        id: 'biz-1',
+        name: 'Okechukwu Fashion',
+        type: 'SUPPLIER',
+      },
+      supplierStatus: 'PENDING_REVIEW',
+    };
+
+    render(
+      <WorkspaceRoute>
+        <StatusBanner status="PENDING_REVIEW" />
+        <p>Supplier profile body</p>
+      </WorkspaceRoute>,
+    );
+
+    expect(await screen.findByText('Supplier profile body')).toBeTruthy();
+    expect(document.querySelectorAll('[data-slot="supplier-status-banner"]')).toHaveLength(1);
   });
 });

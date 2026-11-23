@@ -152,4 +152,59 @@ describe('supplier profile strict validation & state guards', () => {
       },
     });
   });
+
+  it('clones and preserves unedited existingOrigin fields and defaults recipientName to legalName only when empty', () => {
+    const existingOrigin = {
+      recipientName: 'Existing Dispatch Lead',
+      phone: '08055554444',
+      addressLine1: '10 Broad Street',
+      addressLine2: 'Suite 2B',
+      area: 'Marina',
+      city: 'Lagos',
+      state: 'Lagos',
+      country: 'NG',
+      latitude: 6.4541,
+      longitude: 3.3947,
+      landmarkCode: 'LM-99',
+    };
+
+    const preserved = toSupplierProfilePayload(
+      validValues({
+        legalName: 'Renamed Legal Entity Ltd',
+        addressLine2: undefined,
+        area: undefined,
+        dispatchRecipientName: undefined,
+        dispatchPhone: undefined,
+      }),
+      existingOrigin,
+    );
+
+    // Must not mutate the source object and must preserve unedited fields + custom keys.
+    expect(existingOrigin.addressLine1).toBe('10 Broad Street');
+    expect(preserved.originLocation).toEqual({
+      recipientName: 'Existing Dispatch Lead',
+      phone: '08055554444',
+      addressLine1: '14 Wharf Road, Apapa',
+      addressLine2: 'Suite 2B',
+      area: 'Marina',
+      city: 'Lagos',
+      state: 'Lagos',
+      country: 'NG',
+      latitude: 6.4541,
+      longitude: 3.3947,
+      landmarkCode: 'LM-99',
+    });
+
+    // Defaults recipientName to legalName only when neither form nor existingOrigin has one.
+    const defaulted = toSupplierProfilePayload(
+      validValues({
+        legalName: 'Fresh Supplier Ltd',
+        dispatchRecipientName: '',
+        dispatchPhone: '',
+      }),
+      null,
+    );
+    expect(defaulted.originLocation?.recipientName).toBe('Fresh Supplier Ltd');
+    expect(defaulted.originLocation?.phone).toBe('08031234567');
+  });
 });
