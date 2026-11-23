@@ -18,6 +18,8 @@ export type ToastInput =
   | string
   | {
       title: string;
+      /** Secondary detail text (accepts either `message` or `description`). */
+      message?: string;
       description?: string;
       tone?: ToastTone;
     };
@@ -45,7 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         : {
             id: Date.now(),
             title: input.title,
-            description: input.description,
+            description: input.message ?? input.description,
             tone: input.tone ?? tone,
           };
     setToast(next);
@@ -96,7 +98,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 {toast.title}
               </p>
               {toast.description ? (
-                <p className="mt-0.5 truncate text-[length:var(--text-ws-caption)] text-subtle">
+                <p className="mt-0.5 line-clamp-2 text-[length:var(--text-ws-caption)] text-subtle">
                   {toast.description}
                 </p>
               ) : null}

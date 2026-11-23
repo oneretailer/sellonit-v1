@@ -10,7 +10,7 @@ import { DashboardSessionSkeleton } from '@/components/dashboard/DashboardRoute'
 import type { Feature, Permission } from '@/lib/workspace/types';
 import { RequireFeature, RequirePermission } from './PermissionGuard';
 import { ErrorState, LoadingState, NoAccessState, StatePanel } from './StatePanel';
-import { StatusBanner } from './StatusBanner';
+import { StatusBanner, StatusBannerSlotProvider } from './StatusBanner';
 
 /** New workspace routes use capabilities, never onboarding/membership role names. */
 export function WorkspaceRoute({
@@ -90,6 +90,9 @@ export function WorkspaceRoute({
         description="Complete business signup before opening this workspace."
       />
     );
+
+  const suppressFallbackBanner = Boolean(pathname?.startsWith('/dashboard/business-profile'));
+
   return (
     <DashboardShell
       user={user}
@@ -98,10 +101,12 @@ export function WorkspaceRoute({
       variant={admin ? 'admin' : 'supplier'}
       businessName={admin ? 'Sellonit platform' : session.workspace?.activeBusiness?.name}
     >
-      {!admin && session.workspaceStatus === 'ready' ? (
-        <StatusBanner status={session.workspace?.supplierStatus ?? null} />
-      ) : null}
-      {content}
+      <StatusBannerSlotProvider>
+        {!admin && session.workspaceStatus === 'ready' && !suppressFallbackBanner ? (
+          <StatusBanner status={session.workspace?.supplierStatus ?? null} isFallback />
+        ) : null}
+        {content}
+      </StatusBannerSlotProvider>
     </DashboardShell>
   );
 }
