@@ -60,12 +60,14 @@ export const NIGERIA_STATES: readonly string[] = [
 ];
 
 export const SUPPORTED_COUNTRIES: readonly { code: string; name: string }[] = [
-  { code: 'NG', name: 'Nigeria (NG)' },
-  { code: 'GH', name: 'Ghana (GH)' },
-  { code: 'KE', name: 'Kenya (KE)' },
-  { code: 'ZA', name: 'South Africa (ZA)' },
-  { code: 'GB', name: 'United Kingdom (GB)' },
-  { code: 'US', name: 'United States (US)' },
+  { code: 'NG', name: 'Nigeria' },
+  { code: 'GH', name: 'Ghana' },
+  { code: 'KE', name: 'Kenya' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'CI', name: "Côte d'Ivoire" },
+  { code: 'SN', name: 'Senegal' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'US', name: 'United States' },
 ];
 
 const VALID_RETAILER_ACCESS: readonly RetailerAccessMode[] = [
@@ -226,6 +228,12 @@ export function validateSupplierProfile(
   return errors;
 }
 
+/**
+ * Builds the `PUT /supplier/:businessId/profile` payload by merging form values
+ * onto `existingOrigin` so unknown or unedited `Address` fields (`addressLine2`,
+ * `area`, `latitude`, `longitude`, etc.) are never overwritten. `recipientName`
+ * defaults to `legalName` ONLY when the user left `dispatchRecipientName` empty.
+ */
 export function toSupplierProfilePayload(
   values: SupplierProfileFormValues,
   existingOrigin?: SupplierOriginAddress | null,
@@ -235,25 +243,59 @@ export function toSupplierProfilePayload(
   const contactPhone = rawPhone ? (normalizePhone(rawPhone) ?? rawPhone) : '';
   const description = values.description.trim();
   const line1 = values.addressLine1.trim();
-  const line2 = (values.addressLine2 ?? '').trim();
-  const area = (values.area ?? '').trim();
   const city = values.city.trim();
   const state = values.state.trim();
   const country = values.country.trim().toUpperCase() || 'NG';
   const dispatchRecipient = (values.dispatchRecipientName ?? '').trim();
   const dispatchPhoneRaw = (values.dispatchPhone ?? '').trim();
-  const dispatchPhone = dispatchPhoneRaw
-    ? (normalizePhone(dispatchPhoneRaw) ?? dispatchPhoneRaw)
-    : contactPhone;
   const hasOrigin = line1.length > 0 && city.length > 0 && state.length > 0;
 
-  // Preserve extra server-stored coordinates if present while updating editable address fields.
-  const preservedCoords: SupplierOriginAddress = {};
-  if (typeof existingOrigin?.latitude === 'number') {
-    preservedCoords.latitude = existingOrigin.latitude;
-  }
-  if (typeof existingOrigin?.longitude === 'number') {
-    preservedCoords.longitude = existingOrigin.longitude;
+  let originLocation: SupplierOriginAddress | undefined;
+  if (hasOrigin) {
+    const merged: SupplierOriginAddress =
+      existingOrigin && typeof existingOrigin === 'object' ? { ...existingOrigin } : {};
+
+    const preservedRecipient =
+      values.dispatchRecipientName === undefined &&
+      typeof existingOrigin?.recipientName === 'string' &&
+      existingOrigin.recipientName.trim().length > 0
+        ? existingOrigin.recipientName.trim()
+        : '';
+    merged.recipientName = dispatchRecipient || preservedRecipient || legalName;
+
+    const preservedPhone =
+      values.dispatchPhone === undefined &&
+      typeof existingOrigin?.phone === 'string' &&
+      existingOrigin.phone.trim().length > 0
+        ? existingOrigin.phone.trim()
+        : '';
+    const resolvedDispatchPhone = dispatchPhoneRaw
+      ? (normalizePhone(dispatchPhoneRaw) ?? dispatchPhoneRaw)
+      : preservedPhone || contactPhone;
+    if (resolvedDispatchPhone) {
+      merged.phone = resolvedDispatchPhone;
+    } else {
+      delete merged.phone;
+    }
+
+    merged.addressLine1 = line1;
+    if (values.addressLine2 !== undefined) {
+      const line2 = values.addressLine2.trim();
+      if (line2) merged.addressLine2 = line2;
+      else delete merged.addressLine2;
+    }
+    if (values.area !== undefined) {
+      const area = values.area.trim();
+      if (area) merged.area = area;
+      else delete merged.area;
+    }
+    merged.city = city;
+    merged.state = state;
+    merged.country = country;
+    originLocation = merged;
+  } else if (existingOrigin && typeof existingOrigin === 'object') {
+    const hasExistingKeys = Object.keys(existingOrigin).length > 0;
+    if (hasExistingKeys) originLocation = { ...existingOrigin };
   }
 
   return {
@@ -261,20 +303,6 @@ export function toSupplierProfilePayload(
     ...(contactPhone ? { contactPhone } : {}),
     description,
     retailerAccess: values.retailerAccess,
-    ...(hasOrigin
-      ? {
-          originLocation: {
-            ...preservedCoords,
-            recipientName: dispatchRecipient || legalName,
-            ...(dispatchPhone ? { phone: dispatchPhone } : {}),
-            addressLine1: line1,
-            ...(line2 ? { addressLine2: line2 } : {}),
-            ...(area ? { area } : {}),
-            city,
-            state,
-            country,
-          },
-        }
-      : {}),
+    ...(originLocation ? { originLocation } : {}),
   };
 }
