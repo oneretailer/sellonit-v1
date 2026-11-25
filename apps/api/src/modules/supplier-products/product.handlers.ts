@@ -221,8 +221,8 @@ export async function updatePricingRuleHandler(req: Request, res: Response): Pro
     if (!product) throw new AuthError('NOT_FOUND', 'Product was not found', 404);
     await prisma.pricingRule.upsert({
       where: { productId: id },
-      update: { maxMarkupKobo: value === null ? null : BigInt(value as number) },
-      create: { productId: id, maxMarkupKobo: value === null ? null : BigInt(value as number) },
+      update: { maxMarkupKobo: value === null ? null : BigInt(value) },
+      create: { productId: id, maxMarkupKobo: value === null ? null : BigInt(value) },
     });
     const updated = await prisma.product.findUniqueOrThrow({
       where: { id },
