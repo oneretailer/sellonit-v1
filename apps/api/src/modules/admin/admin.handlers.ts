@@ -193,3 +193,61 @@ export async function reinstateAdminSupplierHandler(req: Request, res: Response)
     sendError(res, error);
   }
 }
+
+export async function changeAdminSubscriptionHandler(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.userId) throw new AuthError('UNAUTHORIZED', 'Authentication required', 401);
+    const body = bodyOf(req);
+    const targetPlan = planOf(body.targetPlan ?? body.plan);
+    if (!targetPlan)
+      throw new AuthError('VALIDATION_ERROR', 'A valid target plan is required', 422);
+    if (body.confirm !== true) {
+      throw new AuthError('VALIDATION_ERROR', 'confirm must be true to change the plan', 422);
+    }
+    if (body.choices !== undefined && (!body.choices || typeof body.choices !== 'object')) {
+      throw new AuthError('VALIDATION_ERROR', 'choices must be an object', 422);
+    }
+
+    const businessId = pathId(req);
+    const target = await prisma.plan.findUnique({ where: { key: targetPlan } });
+    if (!target) throw new AuthError('NOT_FOUND', 'Target plan was not found', 404);
+    const subscription = await prisma.businessSubscription.findUnique({
+      where: { businessId },
+      include: { plan: true },
+    });
+    if (!subscription) throw new AuthError('NOT_FOUND', 'Business subscription was not found', 404);
+    if (subscription.planId !== target.id) {
+      const transition = await prisma.planTransition.findUnique({
+        where: { fromPlanId_toPlanId: { fromPlanId: subscription.planId, toPlanId: target.id } },
+      });
+      if (!transition) {
+        throw new AuthError(
+          'INVALID_STATE_TRANSITION',
+          'The requested plan change is not allowed',
+          409,
+        );
+      }
+    }
+
+    const updated = await prisma.$transaction(async (transaction) => {
+      const result = await transaction.businessSubscription.update({
+        where: { businessId },
+        data: { planId: target.id, status: 'ACTIVE', startsAt: new Date(), endsAt: null },
+        include: { plan: true },
+      });
+      await transaction.auditLog.create({
+        data: {
+          businessId,
+          actorUserId: req.userId!,
+          entityType: 'BUSINESS_SUBSCRIPTION',
+          entityId: result.id,
+          action: 'PLAN_CHANGED',
+        },
+      });
+      return result;
+    });
+    res.status(200).json({ data: { businessId, plan: updated.plan.key, status: updated.status } });
+  } catch (error) {
+    sendError(res, error);
+  }
+}

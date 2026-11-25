@@ -106,7 +106,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiResponseUser"];
+                        "application/json": components["schemas"]["RegisterResponse"];
                     };
                 };
                 400: components["responses"]["ValidationError"];
@@ -156,7 +156,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiResponseUser"];
+                        "application/json": components["schemas"]["VerificationStatusResponse"];
                     };
                 };
                 400: components["responses"]["ValidationError"];
@@ -181,7 +181,8 @@ export interface paths {
          * Verify email address and create a session
          * @description Consumes the single-use email verification token, marks the user's
          *     email address as verified, creates an authenticated session, and sets
-         *     the HTTP-only session cookie.
+         *     the HTTP-only session cookie. The returned body contains the user and
+         *     session expiry; the access token itself is only in the cookie.
          */
         post: {
             parameters: {
@@ -251,6 +252,8 @@ export interface paths {
                 /** @description Authenticated */
                 200: {
                     headers: {
+                        /** @description HTTP-only access-token cookie. */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -260,6 +263,50 @@ export interface paths {
                 401: components["responses"]["Unauthorized"];
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify-email/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Verify email using the token in the URL
+         * @description Compatibility endpoint; it has the same effect as POST /auth/verify-email.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Email verified */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VerificationStatusResponse"];
+                    };
+                };
+                400: components["responses"]["ValidationError"];
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -339,7 +386,14 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @constant */
+                                sent: true;
+                            };
+                        };
+                    };
                 };
                 400: components["responses"]["ValidationError"];
                 /** @description SMS delivery failed */
@@ -394,7 +448,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["VerificationStatusResponse"];
+                    };
                 };
                 400: components["responses"]["ValidationError"];
             };
@@ -508,7 +564,14 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @constant */
+                                sent: true;
+                            };
+                        };
+                    };
                 };
             };
         };
@@ -790,6 +853,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/supplier/{businessId}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                businessId: components["parameters"]["BusinessId"];
+            };
+            cookie?: never;
+        };
+        /** Get a supplier profile by business ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    businessId: components["parameters"]["BusinessId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Supplier profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSupplierProfile"];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        /** Create or update a supplier profile by business ID */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    businessId: components["parameters"]["BusinessId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpsertSupplierProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description Supplier profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSupplierProfile"];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplier/{businessId}/profile/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                businessId: components["parameters"]["BusinessId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a supplier profile by business ID */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    businessId: components["parameters"]["BusinessId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Supplier profile submitted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseSupplierProfile"];
+                    };
+                };
+                409: components["responses"]["Conflict"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/businesses": {
         parameters: {
             query?: never;
@@ -813,7 +985,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["PaginatedBusinesses"];
+                        "application/json": components["schemas"]["ApiResponseBusinesses"];
                     };
                 };
             };
@@ -3608,13 +3780,15 @@ export interface paths {
         };
         /**
          * List supplier review queue
-         * @description Platform ADMIN only.
+         * @description Requires the admin:read permission.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description Defaults to PENDING_REVIEW. */
                     status?: components["schemas"]["SupplierReviewStatus"];
+                    /** @description Case-insensitive search over supplier legal name and description. */
+                    search?: string;
                     page?: number;
                     pageSize?: number;
                 };
@@ -3723,6 +3897,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         plan: components["schemas"]["SupplierPlan"];
+                        note?: string;
                     };
                 };
             };
@@ -3740,7 +3915,7 @@ export interface paths {
                 403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
                 409: components["responses"]["Conflict"];
-                422: components["responses"]["FieldValidationFailed"];
+                422: components["responses"]["ValidationError"];
             };
         };
         delete?: never;
@@ -3794,7 +3969,7 @@ export interface paths {
                 403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
                 409: components["responses"]["Conflict"];
-                422: components["responses"]["FieldValidationFailed"];
+                422: components["responses"]["ValidationError"];
             };
         };
         delete?: never;
@@ -3848,7 +4023,7 @@ export interface paths {
                 403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
                 409: components["responses"]["Conflict"];
-                422: components["responses"]["FieldValidationFailed"];
+                422: components["responses"]["ValidationError"];
             };
         };
         delete?: never;
@@ -3906,6 +4081,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/businesses/{id}/subscription/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource UUID. */
+                id: components["parameters"]["WorkspaceResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change a business subscription plan
+         * @description Requires admin:write. The requested plan transition must be seeded as allowed.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Resource UUID. */
+                    id: components["parameters"]["WorkspaceResourceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeBusinessSubscriptionRequest"];
+                };
+            };
+            responses: {
+                /** @description Subscription plan changed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiResponseBusinessSubscription"];
+                    };
+                };
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+                409: components["responses"]["Conflict"];
+                422: components["responses"]["ValidationError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/supplier/products": {
         parameters: {
             query?: never;
@@ -3914,18 +4143,21 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List active-business products (PROPOSED)
-         * @description PROPOSED. Requires product:read. Business scope comes from the authenticated session, never a client-supplied business ID.
+         * List supplier products
+         * @description Requires product:read and membership in the supplier business. Supply the business ID in the X-Business-Id header.
          */
         get: {
             parameters: {
                 query?: {
+                    /** @description Case-insensitive search over product name and category. */
                     search?: string;
-                    status?: components["schemas"]["ProductStatus"];
                     page?: number;
                     pageSize?: number;
                 };
-                header?: never;
+                header?: {
+                    /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                    "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3940,21 +4172,22 @@ export interface paths {
                         "application/json": components["schemas"]["PaginatedWorkspaceProducts"];
                     };
                 };
+                400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
             };
         };
         put?: never;
         /**
-         * Create a product with one default variant (PROPOSED)
-         * @description PROPOSED. Requires product:write. No physical stock fields. SKU uniqueness is scoped to the active business.
+         * Create a supplier product with one default variant
+         * @description Requires product:write and ownership of the supplier business. No physical stock fields. SKU uniqueness is scoped to the business. Provide businessId in the body or X-Business-Id header.
          */
         post: {
             parameters: {
                 query?: never;
-                header: {
-                    /** @description Unique key for safe retry of a mutating request. Reuse the same key only for the same logical operation. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                header?: {
+                    /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                    "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
                 };
                 path?: never;
                 cookie?: never;
@@ -3974,10 +4207,19 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
                     };
                 };
+                400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
-                409: components["responses"]["Conflict"];
-                422: components["responses"]["FieldValidationFailed"];
+                /** @description SKU already exists in this business */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                422: components["responses"]["ValidationError"];
             };
         };
         delete?: never;
@@ -3989,7 +4231,10 @@ export interface paths {
     "/supplier/products/{id}": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+            };
             path: {
                 /** @description Resource UUID. */
                 id: components["parameters"]["WorkspaceResourceId"];
@@ -3997,13 +4242,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get an active-business product (PROPOSED)
-         * @description PROPOSED. Requires product:read. Includes the current markup rule so the edit form needs no uncontracted pricing GET.
+         * Get a supplier product
+         * @description Requires product:read and membership in the supplier business. Includes the current markup rule.
          */
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                    "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+                };
                 path: {
                     /** @description Resource UUID. */
                     id: components["parameters"]["WorkspaceResourceId"];
@@ -4021,6 +4269,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
                     };
                 };
+                400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
@@ -4032,13 +4281,16 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update a non-archived product (PROPOSED)
-         * @description PROPOSED. Requires product:write. Archived products are read-only.
+         * Update a non-archived supplier product
+         * @description Requires product:write and ownership of the supplier business. Archived products are read-only. Provide businessId in the body or X-Business-Id header.
          */
         patch: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                    "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+                };
                 path: {
                     /** @description Resource UUID. */
                     id: components["parameters"]["WorkspaceResourceId"];
@@ -4060,11 +4312,20 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
                     };
                 };
+                400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
-                409: components["responses"]["Conflict"];
-                422: components["responses"]["FieldValidationFailed"];
+                /** @description SKU already exists in this business or product is archived */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                422: components["responses"]["ValidationError"];
             };
         };
         trace?: never;
@@ -4072,7 +4333,10 @@ export interface paths {
     "/supplier/products/{id}/pricing-rule": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+            };
             path: {
                 /** @description Resource UUID. */
                 id: components["parameters"]["WorkspaceResourceId"];
@@ -4081,13 +4345,16 @@ export interface paths {
         };
         get?: never;
         /**
-         * Replace the maximum markup rule (PROPOSED)
-         * @description PROPOSED. Requires pricing:set. null means no ceiling; zero means fixed base price; a positive integer is the maximum markup in kobo.
+         * Replace the maximum markup rule
+         * @description Requires pricing:set and ownership of the supplier business. null means no ceiling; zero means fixed base price; a positive integer is the maximum markup in kobo. Provide businessId in the body or X-Business-Id header.
          */
         put: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                    "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+                };
                 path: {
                     /** @description Resource UUID. */
                     id: components["parameters"]["WorkspaceResourceId"];
@@ -4109,11 +4376,12 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
                     };
                 };
+                400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
                 409: components["responses"]["Conflict"];
-                422: components["responses"]["FieldValidationFailed"];
+                422: components["responses"]["ValidationError"];
             };
         };
         post?: never;
@@ -4126,7 +4394,10 @@ export interface paths {
     "/supplier/products/{id}/publish": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+            };
             path: {
                 /** @description Resource UUID. */
                 id: components["parameters"]["WorkspaceResourceId"];
@@ -4136,20 +4407,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Publish a product (PROPOSED)
-         * @description PROPOSED. Requires product:publish and APPROVED supplier status. DRAFT/UNPUBLISHED -> PUBLISHED; ARCHIVED is immutable.
+         * Publish a supplier product
+         * @description Requires product:write and ownership of the supplier business. The supplier must be approved, the product must be DRAFT, a priced SKU variant and a default warehouse must exist.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+                    "X-Business-Id"?: components["parameters"]["BusinessIdHeader"];
+                };
                 path: {
                     /** @description Resource UUID. */
                     id: components["parameters"]["WorkspaceResourceId"];
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        businessId?: string;
+                    };
+                };
+            };
             responses: {
                 /** @description Published product */
                 200: {
@@ -4160,10 +4441,12 @@ export interface paths {
                         "application/json": components["schemas"]["ApiResponseWorkspaceProduct"];
                     };
                 };
+                400: components["responses"]["ValidationError"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
                 404: components["responses"]["NotFound"];
                 409: components["responses"]["Conflict"];
+                422: components["responses"]["ValidationError"];
             };
         };
         delete?: never;
@@ -4248,12 +4531,12 @@ export interface components {
             type: components["schemas"]["BusinessType"];
         };
         /**
-         * @description PROPOSED. Supplier review lifecycle.
+         * @description Supplier review lifecycle used by the implemented admin review endpoints.
          * @enum {string}
          */
         SupplierReviewStatus: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "SUSPENDED";
         /**
-         * @description PROPOSED. Plan selected on approval.
+         * @description Plan selected on supplier approval or subscription change.
          * @enum {string}
          */
         SupplierPlan: "ENTERPRISE" | "ENTERPRISE_PLUS";
@@ -4276,7 +4559,7 @@ export interface components {
             /** @enum {string} */
             accountType: "entrepreneur" | "retailer" | "supplier";
         };
-        /** @description PROPOSED. id is the supplier business ID. */
+        /** @description id is the supplier business ID. */
         AdminSupplierSummary: {
             /** Format: uuid */
             id: string;
@@ -4286,7 +4569,7 @@ export interface components {
             submittedAt: string | null;
             status: components["schemas"]["SupplierReviewStatus"];
         };
-        /** @description PROPOSED. Immutable review-history entry. */
+        /** @description Immutable supplier review-history entry. */
         SupplierAuditEvent: {
             /** Format: uuid */
             id: string;
@@ -4299,7 +4582,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
-        /** @description PROPOSED. Supplier profile and immutable audit trail. */
+        /** @description Supplier profile and immutable review audit trail. */
         AdminSupplierDetail: {
             /** Format: uuid */
             id: string;
@@ -4316,20 +4599,20 @@ export interface components {
             plan: components["schemas"]["SupplierPlan"] | null;
             auditHistory: components["schemas"]["SupplierAuditEvent"][];
         };
-        /** @description PROPOSED. Required non-blank decision reason. */
+        /** @description Required non-blank decision reason. */
         SupplierReasonRequest: {
             reason: string;
         };
-        /** @description PROPOSED. Single default variant; no inventory/stock fields. */
+        /** @description Single default variant; no inventory/stock fields. */
         WorkspaceDefaultVariant: {
             sku: string;
             basePriceKobo: number;
         };
-        /** @description PROPOSED. null is no ceiling; zero is fixed base price. */
+        /** @description null is no ceiling; zero is fixed base price. */
         MaximumMarkupPricingRule: {
             maxMarkupKobo: number | null;
         };
-        /** @description PROPOSED. Active-business product with one default variant. */
+        /** @description Product in the selected supplier business with its single default variant. */
         WorkspaceProduct: {
             /** Format: uuid */
             id: string;
@@ -4348,41 +4631,66 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        /** @description PROPOSED. Server assigns businessId, DRAFT status and an uncapped pricing rule. */
+        /** @description The business is supplied as businessId or X-Business-Id. The server assigns DRAFT status and an uncapped pricing rule. */
         CreateWorkspaceProductRequest: {
+            /** Format: uuid */
+            businessId?: string;
             name: string;
             description?: string;
-            category: string;
+            category?: string;
             defaultVariant: components["schemas"]["WorkspaceDefaultVariant"];
         };
-        /** @description PROPOSED. At least one editable field; archived products cannot be updated. */
+        /** @description The business is supplied as businessId or X-Business-Id; archived products cannot be updated. */
         UpdateWorkspaceProductRequest: {
+            /** Format: uuid */
+            businessId?: string;
             name?: string;
             description?: string;
             category?: string;
             defaultVariant?: components["schemas"]["WorkspaceDefaultVariant"];
         };
-        /** @description PROPOSED. Whole kobo only; base price plus markup must remain a safe integer. */
+        /** @description The business is supplied as businessId or X-Business-Id. Values are whole kobo. */
         SetMaximumMarkupRequest: {
+            /** Format: uuid */
+            businessId?: string;
             maxMarkupKobo: number | null;
         };
-        /** @description PROPOSED. */
+        /** @description Paginated supplier review queue. */
         PaginatedAdminSuppliers: {
             data: components["schemas"]["AdminSupplierSummary"][];
             meta: components["schemas"]["PaginationMeta"];
         };
-        /** @description PROPOSED. */
+        /** @description Paginated supplier product results. */
         PaginatedWorkspaceProducts: {
             data: components["schemas"]["WorkspaceProduct"][];
             meta: components["schemas"]["PaginationMeta"];
         };
-        /** @description PROPOSED. */
+        /** @description Supplier detail and review history response envelope. */
         ApiResponseAdminSupplierDetail: {
             data: components["schemas"]["AdminSupplierDetail"];
         };
-        /** @description PROPOSED. */
+        /** @description Product response envelope. */
         ApiResponseWorkspaceProduct: {
             data: components["schemas"]["WorkspaceProduct"];
+        };
+        /** @description Change a business plan. targetPlan is preferred; plan is accepted as a compatibility alias. */
+        ChangeBusinessSubscriptionRequest: {
+            targetPlan?: components["schemas"]["SupplierPlan"];
+            plan?: components["schemas"]["SupplierPlan"];
+            /** @constant */
+            confirm: true;
+            choices?: {
+                [key: string]: unknown;
+            };
+        } | unknown | unknown;
+        ApiResponseBusinessSubscription: {
+            data: {
+                /** Format: uuid */
+                businessId: string;
+                plan: components["schemas"]["SupplierPlan"];
+                /** @enum {string} */
+                status: "ACTIVE";
+            };
         };
         /** @description PROPOSED additive 422 envelope. fields maps contract paths (for example defaultVariant.sku) to a display message; details preserves the existing ErrorDetail shape. */
         FieldValidationErrorResponse: {
@@ -4404,7 +4712,7 @@ export interface components {
         /** @enum {string} */
         PlanKey: "ENTERPRISE" | "ENTERPRISE_PLUS";
         /** @enum {string} */
-        SupplierProfileStatus: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+        SupplierProfileStatus: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "SUSPENDED";
         /** @enum {string} */
         UserStatus: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
         /** @enum {string} */
@@ -4465,32 +4773,51 @@ export interface components {
             id: string;
             /** Format: email */
             email: string;
-            firstName?: string;
-            lastName?: string;
+            firstName: string;
+            lastName: string;
+            phone: string | null;
             status: components["schemas"]["UserStatus"];
-            onboardingIntent?: components["schemas"]["BusinessType"];
+            onboardingIntent: components["schemas"]["BusinessType"];
             /** Format: date-time */
-            emailVerifiedAt?: string | null;
+            emailVerifiedAt: string | null;
+            /** Format: date-time */
+            phoneVerifiedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
-            updatedAt?: string;
+            updatedAt: string;
         };
         Business: {
             /** Format: uuid */
             id: string;
             name: string;
             type: components["schemas"]["BusinessType"];
-            slug?: string;
-            phone?: string;
+            slug: string;
+            /** Format: uuid */
+            ownerId: string;
+            phone: string | null;
             /** Format: email */
-            email?: string;
+            email: string | null;
             /** @enum {string} */
-            status?: "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+            status: "ACTIVE" | "SUSPENDED";
+            memberships: components["schemas"]["BusinessMembership"][];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
-            updatedAt?: string;
+            updatedAt: string;
+        };
+        BusinessMembership: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            /** Format: uuid */
+            businessId: string;
+            role: components["schemas"]["UserRole"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         Member: {
             /** Format: uuid */
@@ -4864,6 +5191,17 @@ export interface components {
         VerifyEmailRequest: {
             token: string;
         };
+        RegisterResponse: {
+            data: components["schemas"]["User"];
+            /** @description Included only in development and test environments. */
+            emailVerificationToken?: string;
+        };
+        VerificationStatusResponse: {
+            data: {
+                /** @constant */
+                verified: true;
+            };
+        };
         LoginRequest: {
             /** Format: email */
             email: string;
@@ -4884,9 +5222,11 @@ export interface components {
         };
         VerifyPasswordResetCodeRequest: {
             /** Format: email */
-            identifier: string;
+            identifier?: string;
+            /** Format: email */
+            email?: string;
             code: string;
-        };
+        } | unknown | unknown;
         TokenResponse: {
             accessToken: string;
             expiresIn: number;
@@ -4895,14 +5235,13 @@ export interface components {
         };
         AuthResponse: {
             user: components["schemas"]["User"];
-            accessToken: string;
-            refreshToken?: string;
             expiresIn: number;
         };
+        /** @description type (or its businessType alias) defaults to the authenticated user's onboarding intent, then RETAILER. */
         CreateBusinessRequest: {
             name: string;
-            type: components["schemas"]["BusinessType"];
-            slug?: string;
+            type?: components["schemas"]["BusinessType"];
+            businessType?: components["schemas"]["BusinessType"];
             phone?: string;
             /** Format: email */
             email?: string;
@@ -5077,6 +5416,9 @@ export interface components {
         ApiResponseBusiness: components["schemas"]["ApiResponse"] & {
             data?: components["schemas"]["Business"];
         };
+        ApiResponseBusinesses: {
+            data: components["schemas"]["Business"][];
+        };
         ApiResponseMember: components["schemas"]["ApiResponse"] & {
             data?: components["schemas"]["Member"];
         };
@@ -5186,12 +5528,12 @@ export interface components {
             code?: string;
             message?: string;
         };
-        /** @description Stable error envelope. Domain codes include INSUFFICIENT_INVENTORY, INVALID_PRICING_RULE, UNAUTHORIZED_BUSINESS_ACCESS, INVALID_STATE_TRANSITION, PAYMENT_CONFIRMATION_CONFLICT, SETTLEMENT_NOT_ELIGIBLE and ORDER_NOT_ELIGIBLE_FOR_COMPLETION. Use 403 for denied tenant access and 409 for domain conflicts. Valid duplicate webhooks return WebhookAck (200), not a second financial effect. */
+        /** @description Error envelope. Authentication errors include requestId; other existing handlers may omit it. */
         ErrorResponse: {
             error: {
                 code: string;
                 message: string;
-                requestId: string;
+                requestId?: string;
                 details?: components["schemas"]["ErrorDetail"][];
             };
         };
@@ -5321,6 +5663,8 @@ export interface components {
         /** @description Resource UUID. */
         WorkspaceResourceId: string;
         BusinessId: string;
+        /** @description Supplier business to scope this operation to; alternatively use businessId in the JSON body. */
+        BusinessIdHeader: string;
         MemberId: string;
         StoreId: string;
         StoreSlug: string;

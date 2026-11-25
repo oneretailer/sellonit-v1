@@ -79,7 +79,13 @@ No CI job commits generated files.
 
 This contract intentionally defines the external API boundary. Internal Express module boundaries, Prisma models, queue payloads, and 3PL provider adapters may differ internally as long as the API contract remains stable.
 
-The repository remains a skeleton with pure lifecycle guards, not an implemented
-commerce API. See [the alignment audit](v1.0.3-alignment.md) for verified coverage
-and the remaining persistence, authorization and provider integration work.
-i added the stuufgit
+The API implements identity, business onboarding, supplier catalogue and review
+workflows, and subscription administration. The supplier-product, supplier
+review, and subscription operations are documented as implemented; other
+workspace additions marked `PROPOSED` are not live API routes. The commercial
+order lifecycle remains pure guards rather than persisted HTTP workflows;
+checkout, payments, inventory, shipping, and settlement integrations are not
+yet implemented. Generated TypeScript API types are committed at
+`packages/shared/src/api.d.ts`. See the [backend implementation summary](../apps/api/README.md)
+for current scope and [the alignment audit](v1.0.3-alignment.md) for remaining
+work.

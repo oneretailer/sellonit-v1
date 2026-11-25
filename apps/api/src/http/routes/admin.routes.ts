@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requirePermission } from '../middleware/auth.middleware.js';
 import {
   approveAdminSupplierHandler,
+  changeAdminSubscriptionHandler,
   getAdminSupplierHandler,
   listAdminSuppliersHandler,
   rejectAdminSupplierHandler,
@@ -28,5 +29,10 @@ router.post(
   '/suppliers/:id/reinstate',
   requirePermission('admin:write'),
   reinstateAdminSupplierHandler,
+);
+router.post(
+  '/businesses/:id/subscription/change',
+  requirePermission('admin:write'),
+  changeAdminSubscriptionHandler,
 );
 export default router;

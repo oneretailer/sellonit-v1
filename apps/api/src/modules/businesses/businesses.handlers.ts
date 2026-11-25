@@ -85,6 +85,20 @@ export async function createBusinessHandler(req: Request, res: Response): Promis
     },
     include: { memberships: true },
   });
+  const ownerRole = await prisma.role.findUnique({ where: { key: 'OWNER' }, select: { id: true } });
+  if (ownerRole) {
+    await prisma.userRoleAssignment.upsert({
+      where: {
+        userId_roleId_businessId: {
+          userId: req.userId,
+          roleId: ownerRole.id,
+          businessId: business.id,
+        },
+      },
+      update: {},
+      create: { userId: req.userId, roleId: ownerRole.id, businessId: business.id },
+    });
+  }
   res.status(201).json({ data: business });
 }
 
