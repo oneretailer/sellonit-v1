@@ -34,6 +34,7 @@ model User {
   supplierReviewEvents SupplierReviewEvent[] @relation("SupplierReviewActor")
   reviewedSupplierProfiles SupplierProfile[] @relation("SupplierProfileReviewer")
   businesses      Business[] @relation("BusinessOwner")
+  auditLogs       AuditLog[]
 }
 
 enum UserStatus {
@@ -82,6 +83,10 @@ model Business {
   supplierProfile SupplierProfile?
   activeSubscription BusinessSubscription?
   supplierReviewEvents SupplierReviewEvent[]
+  products Product[]
+  productVariants ProductVariant[]
+  warehouses Warehouse[]
+  auditLogs AuditLog[]
 }
 
 model Membership {

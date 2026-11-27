@@ -2,20 +2,20 @@
 
 Virtual-inventory commerce and supply-chain platform.
 
-> **Status: skeleton with contract and lifecycle guards.** Tooling, workspaces,
-> Docker setup and CI/CD are in place. The v1.0.3 contract and pure commercial
-> lifecycle guards are tested, but API routes, database models, authentication,
-> provider integrations and worker jobs are not implemented. See
-> [the alignment audit](docs/v1.0.3-alignment.md).
+> **Status: backend foundations and supplier workflows implemented.** The API
+> includes authentication, business onboarding, supplier catalogue and review
+> workflows, subscription administration, and tested pricing/order lifecycle
+> rules. Order/payment/fulfilment endpoints and external commerce integrations
+> remain future work. See the [API implementation summary](apps/api/README.md).
 
 ## Repository layout
 
 ```
 apps/
   api/        Express REST API + Prisma (PostgreSQL)
-    prisma/     Prisma schema (multi-file, no models yet) and migrations
-    src/        main.ts entry point; config/, http/middleware/, infrastructure/,
-                modules/<domain>/ folders are scaffolded; orders/ contains lifecycle guards
+    prisma/     Multi-file Prisma schema and migrations
+    src/        Authentication, businesses, suppliers, supplier products, admin,
+                tenancy, pricing rules, and pure order lifecycle guards
     test/       integration/ tests go here
   worker/     BullMQ background worker (separate process); src/jobs/ is empty
   web/        Next.js frontend (App Router); src/app, src/lib, src/config
