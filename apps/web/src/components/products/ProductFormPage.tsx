@@ -205,7 +205,7 @@ function valuesFromProduct(product: Product): ProductFormValues {
     category: product.category,
     sku: product.sku,
     wholesalePrice: product.wholesalePrice > 0 ? koboToNaira(product.wholesalePrice) : '',
-    stockQuantity: String(product.stockQuantity),
+    stockQuantity: product.stockQuantity !== null ? String(product.stockQuantity) : '',
   };
 }
 

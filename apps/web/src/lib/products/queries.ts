@@ -27,23 +27,25 @@ export function useProductsList(params: ProductListParams) {
   });
 }
 
-export function useProductSummary() {
+export function useProductSummary(options: { enabled?: boolean } = {}) {
   const { activeBusiness } = useBusiness();
   const businessId = activeBusiness?.id ?? null;
+  const enabled = options.enabled ?? true;
   return useQuery({
     queryKey: productKeys.summary(businessId),
     queryFn: ({ signal }) => productsApi.summary(signal),
-    enabled: businessId !== null,
+    enabled: businessId !== null && enabled,
   });
 }
 
-export function useProductCategories() {
+export function useProductCategories(options: { enabled?: boolean } = {}) {
   const { activeBusiness } = useBusiness();
   const businessId = activeBusiness?.id ?? null;
+  const enabled = options.enabled ?? true;
   return useQuery({
     queryKey: productKeys.categories(businessId),
     queryFn: ({ signal }) => productsApi.getCategories(signal),
-    enabled: businessId !== null,
+    enabled: businessId !== null && enabled,
   });
 }
 
@@ -83,6 +85,15 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: Partial<ProductInput> }) =>
       productsApi.update(id, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdatePricingRule() {
+  const invalidate = useInvalidateProducts();
+  return useMutation({
+    mutationFn: ({ id, maxMarkupKobo }: { id: string; maxMarkupKobo: number | null }) =>
+      productsApi.updatePricingRule(id, maxMarkupKobo),
     onSuccess: invalidate,
   });
 }

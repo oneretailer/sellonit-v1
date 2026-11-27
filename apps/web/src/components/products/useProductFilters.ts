@@ -8,9 +8,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PRODUCTS_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from '@/lib/products/constants';
-import type { ProductListParams, ProductStatus, StockFilter } from '@/lib/products/types';
+import type { ProductListParams, StockFilter } from '@/lib/products/types';
 
-export type ProductsTab = 'all' | ProductStatus;
+export type ProductsTab = 'all' | 'published' | 'draft';
 
 export type ProductFilters = {
   tab: ProductsTab;

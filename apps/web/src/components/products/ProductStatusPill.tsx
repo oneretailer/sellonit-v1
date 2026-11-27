@@ -4,6 +4,13 @@ import { cn } from '@/lib/cn';
 import type { ProductStatus } from '@/lib/products/types';
 import { stockLevel, stockText, type StockLevel } from '@/lib/products/stock';
 
+const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
+  published: 'Published',
+  draft: 'Draft',
+  unpublished: 'Unpublished',
+  archived: 'Archived',
+};
+
 export function ProductStatusPill({ status }: { status: ProductStatus }) {
   const published = status === 'published';
   return (
@@ -17,7 +24,7 @@ export function ProductStatusPill({ status }: { status: ProductStatus }) {
         aria-hidden="true"
         className={cn('size-1.5 rounded-full', published ? 'bg-success' : 'bg-draft')}
       />
-      {published ? 'Published' : 'Draft'}
+      {PRODUCT_STATUS_LABELS[status]}
     </span>
   );
 }
@@ -64,7 +71,18 @@ export function StockStatusPill({
   );
 }
 
-export function StockText({ quantity, lowStock }: { quantity: number; lowStock?: boolean }) {
+export function StockText({
+  quantity,
+  lowStock,
+}: {
+  quantity: number | null;
+  lowStock?: boolean;
+}) {
+  if (quantity === null) {
+    return (
+      <span className="text-[length:var(--text-ws-body)] text-caption">Not tracked</span>
+    );
+  }
   const level = stockLevel(quantity, lowStock);
   return (
     <span

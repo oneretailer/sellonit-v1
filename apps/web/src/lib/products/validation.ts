@@ -1,13 +1,16 @@
 /**
  * Product form validation — pure functions shared by the form and its tests.
- * Publish requires every field (plus ≥1 uploaded photo); Save draft allows any
- * field or uploaded photo to be filled in, defaulting a blank name to
- * "Untitled product". Money/stock text is validated here and converted to
- * kobo/integers exactly once when building the payload.
+ * Money/stock text is validated here and converted to kobo/integers exactly
+ * once when building the payload.
+ *
+ * Supports capability-aware rules (`ValidateProductOptions`) so live PR #18
+ * (`WorkspaceProduct` contract: no photos/stock, `defaultVariant.{sku,basePriceKobo}`
+ * required even on drafts) and full mock capabilities share one validator.
  */
+import type { ApiError } from '@/lib/api-client';
 import { nairaToKobo } from '@/lib/money';
 import { MAX_PRODUCT_IMAGES } from './constants';
-import type { ProductInput } from './types';
+import type { ProductCapabilities, ProductInput } from './types';
 
 export type ProductFormValues = {
   name: string;
@@ -23,6 +26,23 @@ export type ProductFormValues = {
 export type ProductFormIntent = 'draft' | 'publish';
 
 export type ProductFieldErrors = Partial<Record<keyof ProductFormValues | 'images', string>>;
+
+export type ValidateProductOptions = {
+  requirePhotos?: boolean;
+  requireStock?: boolean;
+  /** True on PR #18 `/supplier/products`, where `defaultVariant.{sku,basePriceKobo}` is required on `POST`. */
+  requireVariantOnDraft?: boolean;
+};
+
+export function validationOptionsForCapabilities(
+  capabilities: Pick<ProductCapabilities, 'images' | 'stock'>,
+): ValidateProductOptions {
+  return {
+    requirePhotos: capabilities.images,
+    requireStock: capabilities.stock,
+    requireVariantOnDraft: !capabilities.stock,
+  };
+}
 
 export const DEFAULT_DRAFT_PRODUCT_NAME = 'Untitled product';
 
@@ -74,13 +94,20 @@ export function validateProduct(
   values: ProductFormValues,
   uploadedImageCount: number,
   intent: ProductFormIntent,
+  options: ValidateProductOptions = {},
 ): ProductFieldErrors {
   const errors: ProductFieldErrors = {};
   const publish = intent === 'publish';
+  const requirePhotos = options.requirePhotos ?? true;
+  const requireStock = options.requireStock ?? true;
+  const requireVariant = publish || (options.requireVariantOnDraft ?? false);
 
-  if (publish && uploadedImageCount === 0) errors.images = PRODUCT_ERROR_MESSAGES.images;
-  if (uploadedImageCount > MAX_PRODUCT_IMAGES)
+  if (publish && requirePhotos && uploadedImageCount === 0) {
+    errors.images = PRODUCT_ERROR_MESSAGES.images;
+  }
+  if (uploadedImageCount > MAX_PRODUCT_IMAGES) {
     errors.images = `Use at most ${MAX_PRODUCT_IMAGES} photos.`;
+  }
 
   if (publish && !values.name.trim()) {
     errors.name = PRODUCT_ERROR_MESSAGES.name;
@@ -93,23 +120,29 @@ export function validateProduct(
   if (values.description.trim().length > 5000) errors.description = 'Use at most 5,000 characters.';
 
   if (publish && !values.category.trim()) errors.category = PRODUCT_ERROR_MESSAGES.category;
-  if (publish && !values.sku.trim()) errors.sku = PRODUCT_ERROR_MESSAGES.sku;
+  else if (values.category.trim().length > 120) {
+    errors.category = 'Use at most 120 characters.';
+  }
+
+  if (requireVariant && !values.sku.trim()) errors.sku = PRODUCT_ERROR_MESSAGES.sku;
   else if (values.sku.trim().length > 100) errors.sku = 'Use at most 100 characters.';
 
   const priceText = values.wholesalePrice.trim();
-  if (publish && !priceText) {
+  if (requireVariant && !priceText) {
     errors.wholesalePrice = PRODUCT_ERROR_MESSAGES.wholesalePrice;
   } else if (priceText) {
     try {
       const kobo = nairaToKobo(priceText);
-      if (publish && kobo <= 0) errors.wholesalePrice = PRODUCT_ERROR_MESSAGES.wholesalePrice;
+      if (requireVariant && kobo <= 0) {
+        errors.wholesalePrice = PRODUCT_ERROR_MESSAGES.wholesalePrice;
+      }
     } catch {
       errors.wholesalePrice = PRODUCT_ERROR_MESSAGES.wholesalePriceInvalid;
     }
   }
 
   const stockText = values.stockQuantity.trim();
-  if (publish && !stockText) {
+  if (publish && requireStock && !stockText) {
     errors.stockQuantity = PRODUCT_ERROR_MESSAGES.stockQuantity;
   } else if (stockText) {
     const quantity = Number(stockText);
@@ -152,7 +185,7 @@ export function productInputFromValues(
   };
 }
 
-/** Map a 422/409 ApiError.fields body onto form fields (e.g. duplicate SKU). */
+/** Map a 422/409 ApiError.fields body onto form fields (including `defaultVariant.*` paths). */
 export function serverFieldErrors(fields: Record<string, string> | null): ProductFieldErrors {
   if (!fields) return {};
   const errors: ProductFieldErrors = {};
@@ -161,7 +194,10 @@ export function serverFieldErrors(fields: Record<string, string> | null): Produc
     description: 'description',
     category: 'category',
     sku: 'sku',
+    'defaultVariant.sku': 'sku',
     wholesalePrice: 'wholesalePrice',
+    basePriceKobo: 'wholesalePrice',
+    'defaultVariant.basePriceKobo': 'wholesalePrice',
     stockQuantity: 'stockQuantity',
     imageIds: 'images',
     images: 'images',
@@ -171,4 +207,26 @@ export function serverFieldErrors(fields: Record<string, string> | null): Produc
     if (target) errors[target] = message;
   }
   return errors;
+}
+
+/** Map an `ApiError` from PR #18 (`DUPLICATE_SKU`, message-based `VALIDATION_ERROR`, or `fields`) onto form fields. */
+export function serverErrorToFieldErrors(error: ApiError): ProductFieldErrors {
+  const fields = serverFieldErrors(error.fields);
+  if (Object.keys(fields).length > 0) return fields;
+
+  if (error.code && /SKU/i.test(error.code)) {
+    return { sku: 'A product with this SKU already exists. Use a unique SKU.' };
+  }
+  if (error.code === 'VALIDATION_ERROR') {
+    if (/defaultVariant\.sku/i.test(error.message)) {
+      return { sku: PRODUCT_ERROR_MESSAGES.sku };
+    }
+    if (/basePriceKobo/i.test(error.message)) {
+      return { wholesalePrice: PRODUCT_ERROR_MESSAGES.wholesalePrice };
+    }
+    if (/\bname is required\b/i.test(error.message)) {
+      return { name: PRODUCT_ERROR_MESSAGES.name };
+    }
+  }
+  return {};
 }

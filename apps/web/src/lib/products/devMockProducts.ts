@@ -135,7 +135,12 @@ export const devMockProducts = {
         return false;
       }
       if (params.stock && params.stock !== 'all') {
-        if (stockLevel(row.stockQuantity, row.lowStock) !== params.stock) return false;
+        if (
+          row.stockQuantity === null ||
+          stockLevel(row.stockQuantity, row.lowStock) !== params.stock
+        ) {
+          return false;
+        }
       }
       if (query) {
         const matchesName = row.name.toLowerCase().includes(query);
@@ -162,10 +167,14 @@ export const devMockProducts = {
       total: allRows.length,
       published: allRows.filter((row) => row.status === 'published').length,
       drafts: allRows.filter((row) => row.status === 'draft').length,
-      lowStock: allRows.filter((row) => stockLevel(row.stockQuantity, row.lowStock) === 'low-stock')
-        .length,
+      lowStock: allRows.filter(
+        (row) =>
+          row.stockQuantity !== null && stockLevel(row.stockQuantity, row.lowStock) === 'low-stock',
+      ).length,
       outOfStock: allRows.filter(
-        (row) => stockLevel(row.stockQuantity, row.lowStock) === 'out-of-stock',
+        (row) =>
+          row.stockQuantity !== null &&
+          stockLevel(row.stockQuantity, row.lowStock) === 'out-of-stock',
       ).length,
     });
   },
@@ -223,6 +232,19 @@ export const devMockProducts = {
         .map((imgId) => existingById.get(imgId) ?? uploadedImages.get(imgId))
         .filter((img): img is UploadedImage => Boolean(img));
     }
+    target.updatedAt = new Date().toISOString();
+    return Promise.resolve({ ...target, images: [...target.images] });
+  },
+
+  updatePricingRule(
+    businessId: string | null,
+    id: string,
+    maxMarkupKobo: number | null,
+  ): Promise<Product> {
+    const allRows = rowsForBusiness(businessId);
+    const target = allRows.find((row) => row.id === id);
+    if (!target) return Promise.reject(new ApiError(404, 'NOT_FOUND', 'Product not found.'));
+    target.pricingRule = { maxMarkupKobo };
     target.updatedAt = new Date().toISOString();
     return Promise.resolve({ ...target, images: [...target.images] });
   },
