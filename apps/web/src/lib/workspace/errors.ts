@@ -59,6 +59,12 @@ export function presentError(error: unknown): ErrorPresentation {
         retryable: false,
         kind: 'access',
       };
+    case 'DEFAULT_WAREHOUSE_REQUIRED':
+      return {
+        message: error.message || 'A default warehouse is required to publish.',
+        retryable: false,
+        kind: 'validation',
+      };
     case ENDPOINT_NOT_IMPLEMENTED_CODE:
       return {
         message: 'This feature is not available on the server yet.',

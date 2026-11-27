@@ -32,8 +32,8 @@ vi.mock('./businessesApi', () => ({
         phone: '+2348031234567',
         type: 'SUPPLIER' as const,
         status: 'ACTIVE' as const,
-        role: mocks.role,
-        plan: 'FREE' as const,
+        role: mocks.role as 'OWNER' | 'MANAGER' | 'STAFF',
+        plan: 'ENTERPRISE' as const,
       },
     ]),
 }));
@@ -42,9 +42,15 @@ function PermissionProbe() {
   const { activeBusiness, can } = useBusiness();
   if (!activeBusiness) return <p>Loading</p>;
   return (
-    <p>
-      {activeBusiness.role}:{String(can('supplier_profile:write'))}
-    </p>
+    <div>
+      <p>
+        {activeBusiness.role}:{String(can('supplier_profile:write'))}
+      </p>
+      <p>
+        catalogue:{String(can('product:read'))}/{String(can('product:write'))}/
+        {String(can('pricing:set'))}
+      </p>
+    </div>
   );
 }
 
@@ -68,6 +74,7 @@ describe('BusinessProvider supplier_profile:write permission', () => {
       </QueryProvider>,
     );
     await waitFor(() => expect(screen.getByText('OWNER:true')).toBeTruthy());
+    expect(screen.getByText('catalogue:true/true/true')).toBeTruthy();
     ownerView.unmount();
 
     mocks.role = 'MANAGER';
@@ -79,6 +86,7 @@ describe('BusinessProvider supplier_profile:write permission', () => {
       </QueryProvider>,
     );
     await waitFor(() => expect(screen.getByText('MANAGER:true')).toBeTruthy());
+    expect(screen.getByText('catalogue:false/false/false')).toBeTruthy();
     managerView.unmount();
 
     mocks.role = 'STAFF';
@@ -90,5 +98,6 @@ describe('BusinessProvider supplier_profile:write permission', () => {
       </QueryProvider>,
     );
     await waitFor(() => expect(screen.getByText('STAFF:false')).toBeTruthy());
+    expect(screen.getByText('catalogue:false/false/false')).toBeTruthy();
   });
 });

@@ -6,6 +6,7 @@ import type { SwitcherBusiness } from './businessesApi';
 export type BusinessPermission =
   | 'product:read'
   | 'product:write'
+  | 'pricing:set'
   | 'product:publish'
   | 'product:delete'
   | 'inventory:read'
