@@ -16,7 +16,7 @@ type Schemas = components['schemas'];
 export type BusinessMembershipRole = Schemas['UserRole'];
 export type BusinessType = Schemas['BusinessType'];
 export type BusinessPlanKey = Schemas['PlanKey'];
-export type BusinessStatus = 'ACTIVE' | 'SUSPENDED';
+export type BusinessStatus = Schemas['Business']['status'];
 
 export type SwitcherBusiness = {
   id: string;
@@ -30,17 +30,16 @@ export type SwitcherBusiness = {
   plan: BusinessPlanKey | null;
 };
 
-type ApiMembership = { userId: string; role: string };
+type ApiMembership = Pick<Schemas['BusinessMembership'], 'userId'> & { role: string };
 type ApiActiveSubscription = {
   status?: string;
   plan?: { key?: string; name?: string } | null;
 } | null;
-type ApiBusiness = {
+type ApiBusiness = Partial<
+  Omit<Schemas['Business'], 'type' | 'status' | 'memberships'>
+> & {
   id: string;
   name: string;
-  slug?: string;
-  email?: string | null;
-  phone?: string | null;
   type: string;
   status?: string;
   role?: string;
