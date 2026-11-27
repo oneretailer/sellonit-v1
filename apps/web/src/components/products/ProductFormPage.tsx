@@ -38,13 +38,15 @@ import {
   EMPTY_PRODUCT_VALUES,
   PRODUCT_FIELD_ORDER,
   productInputFromValues,
-  serverFieldErrors,
+  serverErrorToFieldErrors,
   validateProduct,
+  validationOptionsForCapabilities,
   type ProductFieldErrors,
   type ProductFormIntent,
   type ProductFormValues,
 } from '@/lib/products/validation';
-import type { Product, ProductCategory } from '@/lib/products/types';
+import type { Product, ProductCategory, ProductStatus } from '@/lib/products/types';
+import { presentError } from '@/lib/workspace/errors';
 import { ProductImageUploader, type UploaderImage } from './ProductImageUploader';
 import { ProductStatusPill, StockText } from './ProductStatusPill';
 
@@ -124,11 +126,13 @@ function ProductPreview({
   images,
   categories,
   status,
+  stockTracked = true,
 }: {
   values: ProductFormValues;
   images: UploaderImage[];
   categories: ProductCategory[];
-  status: 'draft' | 'published';
+  status: ProductStatus;
+  stockTracked?: boolean;
 }) {
   const main = images.find((image) => image.status === 'uploaded');
   let price = '₦ –';
@@ -185,7 +189,9 @@ function ProductPreview({
         <div className="flex items-end justify-between gap-3 pt-1">
           <div className="flex min-w-0 flex-col gap-0.5">
             <p className="truncate text-base font-semibold text-ink">{price}</p>
-            {stock !== null ? (
+            {!stockTracked ? (
+              <span className="text-[length:var(--text-ws-caption)] text-caption">Not tracked</span>
+            ) : stock !== null ? (
               <StockText quantity={stock} />
             ) : (
               <span className="text-[length:var(--text-ws-caption)] text-caption">– in stock</span>
@@ -347,8 +353,16 @@ function ProductForm({
     imagesRef.current = images;
   }, [images]);
 
-  const categories = useProductCategories();
-  const catalogueUnavailable = categories.isError && isEndpointNotImplemented(categories.error);
+  const capabilities = productsApi.getCapabilities();
+  const validationOptions = useMemo(
+    () => validationOptionsForCapabilities(capabilities),
+    [capabilities],
+  );
+  const categories = useProductCategories({ enabled: capabilities.categoriesEndpoint });
+  const catalogueUnavailable =
+    capabilities.categoriesEndpoint &&
+    categories.isError &&
+    isEndpointNotImplemented(categories.error);
   const create = useCreateProduct();
   const update = useUpdateProduct();
   const invalidate = useInvalidateProducts();
@@ -356,8 +370,9 @@ function ProductForm({
   const uploadedImages = images.filter((image) => image.status === 'uploaded');
   const uploading = images.some((image) => image.status === 'uploading');
   const busy = submitting !== null;
-  const formDisabled = busy || catalogueUnavailable;
-  const alreadyPublished = product?.status === 'published';
+  const isArchived = product?.status === 'archived';
+  const formDisabled = busy || catalogueUnavailable || isArchived;
+  const saveChangesOnly = product !== undefined && product.status !== 'draft';
 
   const isDirty =
     formState.isDirty ||
@@ -366,11 +381,12 @@ function ProductForm({
 
   // ---- Unsaved-changes guard + beforeunload -------------------------------
   const discardCleanup = useCallback(async () => {
+    if (!capabilities.images) return;
     const orphanIds = imagesRef.current
       .filter((image) => image.status === 'uploaded' && !initialImageIds.has(image.id))
       .map((image) => image.id);
     await Promise.allSettled(orphanIds.map((id) => productsApi.deleteImage(id)));
-  }, [initialImageIds]);
+  }, [capabilities.images, initialImageIds]);
 
   useEffect(() => {
     guard.registerGuard(isDirty ? { isDirty: true, onDiscard: discardCleanup } : null);
@@ -413,9 +429,10 @@ function ProductForm({
       getValues(),
       imagesRef.current.filter((image) => image.status === 'uploaded').length,
       attemptedIntent.current,
+      validationOptions,
     );
     applyErrors(errors);
-  }, [valuesKey, imagesKey, applyErrors, getValues]);
+  }, [valuesKey, imagesKey, applyErrors, getValues, validationOptions]);
 
   function focusFirstInvalid(errors: ProductFieldErrors) {
     const first = PRODUCT_FIELD_ORDER.find((field) => errors[field]);
@@ -449,7 +466,7 @@ function ProductForm({
   function handleSave(intent: ProductFormIntent) {
     if (formDisabled || uploading) return;
     setAlertMessage(null);
-    const errors = validateProduct(getValues(), uploadedImages.length, intent);
+    const errors = validateProduct(getValues(), uploadedImages.length, intent, validationOptions);
     if (Object.keys(errors).length > 0) {
       attemptedIntent.current = intent;
       applyErrors(errors);
@@ -459,7 +476,7 @@ function ProductForm({
     attemptedIntent.current = null;
     clearErrors();
     setAlertCount(null);
-    if (intent === 'publish' && !alreadyPublished) {
+    if (intent === 'publish' && !saveChangesOnly) {
       setConfirmOpen(true);
       return;
     }
@@ -468,34 +485,40 @@ function ProductForm({
 
   function surfaceSubmitError(caught: unknown, intent: ProductFormIntent) {
     if (caught instanceof ApiError) {
-      const fields = serverFieldErrors(caught.fields);
-      if (Object.keys(fields).length === 0 && caught.code && /SKU/i.test(caught.code)) {
-        fields.sku = 'A product with this SKU already exists. Use a unique SKU.';
-      }
+      const fields = serverErrorToFieldErrors(caught);
       if (Object.keys(fields).length > 0) {
         attemptedIntent.current = intent;
         applyErrors(fields);
         focusFirstInvalid(fields);
         return;
       }
+      setAlertCount(null);
+      setAlertMessage(presentError(caught).message);
+      return;
     }
     setAlertCount(null);
-    setAlertMessage(
-      caught instanceof ApiError && caught.message
-        ? caught.message
-        : 'Something went wrong while saving. Try again.',
-    );
+    setAlertMessage('Something went wrong while saving. Try again.');
   }
 
   async function doSavePublished() {
     setSubmitting('publish');
+    let savedDraft: Product | null = null;
     try {
       const saved = await saveProduct();
-      if (saved.status !== 'published') await productsApi.publish(saved.id);
+      savedDraft = saved;
+      if (saved.status === 'draft') await productsApi.publish(saved.id);
       await invalidate();
       guard.registerGuard(null);
       reset(getValues());
       setConfirmOpen(false);
+      if (saveChangesOnly) {
+        notify({
+          title: 'Product updated',
+          description: `${saved.name} has been updated.`,
+        });
+        router.push(PRODUCT_ROUTES.list);
+        return;
+      }
       setSuccessName(saved.name);
       notify({
         title: 'Product published',
@@ -503,6 +526,16 @@ function ProductForm({
       });
     } catch (caught) {
       setConfirmOpen(false);
+      if (savedDraft) {
+        await invalidate();
+        guard.registerGuard(null);
+        reset(getValues());
+        setAlertCount(null);
+        setAlertMessage(
+          `Saved as a draft, but could not publish: ${presentError(caught).message}`,
+        );
+        return;
+      }
       surfaceSubmitError(caught, 'publish');
     } finally {
       setSubmitting(null);
@@ -517,7 +550,7 @@ function ProductForm({
       guard.registerGuard(null);
       reset(getValues());
       notify(
-        alreadyPublished
+        saveChangesOnly
           ? { title: 'Product updated', description: `${saved.name} has been updated.` }
           : { title: 'Draft saved', description: `${saved.name} is saved as a draft.` },
       );
@@ -551,7 +584,7 @@ function ProductForm({
     document.getElementById('product-name')?.focus();
   }
 
-  const publishLabel = alreadyPublished ? 'Save changes' : 'Publish product';
+  const publishLabel = saveChangesOnly ? 'Save changes' : 'Publish product';
   const nameForDialogs = values.name.trim() || 'This product';
 
   return (
@@ -573,13 +606,21 @@ function ProductForm({
         </h1>
         <p className="text-[length:var(--text-ws-body)] text-subtle">
           {isEdit
-            ? 'Update the details, price and stock for this product. Fields marked * are required.'
+            ? 'Update the details and wholesale price for this product. Fields marked * are required.'
             : 'Add a product for retailers to discover. Fields marked * are required.'}
         </p>
       </div>
 
+      {isArchived ? (
+        <p
+          role="status"
+          className="rounded-ws-card border border-line bg-draft-tint px-4 py-3 text-[length:var(--text-ws-body)] text-ink"
+        >
+          This product is archived and can no longer be edited.
+        </p>
+      ) : null}
+
       {catalogueUnavailable ? (
-        // TODO(BE-002): remove once /api/v1/supplier/categories and /api/v1/supplier/products* exist.
         <p
           role="status"
           className="rounded-ws-card border border-primary-border bg-primary-tint px-4 py-3 text-[length:var(--text-ws-body)] text-ink"
@@ -594,14 +635,18 @@ function ProductForm({
           <div id="product-photos" tabIndex={-1} className="outline-none">
             <Card
               title="Product photos"
-              required
-              description="Retailers see these photos when they discover your product."
+              required={capabilities.images}
+              description={
+                capabilities.images
+                  ? 'Retailers see these photos when they discover your product.'
+                  : 'Photo uploads are not persisted by the catalogue API yet.'
+              }
             >
               <ProductImageUploader
                 value={images}
                 onChange={setImages}
                 uploadFn={(file, options) => productsApi.uploadImage(file, options)}
-                disabled={formDisabled}
+                disabled={formDisabled || !capabilities.images}
                 error={fieldError('images')}
               />
             </Card>
@@ -615,7 +660,7 @@ function ProductForm({
               placeholder="e.g. Classic cotton tee"
               maxLength={200}
               error={fieldError('name')}
-              disabled={busy}
+              disabled={formDisabled}
               {...register('name')}
             />
             <Textarea
@@ -624,41 +669,57 @@ function ProductForm({
               placeholder="Describe the product for retailers"
               rows={4}
               error={fieldError('description')}
-              disabled={busy}
+              disabled={formDisabled}
               helper="Optional. Mention material, fit or anything retailers should know."
               {...register('description')}
             />
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Select
-                  id="product-category"
-                  label="Category"
-                  required
-                  error={fieldError('category')}
-                  disabled={busy || categories.isPending}
-                  {...register('category')}
-                >
-                  <option value="">
-                    {categories.isPending ? 'Loading categories…' : 'Select a category'}
-                  </option>
-                  {(categories.data ?? []).map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Select>
-                {categories.isError && !catalogueUnavailable ? (
-                  <p className="text-[length:var(--text-ws-caption)] text-danger">
-                    Couldn&apos;t load categories.{' '}
-                    <button
-                      type="button"
-                      onClick={() => void categories.refetch()}
-                      className="font-semibold underline underline-offset-2"
+                {capabilities.categoriesEndpoint ? (
+                  <>
+                    <Select
+                      id="product-category"
+                      label="Category"
+                      required
+                      error={fieldError('category')}
+                      disabled={formDisabled || categories.isPending}
+                      {...register('category')}
                     >
-                      Retry
-                    </button>
-                  </p>
-                ) : null}
+                      <option value="">
+                        {categories.isPending ? 'Loading categories…' : 'Select a category'}
+                      </option>
+                      {(categories.data ?? []).map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </Select>
+                    {categories.isError && !catalogueUnavailable ? (
+                      <p className="text-[length:var(--text-ws-caption)] text-danger">
+                        Couldn&apos;t load categories.{' '}
+                        <button
+                          type="button"
+                          onClick={() => void categories.refetch()}
+                          className="font-semibold underline underline-offset-2"
+                        >
+                          Retry
+                        </button>
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <Input
+                    id="product-category"
+                    label="Category"
+                    required
+                    placeholder="e.g. Tops, Electronics"
+                    maxLength={120}
+                    error={fieldError('category')}
+                    disabled={formDisabled}
+                    helper="Product category shown to retailers."
+                    {...register('category')}
+                  />
+                )}
               </div>
               <Input
                 id="product-sku"
@@ -667,7 +728,7 @@ function ProductForm({
                 placeholder="e.g. SF-CT-001"
                 maxLength={100}
                 error={fieldError('sku')}
-                disabled={busy}
+                disabled={formDisabled}
                 helper="Your own code for this product."
                 {...register('sku')}
               />
@@ -680,19 +741,23 @@ function ProductForm({
                 value={values.wholesalePrice}
                 onChange={(text) => setValue('wholesalePrice', text, { shouldDirty: true })}
                 error={fieldError('wholesalePrice')}
-                disabled={busy}
+                disabled={formDisabled}
               />
             </Card>
             <Card title="Inventory">
               <Input
                 id="product-stockQuantity"
                 label="Stock quantity"
-                required
+                required={capabilities.stock}
                 inputMode="numeric"
                 placeholder="0"
                 error={fieldError('stockQuantity')}
-                disabled={busy}
-                helper="Units you currently have available."
+                disabled={formDisabled || !capabilities.stock}
+                helper={
+                  capabilities.stock
+                    ? 'Units you currently have available.'
+                    : 'Physical stock is not persisted on product variants yet.'
+                }
                 {...register('stockQuantity')}
               />
             </Card>
@@ -749,17 +814,20 @@ function ProductForm({
             values={values}
             images={images}
             categories={categories.data ?? []}
-            status={alreadyPublished ? 'published' : 'draft'}
+            status={product?.status ?? 'draft'}
+            stockTracked={capabilities.stock}
           />
 
           <section className="rounded-ws-card border border-line bg-surface p-5 shadow-ws-card">
             <h2 className="text-[length:var(--text-ws-body)] font-semibold text-ink">
-              {alreadyPublished ? 'Save changes' : 'Publish'}
+              {saveChangesOnly ? 'Save changes' : 'Publish'}
             </h2>
             <p className="mt-1 text-[length:var(--text-ws-caption)] leading-5 text-subtle">
-              {alreadyPublished
-                ? 'This product is live. Save to update what retailers see.'
-                : 'Publishing lists this product for retailers to discover. Save a draft to finish it later.'}
+              {isArchived
+                ? 'Archived products are read-only.'
+                : saveChangesOnly
+                  ? 'Save to update the product details and wholesale price.'
+                  : 'Publishing lists this product for retailers to discover. Save a draft to finish it later.'}
             </p>
             <div className="mt-4 flex flex-col gap-3">
               <button
@@ -771,7 +839,7 @@ function ProductForm({
                 {submitting === 'publish' ? <Spinner /> : null}
                 {publishLabel}
               </button>
-              {!alreadyPublished ? (
+              {!saveChangesOnly ? (
                 <button
                   type="button"
                   disabled={formDisabled || uploading}

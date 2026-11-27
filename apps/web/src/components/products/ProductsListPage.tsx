@@ -24,8 +24,10 @@ import {
   useProductsList,
   usePublishProduct,
 } from '@/lib/products/queries';
+import { productsApi } from '@/lib/products/productsApi';
 import { PRODUCTS_PAGE_SIZE, PRODUCT_ROUTES } from '@/lib/products/constants';
 import type { Product } from '@/lib/products/types';
+import { presentError } from '@/lib/workspace/errors';
 import { ProductDetailsDialog } from './ProductDetailsDialog';
 import { ProductStatCard } from './ProductStatCard';
 import { ProductStatusPill, StockText } from './ProductStatusPill';
@@ -65,9 +67,10 @@ export function ProductsListPage() {
     useProductFilters();
   const { can } = useBusiness();
   const notify = useToast();
+  const capabilities = productsApi.getCapabilities();
   const list = useProductsList(params);
-  const summary = useProductSummary();
-  const categories = useProductCategories();
+  const summary = useProductSummary({ enabled: capabilities.summaryEndpoint });
+  const categories = useProductCategories({ enabled: capabilities.categoriesEndpoint });
   const publish = usePublishProduct();
   const remove = useDeleteProduct();
 
@@ -87,15 +90,14 @@ export function ProductsListPage() {
   }, [categories.data]);
 
   const canWrite = can('product:write');
-  const counts: Record<ProductsTab, number | undefined> = {
-    all: summary.data?.total,
-    published: summary.data?.published,
-    draft: summary.data?.drafts,
-  };
-
   const rows = list.data?.data ?? [];
   const meta = list.data?.meta;
   const total = meta?.total ?? 0;
+  const counts: Record<ProductsTab, number | undefined> = {
+    all: summary.data?.total ?? (!hasActiveFilters && meta ? total : undefined),
+    published: summary.data?.published,
+    draft: summary.data?.drafts,
+  };
   const page = filters.page;
   const from = total === 0 ? 0 : (page - 1) * PRODUCTS_PAGE_SIZE + 1;
   const to = total === 0 ? 0 : Math.min(from + Math.max(rows.length, 1) - 1, total);
@@ -109,6 +111,7 @@ export function ProductsListPage() {
     : null;
 
   function resolveCategoryLabel(categoryValue: string): string {
+    if (!categoryValue) return 'Uncategorised';
     return categoryNameById.get(categoryValue) ?? categoryValue;
   }
 
@@ -129,10 +132,10 @@ export function ProductsListPage() {
                   description: `${product.name} is saved as a draft.`,
                 },
           ),
-        onError: () =>
+        onError: (caught) =>
           notify({
             title: 'Could not update product',
-            description: 'Please try again.',
+            description: presentError(caught).message,
             tone: 'error',
           }),
       },
@@ -166,14 +169,18 @@ export function ProductsListPage() {
       </button>
       {canWrite ? (
         <>
-          <Link
-            href={PRODUCT_ROUTES.edit(product.id)}
-            className="flex min-h-8 items-center rounded-ws-control px-2.5 text-[length:var(--text-ws-body)] font-medium text-ink transition-colors hover:bg-primary-tint hover:text-primary"
-          >
-            Edit
-          </Link>
+          {product.status !== 'archived' ? (
+            <Link
+              href={PRODUCT_ROUTES.edit(product.id)}
+              className="flex min-h-8 items-center rounded-ws-control px-2.5 text-[length:var(--text-ws-body)] font-medium text-ink transition-colors hover:bg-primary-tint hover:text-primary"
+            >
+              Edit
+            </Link>
+          ) : null}
           <ProductRowMenu
             product={product}
+            canUnpublish={capabilities.unpublish}
+            canDelete={capabilities.remove}
             onTogglePublish={togglePublish}
             onDelete={(target) => {
               setDeleteError(null);
@@ -186,7 +193,17 @@ export function ProductsListPage() {
     </div>
   );
 
-  const statsLoading = summary.isPending || (isLoading && !summary.data);
+  const statsLoading = capabilities.summaryEndpoint
+    ? summary.isPending || (isLoading && !summary.data)
+    : isLoading && !list.data;
+  const totalCardValue = summary.data
+    ? countFormat.format(summary.data.total)
+    : !hasActiveFilters && meta
+      ? countFormat.format(total)
+      : '—';
+  const searchLabel = capabilities.stock
+    ? 'Search by product name or SKU'
+    : 'Search by product name or category';
 
   return (
     <>
@@ -213,7 +230,7 @@ export function ProductsListPage() {
       <div className="grid gap-4 sm:grid-cols-3" aria-busy={statsLoading}>
         <ProductStatCard
           label="Total products"
-          value={countFormat.format(summary.data?.total ?? 0)}
+          value={totalCardValue}
           subline={
             summary.data
               ? `${countFormat.format(summary.data.published)} published · ${countFormat.format(summary.data.drafts)} drafts`
@@ -224,18 +241,20 @@ export function ProductsListPage() {
         />
         <ProductStatCard
           label="Low stock"
-          value={countFormat.format(summary.data?.lowStock ?? 0)}
+          value={capabilities.stock ? countFormat.format(summary.data?.lowStock ?? 0) : '—'}
+          subline={capabilities.stock ? undefined : 'Not tracked yet'}
           icon="alert"
           tone="orange"
-          href="/dashboard/inventory?tab=low-stock"
+          href={capabilities.stock ? '/dashboard/inventory?tab=low-stock' : undefined}
           isLoading={statsLoading}
         />
         <ProductStatCard
           label="Out of stock"
-          value={countFormat.format(summary.data?.outOfStock ?? 0)}
+          value={capabilities.stock ? countFormat.format(summary.data?.outOfStock ?? 0) : '—'}
+          subline={capabilities.stock ? undefined : 'Not tracked yet'}
           icon="box"
           tone="red"
-          href="/dashboard/inventory?tab=out-of-stock"
+          href={capabilities.stock ? '/dashboard/inventory?tab=out-of-stock' : undefined}
           isLoading={statsLoading}
         />
       </div>
@@ -249,15 +268,18 @@ export function ProductsListPage() {
         >
           {TABS.map((tab) => {
             const active = filters.tab === tab.id;
+            const tabDisabled =
+              tab.id !== 'all' && !capabilities.serverStatusAndCategoryFilters;
             return (
               <button
                 key={tab.id}
                 type="button"
                 role="tab"
                 aria-selected={active}
+                disabled={tabDisabled}
                 onClick={() => setFilters({ tab: tab.id })}
                 className={cn(
-                  'relative flex min-h-11 items-center gap-2 rounded-t-ws-control px-3 text-[length:var(--text-ws-body)] transition-colors',
+                  'relative flex min-h-11 items-center gap-2 rounded-t-ws-control px-3 text-[length:var(--text-ws-body)] transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                   active ? 'font-semibold text-ink' : 'font-medium text-subtle hover:text-ink',
                 )}
               >
@@ -289,8 +311,8 @@ export function ProductsListPage() {
               type="search"
               value={searchText}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by product name or SKU"
-              aria-label="Search by product name or SKU"
+              placeholder={searchLabel}
+              aria-label={searchLabel}
               className="min-h-11 w-full rounded-ws-control border border-line bg-surface pl-10 pr-3.5 text-[length:var(--text-ws-body)] text-ink placeholder:text-caption focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -300,6 +322,7 @@ export function ProductsListPage() {
               label="Category"
               hideLabel
               value={filters.category}
+              disabled={!capabilities.serverStatusAndCategoryFilters}
               onChange={(event) => setFilters({ category: event.target.value })}
               wrapperClassName="md:w-48"
             >
@@ -315,6 +338,7 @@ export function ProductsListPage() {
               label="Stock"
               hideLabel
               value={filters.stock}
+              disabled={!capabilities.stock}
               onChange={(event) =>
                 setFilters({ stock: event.target.value as typeof filters.stock })
               }
@@ -356,7 +380,7 @@ export function ProductsListPage() {
                     type="button"
                     onClick={() => {
                       void list.refetch();
-                      void summary.refetch();
+                      if (capabilities.summaryEndpoint) void summary.refetch();
                     }}
                     className="min-h-11 rounded-ws-control bg-primary px-6 text-[length:var(--text-ws-body)] font-semibold text-on-primary transition-colors hover:bg-primary-hover"
                   >

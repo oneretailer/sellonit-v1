@@ -5,7 +5,11 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProductsListPage } from './ProductsListPage';
 import { navMocks, polyfillProductsEnv, renderProducts, resetProductsMocks } from './testSupport';
-import { productsApi } from '@/lib/products/productsApi';
+import {
+  FULL_CATALOGUE_CAPABILITIES,
+  LIVE_CATALOGUE_CAPABILITIES,
+  productsApi,
+} from '@/lib/products/productsApi';
 import { SAMPLE_PRODUCTS } from '@/lib/products/devMockProducts';
 import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, NetworkError } from '@/lib/api-client';
 import type { Paginated, Product, ProductSummary } from '@/lib/products/types';
@@ -61,6 +65,7 @@ const summary: ProductSummary = {
 beforeEach(() => {
   resetProductsMocks();
   polyfillProductsEnv();
+  vi.spyOn(productsApi, 'getCapabilities').mockReturnValue(FULL_CATALOGUE_CAPABILITIES);
   vi.spyOn(productsApi, 'summary').mockResolvedValue(summary);
   vi.spyOn(productsApi, 'getCategories').mockResolvedValue([
     { id: 'Tops', name: 'Tops' },
@@ -265,5 +270,70 @@ describe('products list', () => {
     );
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Add product' })).toBeNull();
+  });
+});
+
+describe('products list (PR #18 strict live contract)', () => {
+  beforeEach(() => {
+    vi.spyOn(productsApi, 'getCapabilities').mockReturnValue(LIVE_CATALOGUE_CAPABILITIES);
+  });
+
+  it('skips unmounted summary/categories calls, renders Not tracked stock, disables unsupported filters, and hides unmounted row actions', async () => {
+    const summarySpy = vi.spyOn(productsApi, 'summary');
+    const categoriesSpy = vi.spyOn(productsApi, 'getCategories');
+    vi.spyOn(productsApi, 'list').mockResolvedValue(
+      page([
+        product({ id: 'draft-1', name: 'Draft Tee', status: 'draft', stockQuantity: null }),
+        product({ id: 'pub-1', name: 'Published Tee', status: 'published', stockQuantity: null }),
+        product({ id: 'arch-1', name: 'Archived Tee', status: 'archived', stockQuantity: null }),
+      ]),
+    );
+
+    renderProducts(<ProductsListPage />);
+    await waitFor(() => expect(screen.getAllByText('Draft Tee').length).toBeGreaterThan(0));
+    expect(summarySpy).not.toHaveBeenCalled();
+    expect(categoriesSpy).not.toHaveBeenCalled();
+    expect(screen.getAllByText('Not tracked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Archived').length).toBeGreaterThan(0);
+
+    // Unsupported server filters are disabled in strict live mode.
+    expect(screen.getByRole('tab', { name: /Published/ })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('tab', { name: /Drafts/ })).toHaveProperty('disabled', true);
+    expect(screen.getByLabelText('Category')).toHaveProperty('disabled', true);
+    expect(screen.getByLabelText('Stock')).toHaveProperty('disabled', true);
+
+    // Published & Archived rows have no unpublish/delete menu; Archived row hides Edit.
+    expect(screen.queryByRole('button', { name: 'More actions for Published Tee' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'More actions for Archived Tee' })).toBeNull();
+    const editLinks = screen
+      .getAllByRole('link', { name: 'Edit' })
+      .map((el) => el.getAttribute('href'));
+    expect(editLinks).not.toContain('/dashboard/products/arch-1/edit');
+
+    // Draft row shows Publish only (no Delete).
+    const userEventSession = userEvent.setup();
+    const draftMenus = screen.getAllByRole('button', { name: 'More actions for Draft Tee' });
+    await userEventSession.click(draftMenus[0]!);
+    expect(screen.getByRole('menuitem', { name: 'Publish' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
+  });
+
+  it('surfaces backend publish guard errors (DEFAULT_WAREHOUSE_REQUIRED) in the toast', async () => {
+    const userEventSession = userEvent.setup();
+    vi.spyOn(productsApi, 'list').mockResolvedValue(
+      page([product({ id: 'draft-1', name: 'Draft Tee', status: 'draft', stockQuantity: null })]),
+    );
+    vi.spyOn(productsApi, 'publish').mockRejectedValue(
+      new ApiError(
+        422,
+        'DEFAULT_WAREHOUSE_REQUIRED',
+        'A default warehouse is required to publish',
+      ),
+    );
+    renderProducts(<ProductsListPage />);
+    const menus = await screen.findAllByRole('button', { name: 'More actions for Draft Tee' });
+    await userEventSession.click(menus[0]!);
+    await userEventSession.click(screen.getByRole('menuitem', { name: 'Publish' }));
+    expect(await screen.findByText('A default warehouse is required to publish')).toBeTruthy();
   });
 });

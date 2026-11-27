@@ -5,7 +5,11 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProductFormPage } from './ProductFormPage';
 import { navMocks, polyfillProductsEnv, renderProducts, resetProductsMocks } from './testSupport';
-import { productsApi } from '@/lib/products/productsApi';
+import {
+  FULL_CATALOGUE_CAPABILITIES,
+  LIVE_CATALOGUE_CAPABILITIES,
+  productsApi,
+} from '@/lib/products/productsApi';
 import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE } from '@/lib/api-client';
 import type { Product } from '@/lib/products/types';
 
@@ -46,6 +50,7 @@ beforeEach(() => {
   resetProductsMocks();
   polyfillProductsEnv();
   navMocks.pathname = '/dashboard/products/new';
+  vi.spyOn(productsApi, 'getCapabilities').mockReturnValue(FULL_CATALOGUE_CAPABILITIES);
   vi.spyOn(productsApi, 'getCategories').mockResolvedValue([{ id: 'tops', name: 'Tops' }]);
 });
 afterEach(() => {
@@ -260,5 +265,93 @@ describe('add product form', () => {
       true,
     );
     expect(screen.getByRole('button', { name: 'Save draft' })).toHaveProperty('disabled', true);
+  });
+});
+
+describe('product form (PR #18 strict live contract)', () => {
+  beforeEach(() => {
+    vi.spyOn(productsApi, 'getCapabilities').mockReturnValue(LIVE_CATALOGUE_CAPABILITIES);
+  });
+
+  it('uses text Category input without calling /categories, disables stock & photos, requires SKU+price on draft, and publishes without photos', async () => {
+    const userEventSession = userEvent.setup();
+    const categoriesSpy = vi.spyOn(productsApi, 'getCategories');
+    const create = vi
+      .spyOn(productsApi, 'create')
+      .mockResolvedValue(savedProduct({ stockQuantity: null, category: 'Tops' }));
+    const publish = vi
+      .spyOn(productsApi, 'publish')
+      .mockResolvedValue(savedProduct({ status: 'published', stockQuantity: null }));
+
+    renderProducts(<ProductFormPage />);
+    expect(categoriesSpy).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/Stock quantity/)).toHaveProperty('disabled', true);
+    expect(screen.getByLabelText('Upload product photos')).toHaveProperty('disabled', true);
+
+    // Draft requires SKU and positive price on PR #18.
+    await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
+    await userEventSession.click(screen.getByRole('button', { name: 'Save draft' }));
+    expect(screen.getByText('Enter a SKU.')).toBeTruthy();
+    expect(screen.getByText('Enter a wholesale price.')).toBeTruthy();
+    expect(create).not.toHaveBeenCalled();
+
+    // Fill category text, SKU, and price, then publish without photos/stock.
+    await userEventSession.type(screen.getByLabelText(/Category/), 'Tops');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
+    await userEventSession.type(screen.getByLabelText(/Wholesale price/), '7500');
+    await userEventSession.click(screen.getByRole('button', { name: 'Publish product' }));
+    const confirmDialog = await screen.findByRole('dialog');
+    await userEventSession.click(within(confirmDialog).getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Cotton polo shirt',
+          category: 'Tops',
+          sku: 'SF-PS-022',
+          wholesalePrice: 750000,
+        }),
+      ),
+    );
+    await waitFor(() => expect(publish).toHaveBeenCalledWith('prod-1'));
+  });
+
+  it('preserves saved draft state and surfaces actionable alert when publish fails with SUPPLIER_NOT_APPROVED', async () => {
+    const userEventSession = userEvent.setup();
+    vi.spyOn(productsApi, 'create').mockResolvedValue(savedProduct({ stockQuantity: null }));
+    vi.spyOn(productsApi, 'publish').mockRejectedValue(
+      new ApiError(
+        403,
+        'SUPPLIER_NOT_APPROVED',
+        'Your supplier account must be approved before publishing.',
+      ),
+    );
+
+    renderProducts(<ProductFormPage />);
+    await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
+    await userEventSession.type(screen.getByLabelText(/Category/), 'Tops');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
+    await userEventSession.type(screen.getByLabelText(/Wholesale price/), '7500');
+    await userEventSession.click(screen.getByRole('button', { name: 'Publish product' }));
+    const confirmDialog = await screen.findByRole('dialog');
+    await userEventSession.click(within(confirmDialog).getByRole('button', { name: 'Publish' }));
+
+    expect(
+      await screen.findByText(
+        /Saved as a draft, but could not publish: Your supplier account must be approved before publishing\./,
+      ),
+    ).toBeTruthy();
+  });
+
+  it('renders archived products as read-only and disables editing', async () => {
+    vi.spyOn(productsApi, 'get').mockResolvedValue(
+      savedProduct({ status: 'archived', stockQuantity: null }),
+    );
+    renderProducts(<ProductFormPage productId="prod-1" />);
+    expect(
+      await screen.findByText('This product is archived and can no longer be edited.'),
+    ).toBeTruthy();
+    expect(screen.getByLabelText(/Product name/)).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Save changes' })).toHaveProperty('disabled', true);
   });
 });
