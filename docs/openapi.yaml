@@ -43,11 +43,11 @@ info:
         user's business/store membership.
 
 servers:
-  - url: https://api.sellonit.app/v1
+  - url: https://api.sellonit.app/api/v1
     description: Production
-  - url: https://staging-api.sellonit.app/v1
+  - url: https://staging-api.sellonit.app/api/v1
     description: Staging
-  - url: http://localhost:4000/v1
+  - url: http://localhost:4000/api/v1
     description: Local development
 
 tags:
@@ -77,6 +77,7 @@ tags:
 
 security:
   - bearerAuth: []
+  - cookieAuth: []
 
 paths:
 
@@ -125,7 +126,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponseUser'
+                $ref: '#/components/schemas/RegisterResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
         '409':
@@ -152,7 +153,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponseUser'
+                $ref: '#/components/schemas/VerificationStatusResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
 
@@ -163,7 +164,8 @@ paths:
       description: |
         Consumes the single-use email verification token, marks the user's
         email address as verified, creates an authenticated session, and sets
-        the HTTP-only session cookie.
+        the HTTP-only session cookie. The returned body contains the user and
+        session expiry; the access token itself is only in the cookie.
       security: []
       requestBody:
         required: true
@@ -206,12 +208,38 @@ paths:
       responses:
         '200':
           description: Authenticated
+          headers:
+            Set-Cookie:
+              description: HTTP-only access-token cookie.
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /auth/verify-email/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      tags: [Auth]
+      summary: Verify email using the token in the URL
+      description: Compatibility endpoint; it has the same effect as POST /auth/verify-email.
+      security: []
+      responses:
+        '200':
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStatusResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
 
   /auth/me:
     patch:
@@ -254,6 +282,17 @@ paths:
       responses:
         '200':
           description: Verification code sent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [sent]
+                    properties:
+                      sent: {type: boolean, const: true}
         '400':
           $ref: '#/components/responses/ValidationError'
         '502':
@@ -281,6 +320,10 @@ paths:
       responses:
         '200':
           description: Phone verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStatusResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
 
@@ -327,6 +370,17 @@ paths:
       responses:
         '202':
           description: Reset request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [sent]
+                    properties:
+                      sent: {type: boolean, const: true}
 
   /auth/reset-password:
     post:
@@ -463,6 +517,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponseSupplierProfile'
 
+  /supplier/{businessId}/profile:
+    parameters:
+      - {$ref: '#/components/parameters/BusinessId'}
+    get:
+      tags: [Supplier Profiles]
+      summary: Get a supplier profile by business ID
+      responses:
+        '200':
+          description: Supplier profile
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseSupplierProfile'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    put:
+      tags: [Supplier Profiles]
+      summary: Create or update a supplier profile by business ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpsertSupplierProfileRequest'}
+      responses:
+        '200':
+          description: Supplier profile
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseSupplierProfile'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
+  /supplier/{businessId}/profile/submit:
+    parameters:
+      - {$ref: '#/components/parameters/BusinessId'}
+    post:
+      tags: [Supplier Profiles]
+      summary: Submit a supplier profile by business ID
+      responses:
+        '200':
+          description: Supplier profile submitted
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseSupplierProfile'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
   /businesses:
     get:
       tags: [Businesses]
@@ -473,7 +570,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedBusinesses'
+                $ref: '#/components/schemas/ApiResponseBusinesses'
     post:
       tags: [Businesses]
       summary: Create a business
@@ -1710,12 +1807,16 @@ paths:
     get:
       tags: [Admin Supplier Review]
       summary: List supplier review queue
-      description: 'Platform ADMIN only.'
+      description: Requires the admin:read permission.
       parameters:
         - name: status
           in: query
           schema: {$ref: '#/components/schemas/SupplierReviewStatus'}
           description: Defaults to PENDING_REVIEW.
+        - name: search
+          in: query
+          schema: {type: string}
+          description: Case-insensitive search over supplier legal name and description.
         - name: page
           in: query
           schema: {type: integer, minimum: 1, default: 1}
@@ -1764,6 +1865,7 @@ paths:
               required: [plan]
               properties:
                 plan: {$ref: '#/components/schemas/SupplierPlan'}
+                note: {type: string}
       responses:
         '200':
           description: Updated supplier
@@ -1774,7 +1876,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
-        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   /admin/suppliers/{id}/reject:
     parameters:
@@ -1798,7 +1900,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
-        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   /admin/suppliers/{id}/suspend:
     parameters:
@@ -1822,7 +1924,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
-        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   /admin/suppliers/{id}/reinstate:
     parameters:
@@ -1842,25 +1944,49 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
 
+  /admin/businesses/{id}/subscription/change:
+    parameters:
+      - {$ref: '#/components/parameters/WorkspaceResourceId'}
+    post:
+      tags: [Admin Supplier Review]
+      summary: Change a business subscription plan
+      description: Requires admin:write. The requested plan transition must be seeded as allowed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeBusinessSubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription plan changed
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiResponseBusinessSubscription'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+
   /supplier/products:
     get:
       tags: [Frontend Workspace]
-      summary: List active-business products (PROPOSED)
-      description: 'PROPOSED. Requires product:read. Business scope comes from the authenticated session, never a client-supplied business ID.'
-      x-contract-status: PROPOSED
+      summary: List supplier products
+      description: Requires product:read and membership in the supplier business. Supply the business ID in the X-Business-Id header.
+      x-contract-status: IMPLEMENTED
       parameters:
         - name: search
           in: query
-          schema: {type: string, maxLength: 200}
-        - name: status
-          in: query
-          schema: {$ref: '#/components/schemas/ProductStatus'}
+          schema: {type: string}
+          description: Case-insensitive search over product name and category.
         - name: page
           in: query
           schema: {type: integer, minimum: 1, default: 1}
         - name: pageSize
           in: query
           schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+        - {$ref: '#/components/parameters/BusinessIdHeader'}
       responses:
         '200':
           description: Paginated products
@@ -1869,13 +1995,14 @@ paths:
               schema: {$ref: '#/components/schemas/PaginatedWorkspaceProducts'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '400': {$ref: '#/components/responses/ValidationError'}
     post:
       tags: [Frontend Workspace]
-      summary: Create a product with one default variant (PROPOSED)
-      description: 'PROPOSED. Requires product:write. No physical stock fields. SKU uniqueness is scoped to the active business.'
-      x-contract-status: PROPOSED
+      summary: Create a supplier product with one default variant
+      description: Requires product:write and ownership of the supplier business. No physical stock fields. SKU uniqueness is scoped to the business. Provide businessId in the body or X-Business-Id header.
+      x-contract-status: IMPLEMENTED
       parameters:
-        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/BusinessIdHeader'}
       requestBody:
         required: true
         content:
@@ -1889,17 +2016,23 @@ paths:
               schema: {$ref: '#/components/schemas/ApiResponseWorkspaceProduct'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
-        '409': {$ref: '#/components/responses/Conflict'}
-        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '409':
+          description: SKU already exists in this business
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   /supplier/products/{id}:
     parameters:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
+      - {$ref: '#/components/parameters/BusinessIdHeader'}
     get:
       tags: [Frontend Workspace]
-      summary: Get an active-business product (PROPOSED)
-      description: 'PROPOSED. Requires product:read. Includes the current markup rule so the edit form needs no uncontracted pricing GET.'
-      x-contract-status: PROPOSED
+      summary: Get a supplier product
+      description: Requires product:read and membership in the supplier business. Includes the current markup rule.
+      x-contract-status: IMPLEMENTED
       responses:
         '200':
           description: Product
@@ -1909,11 +2042,12 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '400': {$ref: '#/components/responses/ValidationError'}
     patch:
       tags: [Frontend Workspace]
-      summary: Update a non-archived product (PROPOSED)
-      description: 'PROPOSED. Requires product:write. Archived products are read-only.'
-      x-contract-status: PROPOSED
+      summary: Update a non-archived supplier product
+      description: Requires product:write and ownership of the supplier business. Archived products are read-only. Provide businessId in the body or X-Business-Id header.
+      x-contract-status: IMPLEMENTED
       requestBody:
         required: true
         content:
@@ -1928,17 +2062,23 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {$ref: '#/components/responses/Conflict'}
-        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '409':
+          description: SKU already exists in this business or product is archived
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   /supplier/products/{id}/pricing-rule:
     parameters:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
+      - {$ref: '#/components/parameters/BusinessIdHeader'}
     put:
       tags: [Frontend Workspace]
-      summary: Replace the maximum markup rule (PROPOSED)
-      description: 'PROPOSED. Requires pricing:set. null means no ceiling; zero means fixed base price; a positive integer is the maximum markup in kobo.'
-      x-contract-status: PROPOSED
+      summary: Replace the maximum markup rule
+      description: Requires pricing:set and ownership of the supplier business. null means no ceiling; zero means fixed base price; a positive integer is the maximum markup in kobo. Provide businessId in the body or X-Business-Id header.
+      x-contract-status: IMPLEMENTED
       requestBody:
         required: true
         content:
@@ -1953,17 +2093,27 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '400': {$ref: '#/components/responses/ValidationError'}
         '409': {$ref: '#/components/responses/Conflict'}
-        '422': {$ref: '#/components/responses/FieldValidationFailed'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   /supplier/products/{id}/publish:
     parameters:
       - {$ref: '#/components/parameters/WorkspaceResourceId'}
+      - {$ref: '#/components/parameters/BusinessIdHeader'}
     post:
       tags: [Frontend Workspace]
-      summary: Publish a product (PROPOSED)
-      description: 'PROPOSED. Requires product:publish and APPROVED supplier status. DRAFT/UNPUBLISHED -> PUBLISHED; ARCHIVED is immutable.'
-      x-contract-status: PROPOSED
+      summary: Publish a supplier product
+      description: Requires product:write and ownership of the supplier business. The supplier must be approved, the product must be DRAFT, a priced SKU variant and a default warehouse must exist.
+      x-contract-status: IMPLEMENTED
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                businessId: {type: string, format: uuid}
       responses:
         '200':
           description: Published product
@@ -1974,6 +2124,8 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '422': {$ref: '#/components/responses/ValidationError'}
 
   /supplier/products/{id}/unpublish:
     parameters:
@@ -2001,7 +2153,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Short-lived access token. Refresh handled through /auth/refresh.
+      description: Access token sent in the Authorization header.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sellonit_access_token
+      description: HttpOnly access-token cookie set by login and email-verification login.
 
   parameters:
     WorkspaceResourceId:
@@ -2014,6 +2171,12 @@ components:
       name: businessId
       in: path
       required: true
+      schema: {type: string, format: uuid}
+    BusinessIdHeader:
+      name: X-Business-Id
+      in: header
+      required: false
+      description: Supplier business to scope this operation to; alternatively use businessId in the JSON body.
       schema: {type: string, format: uuid}
     MemberId:
       name: memberId
@@ -2190,11 +2353,11 @@ components:
         type: {$ref: '#/components/schemas/BusinessType'}
     SupplierReviewStatus:
       type: string
-      description: PROPOSED. Supplier review lifecycle.
+      description: Supplier review lifecycle used by the implemented admin review endpoints.
       enum: [DRAFT, PENDING_REVIEW, APPROVED, REJECTED, SUSPENDED]
     SupplierPlan:
       type: string
-      description: PROPOSED. Plan selected on approval.
+      description: Plan selected on supplier approval or subscription change.
       enum: [ENTERPRISE, ENTERPRISE_PLUS]
     WorkspaceSessionContext:
       type: object
@@ -2231,7 +2394,7 @@ components:
         accountType: {type: string, enum: [entrepreneur, retailer, supplier]}
     AdminSupplierSummary:
       type: object
-      description: PROPOSED. id is the supplier business ID.
+      description: id is the supplier business ID.
       required: [id, businessName, ownerPhone, submittedAt, status]
       properties:
         id: {type: string, format: uuid}
@@ -2241,7 +2404,7 @@ components:
         status: {$ref: '#/components/schemas/SupplierReviewStatus'}
     SupplierAuditEvent:
       type: object
-      description: PROPOSED. Immutable review-history entry.
+      description: Immutable supplier review-history entry.
       required: [id, action, actorName, fromStatus, toStatus, reason, createdAt]
       properties:
         id: {type: string, format: uuid}
@@ -2256,7 +2419,7 @@ components:
         createdAt: {type: string, format: date-time}
     AdminSupplierDetail:
       type: object
-      description: PROPOSED. Supplier profile and immutable audit trail.
+      description: Supplier profile and immutable review audit trail.
       required: [id, businessName, ownerName, ownerPhone, ownerEmail, description, profile, submittedAt, status, plan, auditHistory]
       properties:
         id: {type: string, format: uuid}
@@ -2277,33 +2440,33 @@ components:
           items: {$ref: '#/components/schemas/SupplierAuditEvent'}
     SupplierReasonRequest:
       type: object
-      description: PROPOSED. Required non-blank decision reason.
+      description: Required non-blank decision reason.
       required: [reason]
       properties:
         reason: {type: string, minLength: 1, maxLength: 2000}
     WorkspaceDefaultVariant:
       type: object
-      description: PROPOSED. Single default variant; no inventory/stock fields.
+      description: Single default variant; no inventory/stock fields.
       required: [sku, basePriceKobo]
       properties:
-        sku: {type: string, minLength: 1, maxLength: 100}
+        sku: {type: string, minLength: 1}
         basePriceKobo: {type: integer, minimum: 1, maximum: 9007199254740991}
     MaximumMarkupPricingRule:
       type: object
-      description: PROPOSED. null is no ceiling; zero is fixed base price.
+      description: null is no ceiling; zero is fixed base price.
       required: [maxMarkupKobo]
       properties:
         maxMarkupKobo: {type: [integer, 'null'], minimum: 0, maximum: 9007199254740991}
     WorkspaceProduct:
       type: object
-      description: PROPOSED. Active-business product with one default variant.
+      description: Product in the selected supplier business with its single default variant.
       required: [id, businessId, name, description, category, defaultVariant, status, pricingRule, publishedAt, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
         businessId: {type: string, format: uuid}
-        name: {type: string, minLength: 1, maxLength: 200}
-        description: {type: string, maxLength: 5000}
-        category: {type: string, minLength: 1, maxLength: 120}
+        name: {type: string}
+        description: {type: string}
+        category: {type: string}
         defaultVariant: {$ref: '#/components/schemas/WorkspaceDefaultVariant'}
         status: {$ref: '#/components/schemas/ProductStatus'}
         pricingRule: {$ref: '#/components/schemas/MaximumMarkupPricingRule'}
@@ -2312,54 +2475,79 @@ components:
         updatedAt: {type: string, format: date-time}
     CreateWorkspaceProductRequest:
       type: object
-      description: PROPOSED. Server assigns businessId, DRAFT status and an uncapped pricing rule.
-      required: [name, category, defaultVariant]
+      description: The business is supplied as businessId or X-Business-Id. The server assigns DRAFT status and an uncapped pricing rule.
+      required: [name, defaultVariant]
       properties:
-        name: {type: string, minLength: 1, maxLength: 200}
-        description: {type: string, maxLength: 5000}
-        category: {type: string, minLength: 1, maxLength: 120}
+        businessId: {type: string, format: uuid}
+        name: {type: string, minLength: 1}
+        description: {type: string}
+        category: {type: string}
         defaultVariant: {$ref: '#/components/schemas/WorkspaceDefaultVariant'}
     UpdateWorkspaceProductRequest:
       type: object
-      description: PROPOSED. At least one editable field; archived products cannot be updated.
-      minProperties: 1
+      description: The business is supplied as businessId or X-Business-Id; archived products cannot be updated.
       properties:
-        name: {type: string, minLength: 1, maxLength: 200}
-        description: {type: string, maxLength: 5000}
-        category: {type: string, minLength: 1, maxLength: 120}
+        businessId: {type: string, format: uuid}
+        name: {type: string, minLength: 1}
+        description: {type: string}
+        category: {type: string}
         defaultVariant: {$ref: '#/components/schemas/WorkspaceDefaultVariant'}
     SetMaximumMarkupRequest:
       type: object
-      description: PROPOSED. Whole kobo only; base price plus markup must remain a safe integer.
+      description: The business is supplied as businessId or X-Business-Id. Values are whole kobo.
       required: [maxMarkupKobo]
       properties:
+        businessId: {type: string, format: uuid}
         maxMarkupKobo: {type: [integer, 'null'], minimum: 0, maximum: 9007199254740991}
     PaginatedAdminSuppliers:
       type: object
-      description: PROPOSED.
+      description: Paginated supplier review queue.
       required: [data, meta]
       properties:
         data: {type: array, items: {$ref: '#/components/schemas/AdminSupplierSummary'}}
         meta: {$ref: '#/components/schemas/PaginationMeta'}
     PaginatedWorkspaceProducts:
       type: object
-      description: PROPOSED.
+      description: Paginated supplier product results.
       required: [data, meta]
       properties:
         data: {type: array, items: {$ref: '#/components/schemas/WorkspaceProduct'}}
         meta: {$ref: '#/components/schemas/PaginationMeta'}
     ApiResponseAdminSupplierDetail:
       type: object
-      description: PROPOSED.
+      description: Supplier detail and review history response envelope.
       required: [data]
       properties:
         data: {$ref: '#/components/schemas/AdminSupplierDetail'}
     ApiResponseWorkspaceProduct:
       type: object
-      description: PROPOSED.
+      description: Product response envelope.
       required: [data]
       properties:
         data: {$ref: '#/components/schemas/WorkspaceProduct'}
+    ChangeBusinessSubscriptionRequest:
+      type: object
+      description: Change a business plan. targetPlan is preferred; plan is accepted as a compatibility alias.
+      required: [confirm]
+      anyOf:
+        - required: [targetPlan]
+        - required: [plan]
+      properties:
+        targetPlan: {$ref: '#/components/schemas/SupplierPlan'}
+        plan: {$ref: '#/components/schemas/SupplierPlan'}
+        confirm: {type: boolean, const: true}
+        choices: {type: object, additionalProperties: true}
+    ApiResponseBusinessSubscription:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [businessId, plan, status]
+          properties:
+            businessId: {type: string, format: uuid}
+            plan: {$ref: '#/components/schemas/SupplierPlan'}
+            status: {type: string, enum: [ACTIVE]}
     FieldValidationErrorResponse:
       type: object
       description: 'PROPOSED additive 422 envelope. fields maps contract paths (for example defaultVariant.sku) to a display message; details preserves the existing ErrorDetail shape.'
@@ -2389,7 +2577,7 @@ components:
       enum: [ENTERPRISE, ENTERPRISE_PLUS]
     SupplierProfileStatus:
       type: string
-      enum: [DRAFT, PENDING_REVIEW, APPROVED, REJECTED]
+      enum: [DRAFT, PENDING_REVIEW, APPROVED, REJECTED, SUSPENDED]
     UserStatus:
       type: string
       enum: [PENDING_VERIFICATION, ACTIVE, SUSPENDED, DEACTIVATED]
@@ -2471,33 +2659,50 @@ components:
 
     User:
       type: object
-      required: [id, email, status, createdAt]
+      required: [id, email, firstName, lastName, phone, status, onboardingIntent, emailVerifiedAt, phoneVerifiedAt, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
         email: {type: string, format: email}
         firstName: {type: string, maxLength: 80}
         lastName: {type: string, maxLength: 80}
+        phone: {type: [string, 'null'], maxLength: 30}
         status: {$ref: '#/components/schemas/UserStatus'}
         onboardingIntent:
           type: [string, 'null']
           $ref: '#/components/schemas/BusinessType'
         emailVerifiedAt: {type: [string, 'null'], format: date-time}
+        phoneVerifiedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
 
     Business:
       type: object
-      required: [id, name, type, createdAt]
+      required: [id, name, slug, ownerId, type, status, phone, email, memberships, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
-        name: {type: string, minLength: 2, maxLength: 160}
+        name: {type: string}
         type: {$ref: '#/components/schemas/BusinessType'}
-        slug: {type: string, maxLength: 100}
-        phone: {type: string, maxLength: 30}
-        email: {type: string, format: email}
+        slug: {type: string}
+        ownerId: {type: string, format: uuid}
+        phone: {type: [string, 'null']}
+        email: {type: [string, 'null'], format: email}
         status:
           type: string
-          enum: [ACTIVE, SUSPENDED, DEACTIVATED]
+          enum: [ACTIVE, SUSPENDED]
+        memberships:
+          type: array
+          items: {$ref: '#/components/schemas/BusinessMembership'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+
+    BusinessMembership:
+      type: object
+      required: [id, userId, businessId, role, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        userId: {type: string, format: uuid}
+        businessId: {type: string, format: uuid}
+        role: {$ref: '#/components/schemas/UserRole'}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
 
@@ -2885,6 +3090,25 @@ components:
       properties:
         token: {type: string, minLength: 10}
 
+    RegisterResponse:
+      type: object
+      required: [data]
+      properties:
+        data: {$ref: '#/components/schemas/User'}
+        emailVerificationToken:
+          type: string
+          description: Included only in development and test environments.
+
+    VerificationStatusResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [verified]
+          properties:
+            verified: {type: boolean, const: true}
+
     LoginRequest:
       type: object
       required: [email, password]
@@ -2914,9 +3138,13 @@ components:
 
     VerifyPasswordResetCodeRequest:
       type: object
-      required: [identifier, code]
+      required: [code]
+      anyOf:
+        - required: [identifier]
+        - required: [email]
       properties:
         identifier: {type: string, format: email}
+        email: {type: string, format: email}
         code: {type: string, pattern: '^\\d{6}$'}
 
     TokenResponse:
@@ -2929,20 +3157,19 @@ components:
 
     AuthResponse:
       type: object
-      required: [user, accessToken, expiresIn]
+      required: [user, expiresIn]
       properties:
         user: {$ref: '#/components/schemas/User'}
-        accessToken: {type: string}
-        refreshToken: {type: string}
         expiresIn: {type: integer}
 
     CreateBusinessRequest:
       type: object
-      required: [name, type]
+      required: [name]
+      description: type (or its businessType alias) defaults to the authenticated user's onboarding intent, then RETAILER.
       properties:
         name: {type: string, minLength: 2, maxLength: 160}
         type: {$ref: '#/components/schemas/BusinessType'}
-        slug: {type: string, maxLength: 100}
+        businessType: {$ref: '#/components/schemas/BusinessType'}
         phone: {type: string, maxLength: 30}
         email: {type: string, format: email}
 
@@ -3178,6 +3405,14 @@ components:
         - type: object
           properties: {data: {$ref: '#/components/schemas/Business'}}
 
+    ApiResponseBusinesses:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/Business'}
+
     ApiResponseMember:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
@@ -3375,13 +3610,13 @@ components:
         message: {type: string}
 
     ErrorResponse:
-      description: Stable error envelope. Domain codes include INSUFFICIENT_INVENTORY, INVALID_PRICING_RULE, UNAUTHORIZED_BUSINESS_ACCESS, INVALID_STATE_TRANSITION, PAYMENT_CONFIRMATION_CONFLICT, SETTLEMENT_NOT_ELIGIBLE and ORDER_NOT_ELIGIBLE_FOR_COMPLETION. Use 403 for denied tenant access and 409 for domain conflicts. Valid duplicate webhooks return WebhookAck (200), not a second financial effect.
+      description: Error envelope. Authentication errors include requestId; other existing handlers may omit it.
       type: object
       required: [error]
       properties:
         error:
           type: object
-          required: [code, message, requestId]
+          required: [code, message]
           properties:
             code: {type: string}
             message: {type: string}

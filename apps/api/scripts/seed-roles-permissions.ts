@@ -12,6 +12,9 @@ const permissions = [
   { key: 'admin:write', name: 'Manage administration data' },
   { key: 'business:write', name: 'Manage businesses' },
   { key: 'supplier_profile:write', name: 'Manage supplier profile' },
+  { key: 'product:read', name: 'Read supplier products' },
+  { key: 'product:write', name: 'Manage supplier products' },
+  { key: 'pricing:set', name: 'Set product pricing rules' },
 ];
 
 export async function seedRolesAndPermissions(): Promise<void> {
@@ -37,20 +40,26 @@ export async function seedRolesAndPermissions(): Promise<void> {
     permissionRecords.set(permission.key, record);
   }
 
-  for (const permission of permissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: roleRecords.get('ADMIN')!.id,
-          permissionId: permissionRecords.get(permission.key)!.id,
+  const grants: Record<string, string[]> = {
+    ADMIN: permissions.map((permission) => permission.key),
+    OWNER: ['product:read', 'product:write', 'pricing:set'],
+  };
+  for (const [roleKey, permissionKeys] of Object.entries(grants)) {
+    for (const permissionKey of permissionKeys) {
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: roleRecords.get(roleKey)!.id,
+            permissionId: permissionRecords.get(permissionKey)!.id,
+          },
         },
-      },
-      update: {},
-      create: {
-        roleId: roleRecords.get('ADMIN')!.id,
-        permissionId: permissionRecords.get(permission.key)!.id,
-      },
-    });
+        update: {},
+        create: {
+          roleId: roleRecords.get(roleKey)!.id,
+          permissionId: permissionRecords.get(permissionKey)!.id,
+        },
+      });
+    }
   }
 }
 
