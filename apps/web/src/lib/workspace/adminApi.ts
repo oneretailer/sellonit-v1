@@ -1,6 +1,7 @@
 import { api, unwrap } from '@/lib/api';
-import { apiFetch } from '@/lib/api-client';
 import type {
+  BusinessSubscription,
+  ChangeBusinessSubscriptionInput,
   Pagination,
   SupplierAction,
   SupplierDetail,
@@ -21,30 +22,18 @@ export async function listSuppliers(
   signal?: AbortSignal,
 ): Promise<{ data: SupplierSummary[]; meta: Pagination }> {
   const trimmedSearch = filters.search?.trim() ?? '';
-  if (!trimmedSearch) {
-    return unwrap(
-      api.GET('/admin/suppliers', {
-        params: {
-          query: {
-            status: filters.status,
-            page: filters.page,
-            pageSize: filters.pageSize,
-          },
+  return unwrap(
+    api.GET('/admin/suppliers', {
+      params: {
+        query: {
+          status: filters.status,
+          page: filters.page,
+          pageSize: filters.pageSize,
+          ...(trimmedSearch ? { search: trimmedSearch } : {}),
         },
-        signal,
-      }),
-    );
-  }
-
-  const params = new URLSearchParams({
-    status: filters.status,
-    page: String(filters.page),
-    pageSize: String(filters.pageSize),
-    search: trimmedSearch,
-  });
-  return apiFetch<{ data: SupplierSummary[]; meta: Pagination }>(
-    `/admin/suppliers?${params.toString()}`,
-    { method: 'GET', signal },
+      },
+      signal,
+    }),
   );
 }
 
@@ -62,22 +51,14 @@ export async function transitionSupplier(
     case 'approve': {
       const plan = input.plan ?? 'ENTERPRISE';
       const trimmedNote = input.note?.trim() ?? '';
-      if (trimmedNote) {
-        return (
-          await apiFetch<{ data: SupplierDetail }>(
-            `/admin/suppliers/${encodeURIComponent(id)}/approve`,
-            {
-              method: 'POST',
-              body: JSON.stringify({ plan, note: trimmedNote }),
-            },
-          )
-        ).data;
-      }
       return (
         await unwrap(
           api.POST('/admin/suppliers/{id}/approve', {
             params: { path: { id } },
-            body: { plan },
+            body: {
+              plan,
+              ...(trimmedNote ? { note: trimmedNote } : {}),
+            },
           }),
         )
       ).data;
@@ -105,4 +86,22 @@ export async function transitionSupplier(
         await unwrap(api.POST('/admin/suppliers/{id}/reinstate', { params: { path: { id } } }))
       ).data;
   }
+}
+
+export async function changeBusinessSubscription(
+  businessId: string,
+  input: ChangeBusinessSubscriptionInput,
+): Promise<BusinessSubscription> {
+  return (
+    await unwrap(
+      api.POST('/admin/businesses/{id}/subscription/change', {
+        params: { path: { id: businessId } },
+        body: {
+          targetPlan: input.targetPlan,
+          confirm: true,
+          ...(input.choices ? { choices: input.choices } : {}),
+        },
+      }),
+    )
+  ).data;
 }

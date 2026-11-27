@@ -76,6 +76,7 @@ describe('supplier review (spied API, no mocks server)', () => {
     expect(screen.getByRole('button', { name: 'Approve supplier' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reject supplier' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Suspend supplier' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change plan' })).toBeNull();
   });
 
   it('approves a pending supplier with selected plan and optional audit note', async () => {
@@ -165,5 +166,52 @@ describe('supplier review (spied API, no mocks server)', () => {
       expect(screen.getByRole('heading', { name: 'Okechukwu Fashion' })).toBeTruthy(),
     );
     expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('changes an assigned supplier subscription plan via POST /admin/businesses/:id/subscription/change', async () => {
+    const userEventSession = userEvent.setup();
+    vi.spyOn(adminApi, 'getSupplier')
+      .mockResolvedValueOnce(supplier({ status: 'APPROVED', plan: 'ENTERPRISE' }))
+      .mockResolvedValue(supplier({ status: 'APPROVED', plan: 'ENTERPRISE_PLUS' }));
+    const changePlan = vi.spyOn(adminApi, 'changeBusinessSubscription').mockResolvedValue({
+      businessId: 'sup-1',
+      plan: 'ENTERPRISE_PLUS',
+      status: 'ACTIVE',
+    });
+
+    renderWorkspace(<SupplierReview id="sup-1" />);
+    const openButton = await screen.findByRole('button', { name: 'Change plan' });
+    await userEventSession.click(openButton);
+
+    const select = screen.getByLabelText<HTMLSelectElement>('Target plan');
+    expect(select.value).toBe('ENTERPRISE_PLUS');
+    const confirmButtons = screen.getAllByRole('button', { name: 'Change plan' });
+    await userEventSession.click(confirmButtons[confirmButtons.length - 1]!);
+
+    await waitFor(() =>
+      expect(changePlan).toHaveBeenCalledWith('sup-1', {
+        targetPlan: 'ENTERPRISE_PLUS',
+        confirm: true,
+      }),
+    );
+    expect(await screen.findByText('ENTERPRISE PLUS')).toBeTruthy();
+    expect(screen.getByText('Subscription plan updated to Enterprise Plus.')).toBeTruthy();
+  });
+
+  it('surfaces disallowed plan transition conflict errors inside the Change plan dialog', async () => {
+    const userEventSession = userEvent.setup();
+    vi.spyOn(adminApi, 'getSupplier').mockResolvedValue(
+      supplier({ status: 'APPROVED', plan: 'ENTERPRISE_PLUS' }),
+    );
+    vi.spyOn(adminApi, 'changeBusinessSubscription').mockRejectedValue(
+      new ApiError(409, 'INVALID_STATE_TRANSITION', 'The requested plan change is not allowed'),
+    );
+
+    renderWorkspace(<SupplierReview id="sup-1" />);
+    await userEventSession.click(await screen.findByRole('button', { name: 'Change plan' }));
+    const confirmButtons = screen.getAllByRole('button', { name: 'Change plan' });
+    await userEventSession.click(confirmButtons[confirmButtons.length - 1]!);
+
+    expect(await screen.findByText('The requested plan change is not allowed')).toBeTruthy();
   });
 });

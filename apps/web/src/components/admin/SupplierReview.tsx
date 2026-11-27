@@ -11,7 +11,11 @@ import { ErrorState, LoadingState } from '@/components/workspace/StatePanel';
 import { StatusChip } from '@/components/workspace/StatusBanner';
 import { useToast } from '@/components/workspace/ToastProvider';
 import { useSession } from '@/lib/auth/AuthSessionProvider';
-import { getSupplier, transitionSupplier } from '@/lib/workspace/adminApi';
+import {
+  changeBusinessSubscription,
+  getSupplier,
+  transitionSupplier,
+} from '@/lib/workspace/adminApi';
 import { availableSupplierActions } from '@/lib/workspace/adminActions';
 import { presentError } from '@/lib/workspace/errors';
 import { workspaceKeys } from '@/lib/workspace/queryKeys';
@@ -26,6 +30,10 @@ const labels: Record<SupplierAction, string> = {
   suspend: 'Suspend supplier',
   reinstate: 'Reinstate supplier',
 };
+
+function formatPlanLabel(plan: SupplierPlan): string {
+  return plan === 'ENTERPRISE_PLUS' ? 'Enterprise Plus' : 'Enterprise';
+}
 
 function formatRetailerAccess(access: SupplierDetail['profile']['retailerAccess']): string {
   switch (access) {
@@ -64,6 +72,10 @@ export function SupplierReview({ id }: { id: string }) {
   const [plan, setPlan] = useState<SupplierPlan>('ENTERPRISE');
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
+
+  const [changePlanOpen, setChangePlanOpen] = useState(false);
+  const [targetPlan, setTargetPlan] = useState<SupplierPlan>('ENTERPRISE_PLUS');
+  const [targetPlanError, setTargetPlanError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -105,6 +117,30 @@ export function SupplierReview({ id }: { id: string }) {
     },
   });
 
+  const planMutation = useMutation({
+    mutationFn: async () => changeBusinessSubscription(id, { targetPlan, confirm: true }),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData<SupplierDetail>(
+        workspaceKeys.supplier(user?.id ?? '', id),
+        (previous) => (previous ? { ...previous, plan: updated.plan } : previous),
+      );
+      await queryClient.invalidateQueries({ queryKey: workspaceKeys.suppliers(user?.id ?? '') });
+      setChangePlanOpen(false);
+      setTargetPlanError(null);
+      notify(`Subscription plan updated to ${formatPlanLabel(updated.plan)}.`);
+    },
+    onError: async (error) => {
+      const presented = presentError(error);
+      if (presented.kind === 'auth') await refreshSession();
+      if (error instanceof ApiError && error.code === 'INVALID_STATE_TRANSITION') {
+        setTargetPlanError(error.message || presented.message);
+        await query.refetch();
+        return;
+      }
+      setTargetPlanError(presented.message);
+    },
+  });
+
   if (query.isPending) return <LoadingState label="Loading supplier profile" />;
   if (query.isError) return <ErrorState error={query.error} retry={() => void query.refetch()} />;
 
@@ -113,6 +149,7 @@ export function SupplierReview({ id }: { id: string }) {
     reviewedAt?: string | null;
   };
   const actions = availableSupplierActions(supplier.status);
+  const canChangePlan = supplier.plan !== null;
   const needsReason = action === 'reject' || action === 'suspend';
 
   function confirm() {
@@ -142,6 +179,15 @@ export function SupplierReview({ id }: { id: string }) {
     setFieldError(null);
     setPlanError(null);
     mutation.mutate();
+  }
+
+  function confirmPlanChange() {
+    if (!VALID_PLANS.includes(targetPlan)) {
+      setTargetPlanError('Select Enterprise or Enterprise Plus.');
+      return;
+    }
+    setTargetPlanError(null);
+    planMutation.mutate();
   }
 
   return (
@@ -213,8 +259,24 @@ export function SupplierReview({ id }: { id: string }) {
             </PrimaryButton>
           </div>
         ))}
+        {canChangePlan ? (
+          <div className="w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => {
+                setTargetPlan(supplier.plan === 'ENTERPRISE' ? 'ENTERPRISE_PLUS' : 'ENTERPRISE');
+                setTargetPlanError(null);
+                planMutation.reset();
+                setChangePlanOpen(true);
+              }}
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-line bg-white px-5 text-base font-semibold text-ink transition-colors hover:bg-canvas sm:w-auto"
+            >
+              Change plan
+            </button>
+          </div>
+        ) : null}
       </div>
-      {!actions.length ? (
+      {!actions.length && !canChangePlan ? (
         <p className="mt-4 text-sm text-subtle">No review actions are available for this status.</p>
       ) : null}
 
@@ -308,6 +370,48 @@ export function SupplierReview({ id }: { id: string }) {
             disabled={mutation.isPending}
           />
         ) : null}
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={changePlanOpen}
+        title="Change subscription plan"
+        description="Update this supplier’s active subscription plan. Only allowed plan transitions can be applied."
+        confirmLabel="Change plan"
+        pending={planMutation.isPending}
+        error={targetPlanError}
+        onClose={() => {
+          if (!planMutation.isPending) {
+            setChangePlanOpen(false);
+            setTargetPlanError(null);
+            planMutation.reset();
+          }
+        }}
+        onConfirm={confirmPlanChange}
+      >
+        <div className="flex flex-col gap-3">
+          {supplier.plan ? (
+            <p className="text-xs text-subtle">
+              Current plan:{' '}
+              <strong className="font-semibold text-ink">{formatPlanLabel(supplier.plan)}</strong>
+            </p>
+          ) : null}
+          <label className="block text-sm font-medium">
+            Target plan
+            <select
+              aria-label="Target plan"
+              value={targetPlan}
+              onChange={(event) => {
+                setTargetPlan(event.target.value as SupplierPlan);
+                setTargetPlanError(null);
+              }}
+              disabled={planMutation.isPending}
+              className="mt-2 min-h-12 w-full rounded-xl border border-line bg-white px-3"
+            >
+              <option value="ENTERPRISE">Enterprise</option>
+              <option value="ENTERPRISE_PLUS">Enterprise Plus</option>
+            </select>
+          </label>
+        </div>
       </ConfirmDialog>
     </section>
   );
