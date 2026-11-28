@@ -1,0 +1,73 @@
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+enum PricingRuleType {
+  FLOOR_CEILING
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  businessId  String
+  name        String
+  description String        @default("")
+  category    String        @default("")
+  status      ProductStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  variants    ProductVariant[]
+  pricingRule PricingRule?
+  @@index([businessId, status])
+}
+
+model ProductVariant {
+  id            String  @id @default(uuid())
+  productId     String
+  businessId    String
+  sku           String
+  basePriceKobo BigInt
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@unique([businessId, sku])
+  @@index([productId])
+}
+
+model PricingRule {
+  id            String          @id @default(uuid())
+  productId     String          @unique
+  ruleType      PricingRuleType @default(FLOOR_CEILING)
+  maxMarkupKobo BigInt?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Warehouse {
+  id         String   @id @default(uuid())
+  businessId String
+  name       String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@index([businessId, isDefault])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  businessId  String
+  actorUserId String
+  entityType  String
+  entityId    String
+  action      String
+  createdAt   DateTime @default(now())
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  actor       User     @relation(fields: [actorUserId], references: [id])
+  @@index([businessId, createdAt])
+  @@index([entityType, entityId])
+}
