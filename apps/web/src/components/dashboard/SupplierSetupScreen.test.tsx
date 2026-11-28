@@ -58,6 +58,28 @@ describe('Supplier Setup screen', () => {
     );
   });
 
+  it('links every checklist row to its exact step route and supports keyboard focus', async () => {
+    const user = userEvent.setup();
+    render(<SupplierSetupScreen />);
+
+    for (const step of SUPPLIER_SETUP_STEPS) {
+      const link = screen.getByRole('link', { name: new RegExp(step.label) });
+      expect(link.getAttribute('href')).toBe(step.href);
+    }
+
+    const firstStepLink = screen.getByRole('link', {
+      name: new RegExp(SUPPLIER_SETUP_STEPS[0]?.label ?? 'Business information'),
+    });
+    await user.tab();
+    // Tab until the first checklist link receives keyboard focus.
+    let guard = 0;
+    while (document.activeElement !== firstStepLink && guard < 10) {
+      await user.tab();
+      guard += 1;
+    }
+    expect(document.activeElement).toBe(firstStepLink);
+  });
+
   it('continues to the first incomplete step (Business information) when nothing is done', async () => {
     const user = userEvent.setup();
     render(<SupplierSetupScreen />);

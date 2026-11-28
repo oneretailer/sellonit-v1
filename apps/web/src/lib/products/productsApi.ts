@@ -1,36 +1,80 @@
 /**
  * Products module data layer — the ONLY file that knows the product endpoints.
  *
- * TODO(BE-002): `/api/v1/supplier/products*`, `/api/v1/supplier/categories`, and
- * `/api/v1/supplier/uploads/product-images*` are not yet mounted in `apps/api`
- * (see `docs/backend-handoff.md` BE-002). Reconcile paths/shapes here once BE-002
- * lands; UI components must not call fetch/XHR directly.
+ * Synced with PR #18 (`apps/api/src/http/routes/supplier.routes.ts` &
+ * `docs/openapi.yaml` `WorkspaceProduct` contract, relative to `/api/v1`):
+ *   GET    /supplier/products                  ?page&pageSize&search  (X-Business-Id)
+ *   POST   /supplier/products                  CreateWorkspaceProductRequest
+ *   GET    /supplier/products/:id                                     (X-Business-Id)
+ *   PATCH  /supplier/products/:id              UpdateWorkspaceProductRequest
+ *   PUT    /supplier/products/:id/pricing-rule SetMaximumMarkupRequest
+ *   POST   /supplier/products/:id/publish      { businessId? }
  *
- * Contract (relative to /api/v1):
- *   GET    /supplier/products                  ?page&pageSize&status&q&category&stock&businessId
- *   GET    /supplier/products/summary          ?businessId
- *   GET    /supplier/products/:id              ?businessId
- *   POST   /supplier/products
- *   PATCH  /supplier/products/:id
+ * Endpoints still unmounted on `apps/api` (kept isolated here for future BE work
+ * and `NEXT_PUBLIC_DEV_MOCK_PRODUCTS=1` dev testing):
+ *   GET    /supplier/products/summary
  *   DELETE /supplier/products/:id
- *   POST   /supplier/products/:id/publish
  *   POST   /supplier/products/:id/unpublish
- *   GET    /supplier/categories                ?businessId
- *   POST   /supplier/uploads/product-images    (multipart, progress + abort)
+ *   GET    /supplier/categories
+ *   POST   /supplier/uploads/product-images
+ *   DELETE /supplier/uploads/product-images/:id
  */
 import { API_BASE_PATH, ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE, apiFetch } from '@/lib/api-client';
 import { ACTIVE_BUSINESS_HEADER, getActiveBusinessId } from '@/lib/business/activeBusiness';
+import { devMockProducts, isDevProductsMockEnabled } from './devMockProducts';
 import type {
+  CreateWorkspaceProductRequestDto,
+  MaximumMarkupPricingRule,
   Paginated,
   Product,
+  ProductCapabilities,
   ProductCategory,
+  ProductImage,
   ProductInput,
   ProductListParams,
   ProductStatus,
   ProductSummary,
+  SetMaximumMarkupRequestDto,
+  UpdateWorkspaceProductRequestDto,
   UploadImageOptions,
   UploadedImage,
+  WorkspaceProductDto,
 } from './types';
+
+export const LIVE_CATALOGUE_CAPABILITIES: ProductCapabilities = {
+  images: false,
+  stock: false,
+  categoriesEndpoint: false,
+  summaryEndpoint: false,
+  serverStatusAndCategoryFilters: false,
+  unpublish: false,
+  remove: false,
+};
+
+export const FULL_CATALOGUE_CAPABILITIES: ProductCapabilities = {
+  images: true,
+  stock: true,
+  categoriesEndpoint: true,
+  summaryEndpoint: true,
+  serverStatusAndCategoryFilters: true,
+  unpublish: true,
+  remove: true,
+};
+
+type RawProductPayload = Partial<WorkspaceProductDto> & {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  sku?: string;
+  wholesalePrice?: number;
+  stockQuantity?: number | null;
+  status: string;
+  images?: ProductImage[];
+  createdAt: string;
+  updatedAt: string;
+  lowStock?: boolean;
+};
 
 function withBusinessQuery(search: URLSearchParams): string {
   const businessId = getActiveBusinessId();
@@ -41,33 +85,115 @@ function withBusinessQuery(search: URLSearchParams): string {
   return serialized ? `?${serialized}` : '';
 }
 
-function queryString(params: ProductListParams): string {
-  const search = new URLSearchParams();
-  search.set('page', String(params.page));
-  search.set('pageSize', String(params.pageSize));
-  if (params.status) search.set('status', params.status);
-  if (params.q) search.set('q', params.q);
-  if (params.category) search.set('category', params.category);
-  if (params.stock && params.stock !== 'all') search.set('stock', params.stock);
-  return withBusinessQuery(search);
+function listQueryString(params: ProductListParams): string {
+  const query = new URLSearchParams();
+  query.set('page', String(params.page));
+  query.set('pageSize', String(params.pageSize));
+  const trimmedSearch = params.q?.trim() ?? '';
+  if (trimmedSearch) query.set('search', trimmedSearch);
+  return `?${query.toString()}`;
 }
 
-function normalizeProductStatus(status: string): ProductStatus {
-  return status.toLowerCase() === 'published' ? 'published' : 'draft';
+export function normalizeProductStatus(status: string): ProductStatus {
+  switch (status.toUpperCase()) {
+    case 'PUBLISHED':
+      return 'published';
+    case 'UNPUBLISHED':
+      return 'unpublished';
+    case 'ARCHIVED':
+      return 'archived';
+    default:
+      return 'draft';
+  }
 }
 
-function normalizeProduct(raw: Product): Product {
+function normalizePricingRule(
+  rule: RawProductPayload['pricingRule'],
+): MaximumMarkupPricingRule | undefined {
+  if (!rule || typeof rule !== 'object') return undefined;
+  const rawMarkup = (rule as { maxMarkupKobo?: unknown }).maxMarkupKobo;
+  if (rawMarkup === null) return { maxMarkupKobo: null };
+  const numeric = typeof rawMarkup === 'number' ? rawMarkup : Number(rawMarkup);
+  return Number.isFinite(numeric) ? { maxMarkupKobo: numeric } : { maxMarkupKobo: null };
+}
+
+function normalizeProduct(raw: RawProductPayload): Product {
+  const variant = raw.defaultVariant;
+  const sku = typeof variant?.sku === 'string' ? variant.sku : (raw.sku ?? '');
+  const wholesalePrice =
+    typeof variant?.basePriceKobo === 'number'
+      ? variant.basePriceKobo
+      : typeof raw.wholesalePrice === 'number'
+        ? raw.wholesalePrice
+        : 0;
+  const stockQuantity = typeof raw.stockQuantity === 'number' ? raw.stockQuantity : null;
+  const pricingRule = normalizePricingRule(raw.pricingRule);
+
   return {
-    ...raw,
+    id: raw.id,
+    ...(raw.businessId ? { businessId: raw.businessId } : {}),
+    name: raw.name,
+    description: raw.description ?? '',
+    category: raw.category ?? '',
+    sku,
+    wholesalePrice,
+    stockQuantity,
     status: normalizeProductStatus(raw.status),
+    ...(pricingRule ? { pricingRule } : {}),
+    ...(raw.publishedAt !== undefined ? { publishedAt: raw.publishedAt } : {}),
     images: Array.isArray(raw.images) ? raw.images : [],
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+    ...(raw.lowStock !== undefined ? { lowStock: raw.lowStock } : {}),
   };
 }
 
+function toCreateRequest(
+  businessId: string | null,
+  input: ProductInput,
+): CreateWorkspaceProductRequestDto {
+  return {
+    ...(businessId ? { businessId } : {}),
+    name: input.name,
+    description: input.description,
+    category: input.category,
+    defaultVariant: {
+      sku: input.sku,
+      basePriceKobo: input.wholesalePrice,
+    },
+  };
+}
+
+function toUpdateRequest(
+  businessId: string | null,
+  input: Partial<ProductInput>,
+): UpdateWorkspaceProductRequestDto {
+  const payload: UpdateWorkspaceProductRequestDto = {
+    ...(businessId ? { businessId } : {}),
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    ...(input.category !== undefined ? { category: input.category } : {}),
+  };
+  if (input.sku !== undefined && input.wholesalePrice !== undefined) {
+    payload.defaultVariant = {
+      sku: input.sku,
+      basePriceKobo: input.wholesalePrice,
+    };
+  }
+  return payload;
+}
+
 export const productsApi = {
+  getCapabilities(): ProductCapabilities {
+    return isDevProductsMockEnabled() ? FULL_CATALOGUE_CAPABILITIES : LIVE_CATALOGUE_CAPABILITIES;
+  },
+
   async list(params: ProductListParams, signal?: AbortSignal): Promise<Paginated<Product>> {
-    const response = await apiFetch<Paginated<Product>>(
-      `/supplier/products${queryString(params)}`,
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.list(getActiveBusinessId(), params);
+    }
+    const response = await apiFetch<Paginated<RawProductPayload>>(
+      `/supplier/products${listQueryString(params)}`,
       {
         method: 'GET',
         signal,
@@ -80,6 +206,9 @@ export const productsApi = {
   },
 
   summary(signal?: AbortSignal): Promise<ProductSummary> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.summary(getActiveBusinessId());
+    }
     const query = withBusinessQuery(new URLSearchParams());
     return apiFetch<{ data: ProductSummary }>(`/supplier/products/summary${query}`, {
       method: 'GET',
@@ -88,30 +217,67 @@ export const productsApi = {
   },
 
   get(id: string, signal?: AbortSignal): Promise<Product> {
-    const query = withBusinessQuery(new URLSearchParams());
-    return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}${query}`, {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.get(getActiveBusinessId(), id);
+    }
+    return apiFetch<{ data: RawProductPayload }>(`/supplier/products/${encodeURIComponent(id)}`, {
       method: 'GET',
       signal,
     }).then((response) => normalizeProduct(response.data));
   },
 
   create(input: ProductInput): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.create(getActiveBusinessId(), input);
+    }
     const businessId = getActiveBusinessId();
-    return apiFetch<{ data: Product }>('/supplier/products', {
+    return apiFetch<{ data: RawProductPayload }>('/supplier/products', {
       method: 'POST',
-      body: JSON.stringify(businessId ? { businessId, ...input } : input),
+      body: JSON.stringify(toCreateRequest(businessId, input)),
     }).then((response) => normalizeProduct(response.data));
   },
 
   update(id: string, input: Partial<ProductInput>): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.update(getActiveBusinessId(), id, input);
+    }
     const businessId = getActiveBusinessId();
-    return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}`, {
+    return apiFetch<{ data: RawProductPayload }>(`/supplier/products/${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      body: JSON.stringify(businessId ? { businessId, ...input } : input),
+      body: JSON.stringify(toUpdateRequest(businessId, input)),
     }).then((response) => normalizeProduct(response.data));
   },
 
+  /**
+   * `PUT /supplier/products/:id/pricing-rule` (`pricing:set` permission).
+   * Note: Backend PR #18 has a known `BigInt` JSON serialization bug when
+   * `maxMarkupKobo` is non-null (`apps/api/src/modules/supplier-products/product.response.ts`).
+   */
+  updatePricingRule(
+    id: string,
+    maxMarkupKobo: SetMaximumMarkupRequestDto['maxMarkupKobo'],
+  ): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.updatePricingRule(getActiveBusinessId(), id, maxMarkupKobo);
+    }
+    const businessId = getActiveBusinessId();
+    const payload: SetMaximumMarkupRequestDto = {
+      ...(businessId ? { businessId } : {}),
+      maxMarkupKobo,
+    };
+    return apiFetch<{ data: RawProductPayload }>(
+      `/supplier/products/${encodeURIComponent(id)}/pricing-rule`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+    ).then((response) => normalizeProduct(response.data));
+  },
+
   async remove(id: string): Promise<void> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.remove(getActiveBusinessId(), id);
+    }
     const query = withBusinessQuery(new URLSearchParams());
     await apiFetch<null>(`/supplier/products/${encodeURIComponent(id)}${query}`, {
       method: 'DELETE',
@@ -119,22 +285,37 @@ export const productsApi = {
   },
 
   publish(id: string): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.setPublished(getActiveBusinessId(), id, true);
+    }
     const businessId = getActiveBusinessId();
-    return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}/publish`, {
-      method: 'POST',
-      body: businessId ? JSON.stringify({ businessId }) : undefined,
-    }).then((response) => normalizeProduct(response.data));
+    return apiFetch<{ data: RawProductPayload }>(
+      `/supplier/products/${encodeURIComponent(id)}/publish`,
+      {
+        method: 'POST',
+        body: businessId ? JSON.stringify({ businessId }) : undefined,
+      },
+    ).then((response) => normalizeProduct(response.data));
   },
 
   unpublish(id: string): Promise<Product> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.setPublished(getActiveBusinessId(), id, false);
+    }
     const businessId = getActiveBusinessId();
-    return apiFetch<{ data: Product }>(`/supplier/products/${encodeURIComponent(id)}/unpublish`, {
-      method: 'POST',
-      body: businessId ? JSON.stringify({ businessId }) : undefined,
-    }).then((response) => normalizeProduct(response.data));
+    return apiFetch<{ data: RawProductPayload }>(
+      `/supplier/products/${encodeURIComponent(id)}/unpublish`,
+      {
+        method: 'POST',
+        body: businessId ? JSON.stringify({ businessId }) : undefined,
+      },
+    ).then((response) => normalizeProduct(response.data));
   },
 
   getCategories(signal?: AbortSignal): Promise<ProductCategory[]> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.categories();
+    }
     const query = withBusinessQuery(new URLSearchParams());
     return apiFetch<{ data: ProductCategory[] }>(`/supplier/categories${query}`, {
       method: 'GET',
@@ -142,22 +323,19 @@ export const productsApi = {
     }).then((response) => response.data);
   },
 
-  /**
-   * Best-effort cleanup of a photo uploaded in an unsaved session (discard).
-   * TODO(BE-002): mount DELETE /supplier/uploads/product-images/:id on the backend;
-   * failures are swallowed by callers so discarding never blocks on cleanup.
-   */
   async deleteImage(id: string): Promise<void> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.deleteImage(id);
+    }
     await apiFetch<null>(`/supplier/uploads/product-images/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   },
 
-  /**
-   * Multipart upload with per-file progress and cancellation. XHR is used because
-   * fetch upload progress is not broadly supported. Resolves with the stored image.
-   */
   uploadImage(file: File, options: UploadImageOptions = {}): Promise<UploadedImage> {
+    if (isDevProductsMockEnabled()) {
+      return devMockProducts.uploadImage(file, options);
+    }
     return new Promise<UploadedImage>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${API_BASE_PATH}/supplier/uploads/product-images`);

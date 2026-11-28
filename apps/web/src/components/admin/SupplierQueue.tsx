@@ -1,9 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useSession } from '@/lib/auth/AuthSessionProvider';
-import { listSuppliers } from '@/lib/workspace/adminApi';
+import { listSuppliers, type AdminSupplierListFilters } from '@/lib/workspace/adminApi';
 import { workspaceKeys } from '@/lib/workspace/queryKeys';
 import type { SupplierStatus } from '@/lib/workspace/types';
 import { EmptyState, ErrorState, LoadingState } from '@/components/workspace/StatePanel';
@@ -17,30 +17,69 @@ const TABS: readonly SupplierStatus[] = [
   'SUSPENDED',
   'DRAFT',
 ];
+const SEARCH_DEBOUNCE_MS = 300;
 const date = new Intl.DateTimeFormat('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
+
 export function SupplierQueue() {
   const { user } = useSession();
   const [status, setStatus] = useState<SupplierStatus>('PENDING_REVIEW');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const filters = { status, page, pageSize };
+
+  useEffect(() => {
+    const trimmed = searchInput.trim();
+    if (trimmed === debouncedSearch) return;
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(trimmed);
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [debouncedSearch, searchInput]);
+
+  const filters: AdminSupplierListFilters = debouncedSearch
+    ? { status, page, pageSize, search: debouncedSearch }
+    : { status, page, pageSize };
+
   const query = useQuery({
     queryKey: workspaceKeys.supplierList(user?.id ?? '', filters),
     queryFn: ({ signal }) => listSuppliers(filters, signal),
     placeholderData: keepPreviousData,
     enabled: !!user,
   });
+
   function selectStatus(next: SupplierStatus) {
     setStatus(next);
     setPage(1);
   }
+
+  function clearSearch() {
+    setSearchInput('');
+    setDebouncedSearch('');
+    setPage(1);
+  }
+
   return (
-    <section>
-      <div className="mb-6">
-        <h1 className="font-heading text-2xl font-semibold md:text-3xl">Supplier review</h1>
-        <p className="mt-2 text-sm text-subtle">
-          Review supplier applications and manage account access.
-        </p>
+    <section className="min-w-0">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold md:text-3xl">Supplier review</h1>
+          <p className="mt-2 text-sm text-subtle">
+            Review supplier applications and manage account access.
+          </p>
+        </div>
+        <div className="relative w-full sm:max-w-xs">
+          <input
+            type="search"
+            aria-label="Search suppliers"
+            placeholder="Search legal name or description"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            maxLength={200}
+            className="min-h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm text-ink placeholder:text-subtle focus:border-ink focus:outline-none"
+          />
+        </div>
       </div>
       <div
         role="tablist"
@@ -86,22 +125,40 @@ export function SupplierQueue() {
         ) : query.isError ? (
           <ErrorState error={query.error} retry={() => void query.refetch()} />
         ) : !query.data.data.length ? (
-          <EmptyState
-            title="No suppliers in this queue"
-            description="Applications with this status will appear here."
-          />
+          debouncedSearch ? (
+            <EmptyState
+              title="No matching suppliers"
+              description={`No ${status.replaceAll('_', ' ').toLowerCase()} suppliers matched "${debouncedSearch}".`}
+              action={
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="min-h-11 rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink hover:bg-gray-50"
+                >
+                  Clear search
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              title="No suppliers in this queue"
+              description="Applications with this status will appear here."
+            />
+          )
         ) : (
           <>
             <ul className="space-y-3 md:hidden">
               {query.data.data.map((supplier) => (
-                <li key={supplier.id} className="rounded-2xl border border-line p-4">
+                <li key={supplier.id} className="rounded-2xl border border-line bg-white p-4">
                   <Link
                     href={`/admin/suppliers/${supplier.id}`}
                     className="font-semibold text-ink underline decoration-primary underline-offset-4"
                   >
                     {supplier.businessName}
                   </Link>
-                  <p className="mt-2 text-sm text-subtle">{supplier.ownerPhone}</p>
+                  <p className="mt-2 text-sm text-subtle">
+                    {supplier.ownerPhone || 'No phone on file'}
+                  </p>
                   <p className="mt-1 text-xs text-subtle">
                     Submitted{' '}
                     {supplier.submittedAt
@@ -114,7 +171,7 @@ export function SupplierQueue() {
                 </li>
               ))}
             </ul>
-            <div className="hidden overflow-x-auto rounded-2xl border border-line md:block">
+            <div className="hidden overflow-x-auto rounded-2xl border border-line bg-white md:block">
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">{status.replaceAll('_', ' ')} suppliers</caption>
                 <thead className="bg-gray-50 text-xs text-subtle">
@@ -133,7 +190,7 @@ export function SupplierQueue() {
                     <tr key={supplier.id} className="hover:bg-orange-50/30">
                       <td className="px-4 py-4 font-medium">{supplier.businessName}</td>
                       <td className="whitespace-nowrap px-4 py-4 text-subtle">
-                        {supplier.ownerPhone}
+                        {supplier.ownerPhone || 'No phone on file'}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-subtle">
                         {supplier.submittedAt

@@ -1,11 +1,9 @@
 'use client';
 
 /**
- * Central unsaved-changes guard. The Add/Edit product form registers a guard
- * while dirty; sidebar links, the breadcrumb, Cancel and the business switcher
- * all route through it, so the discard confirmation lives in ONE place.
- *
- * The form also installs its own `beforeunload` listener while dirty.
+ * Central unsaved-changes guard. Forms (Add/Edit product, Supplier profile)
+ * register a guard while dirty; sidebar links, breadcrumbs, Cancel and the
+ * business switcher all route through it, so discard confirmation lives in ONE place.
  */
 import {
   createContext,
@@ -22,6 +20,10 @@ import { Spinner } from '@/components/reuseable/Spinner';
 
 export type UnsavedGuard = {
   isDirty: boolean;
+  /** Optional custom discard dialog title (defaults to product discard title). */
+  discardTitle?: string;
+  /** Optional custom discard dialog description. */
+  discardDescription?: string;
   /** Delete session-only uploads / reset form state before leaving. */
   onDiscard: () => void | Promise<void>;
 };
@@ -67,9 +69,11 @@ export function NavigationGuardProvider({ children }: { children: ReactNode }) {
 
   const navigate = useCallback(
     (href: string) => {
+      const guard = guardRef.current;
       runGuarded({
-        title: 'Discard this product?',
+        title: guard?.discardTitle ?? 'Discard this product?',
         description:
+          guard?.discardDescription ??
           "You have unsaved changes. If you leave now, what you've entered won't be kept.",
         discardLabel: 'Discard',
         keepLabel: 'Keep editing',

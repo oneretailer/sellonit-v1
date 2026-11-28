@@ -59,7 +59,7 @@ export function ConfirmDialog({
             type="button"
             className={cn(
               dialogPrimaryClass,
-              tone === 'danger' && 'bg-danger text-white hover:bg-danger/90',
+              tone === 'danger' && 'bg-danger text-on-primary hover:bg-danger/90',
             )}
             disabled={pending}
             onClick={onConfirm}

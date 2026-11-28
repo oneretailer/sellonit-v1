@@ -10,7 +10,7 @@ import { DashboardSessionSkeleton } from '@/components/dashboard/DashboardRoute'
 import type { Feature, Permission } from '@/lib/workspace/types';
 import { RequireFeature, RequirePermission } from './PermissionGuard';
 import { ErrorState, LoadingState, NoAccessState, StatePanel } from './StatePanel';
-import { StatusBanner } from './StatusBanner';
+import { StatusBanner, StatusBannerSlotProvider } from './StatusBanner';
 
 /** New workspace routes use capabilities, never onboarding/membership role names. */
 export function WorkspaceRoute({
@@ -29,21 +29,29 @@ export function WorkspaceRoute({
   const session = useSession();
   const { enableWorkspaceContext } = session;
   const destination = resolveAuthDestination(session);
-  const target = redirectTarget(destination, pathname);
+  const target =
+    admin && destination.kind === 'role-selection' ? null : redirectTarget(destination, pathname);
+  const canResolveWorkspace =
+    !target &&
+    (destination.kind === 'dashboard' || (admin && destination.kind === 'role-selection'));
+
   useEffect(() => {
     if (target) router.replace(target);
   }, [router, target]);
+
   useEffect(() => {
-    if (!target && destination.kind === 'dashboard') enableWorkspaceContext?.();
-  }, [destination.kind, enableWorkspaceContext, target]);
+    if (canResolveWorkspace) enableWorkspaceContext?.();
+  }, [canResolveWorkspace, enableWorkspaceContext]);
+
   if (destination.kind === 'login') return null;
-  if (destination.kind !== 'dashboard' || !session.user)
+  if (!canResolveWorkspace || !session.user) {
     return (
       <DashboardSessionSkeleton
         displayName={session.cachedDisplayName}
         onRetry={session.status === 'error' ? () => void session.refreshSession() : undefined}
       />
     );
+  }
   const user = session.user;
   let content: ReactNode = children;
   if (permission)
@@ -53,7 +61,7 @@ export function WorkspaceRoute({
     content = (
       <LoadingState label={admin ? 'Checking administrator access' : 'Loading workspace'} />
     );
-  // TODO(BE-005, BE-006): surface an honest state while GET /session/context and /admin/suppliers* are not yet mounted.
+  // TODO(BE-005): surface an honest state when GET /session/context (or the admin fallback) is unavailable.
   if (session.workspaceStatus === 'error') {
     content = isEndpointNotImplemented(session.workspaceError) ? (
       <StatePanel
@@ -82,6 +90,9 @@ export function WorkspaceRoute({
         description="Complete business signup before opening this workspace."
       />
     );
+
+  const suppressFallbackBanner = Boolean(pathname?.startsWith('/dashboard/business-profile'));
+
   return (
     <DashboardShell
       user={user}
@@ -90,10 +101,12 @@ export function WorkspaceRoute({
       variant={admin ? 'admin' : 'supplier'}
       businessName={admin ? 'Sellonit platform' : session.workspace?.activeBusiness?.name}
     >
-      {!admin && session.workspaceStatus === 'ready' ? (
-        <StatusBanner status={session.workspace?.supplierStatus ?? null} />
-      ) : null}
-      {content}
+      <StatusBannerSlotProvider>
+        {!admin && session.workspaceStatus === 'ready' && !suppressFallbackBanner ? (
+          <StatusBanner status={session.workspace?.supplierStatus ?? null} isFallback />
+        ) : null}
+        {content}
+      </StatusBannerSlotProvider>
     </DashboardShell>
   );
 }

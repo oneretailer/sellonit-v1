@@ -14,23 +14,14 @@ type Schemas = components['schemas'];
 export type BusinessType = Schemas['BusinessType'];
 
 /**
- * Public user shape returned by `publicUserSelect` (`auth.service.ts:14-26`).
- * Extends the generated `User` schema with `phone` and `phoneVerifiedAt`, which
- * the live handler returns today (`BE-007`).
+ * Public user shape returned by `publicUserSelect` (`auth.service.ts`).
+ * Reuses `Schemas['User']` from `@sellonit/shared`, keeping `onboardingIntent`
+ * nullable (`openapi-typescript` omits `| null` when `type: [string, 'null']`
+ * is combined with `$ref`).
  */
-export type AuthUser = {
-  id: NonNullable<Schemas['User']['id']>;
-  email: NonNullable<Schemas['User']['email']>;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-  status: Schemas['UserStatus'];
+export type AuthUser = Omit<Schemas['User'], 'onboardingIntent'> & {
   /** Saved onboarding role (from PUT /auth/business-intent), null until chosen. */
   onboardingIntent: BusinessType | null;
-  emailVerifiedAt: string | null;
-  phoneVerifiedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
 };
 
 /**
@@ -46,23 +37,17 @@ export type RegisterUserRequest = {
   password: Schemas['RegisterRequest']['password'];
 };
 
-/** POST /api/v1/auth/register — 201 response. */
-export type RegisterUserResponse = {
+/** POST /api/v1/auth/register — 201 response (`RegisterResponse` in `@sellonit/shared`). */
+export type RegisterUserResponse = Omit<Schemas['RegisterResponse'], 'data'> & {
   data: AuthUser;
-  /** Development/test only (the backend never returns it in production). */
-  emailVerificationToken?: string;
 };
 
 /** POST /api/v1/auth/login — request body from `@sellonit/shared`. */
 export type LoginRequest = Schemas['LoginRequest'];
 
-/**
- * POST /auth/login — 200 response. The session cookie is set by the API;
- * `accessToken` is omitted from JSON by `loginHandler` (`BE-007`).
- */
-export type LoginResponse = {
+/** POST /auth/login — 200 response (`AuthResponse` in `@sellonit/shared`). */
+export type LoginResponse = Omit<Schemas['AuthResponse'], 'user'> & {
   user: AuthUser;
-  expiresIn: Schemas['AuthResponse']['expiresIn'];
 };
 
 /**
@@ -99,13 +84,15 @@ export type ForgotPasswordResponse = {
   data: { sent: boolean };
 };
 
-/** POST /auth/verification-codes/verify — request body from `@sellonit/shared`. */
-export type VerifyPasswordResetCodeRequest = Schemas['VerifyPasswordResetCodeRequest'];
+/**
+ * POST /auth/verification-codes/verify — request body.
+ * Narrowed explicitly because OpenAPI `anyOf` generates `{ ... } | unknown` in `api.d.ts`.
+ */
+export type VerifyPasswordResetCodeRequest =
+  { identifier: string; code: string } | { email: string; code: string };
 
-/** POST /auth/verification-codes/verify — 200 response. */
-export type VerifyPasswordResetCodeResponse = {
-  data: { verified: boolean };
-};
+/** POST /auth/verification-codes/verify — 200 response (`VerificationStatusResponse`). */
+export type VerifyPasswordResetCodeResponse = Schemas['VerificationStatusResponse'];
 
 /** POST /auth/reset-password — request body from `@sellonit/shared`. */
 export type ResetPasswordRequest = Schemas['ResetPasswordRequest'];
@@ -126,7 +113,5 @@ export type SendPhoneVerificationResponse = {
 /** POST /auth/verify-phone — request body (`token` is the 6-digit SMS code). */
 export type VerifyPhoneRequest = Schemas['VerifyEmailRequest'];
 
-/** POST /auth/verify-phone — 200 response. */
-export type VerifyPhoneResponse = {
-  data: { verified: boolean };
-};
+/** POST /auth/verify-phone — 200 response (`VerificationStatusResponse`). */
+export type VerifyPhoneResponse = Schemas['VerificationStatusResponse'];

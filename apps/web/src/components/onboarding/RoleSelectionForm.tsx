@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AuthCardHeader } from '@/components/auth/StepHeader';
 import { RoleRecommendation } from '@/components/onboarding/RoleRecommendation';
 import { AuthCard } from '@/components/reuseable/AuthCard';
 import { PrimaryButton } from '@/components/reuseable/PrimaryButton';
 import { ArrowLeftIcon } from '@/components/reuseable/icons';
+import { useAuthSession } from '@/lib/auth/AuthSessionProvider';
+import { AUTH_ROUTE } from '@/lib/auth/authDestination';
 import {
   readOnboardingRole,
   subscribeOnboardingRole,
@@ -25,6 +28,8 @@ import { SignupCompletionNotice } from '@/components/auth/SignupCompletionNotice
  * recommendation view.
  */
 export function RoleSelectionForm() {
+  const router = useRouter();
+  const { status, user, refreshWorkspace } = useAuthSession();
   const completion = useSignupCompletion();
   const selectedRole = useSyncExternalStore(
     subscribeOnboardingRole,
@@ -33,6 +38,32 @@ export function RoleSelectionForm() {
   );
   const [view, setView] = useState<'select' | 'recommend'>('select');
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Platform administrators do not onboard as Retailer/Supplier; if an
+  // authenticated admin lands here directly, send them to `/admin/suppliers`.
+  useEffect(() => {
+    if (
+      status !== 'authenticated' ||
+      !user?.emailVerifiedAt ||
+      user.onboardingIntent ||
+      typeof refreshWorkspace !== 'function'
+    ) {
+      return;
+    }
+    let active = true;
+    void refreshWorkspace()
+      .then((ctx) => {
+        if (active && ctx?.platformRole === 'ADMIN') {
+          router.replace(AUTH_ROUTE.admin);
+        }
+      })
+      .catch(() => {
+        // Non-admin or transient errors keep normal onboarding available.
+      });
+    return () => {
+      active = false;
+    };
+  }, [refreshWorkspace, router, status, user?.emailVerifiedAt, user?.onboardingIntent]);
 
   // Returning from the recommendation view restores focus to the chosen option
   // instead of dropping focus on <body>.

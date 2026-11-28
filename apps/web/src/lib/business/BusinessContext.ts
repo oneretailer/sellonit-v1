@@ -4,7 +4,14 @@ import { createContext } from 'react';
 import type { SwitcherBusiness } from './businessesApi';
 
 export type BusinessPermission =
-  'product:read' | 'product:write' | 'product:publish' | 'product:delete';
+  | 'product:read'
+  | 'product:write'
+  | 'pricing:set'
+  | 'product:publish'
+  | 'product:delete'
+  | 'inventory:read'
+  | 'inventory:write'
+  | 'supplier_profile:write';
 
 export type BusinessContextValue = {
   businesses: SwitcherBusiness[];

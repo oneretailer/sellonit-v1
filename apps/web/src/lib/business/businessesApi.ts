@@ -16,27 +16,28 @@ type Schemas = components['schemas'];
 export type BusinessMembershipRole = Schemas['UserRole'];
 export type BusinessType = Schemas['BusinessType'];
 export type BusinessPlanKey = Schemas['PlanKey'];
-export type BusinessStatus = 'ACTIVE' | 'SUSPENDED';
+export type BusinessStatus = Schemas['Business']['status'];
 
 export type SwitcherBusiness = {
   id: string;
   name: string;
   slug?: string;
+  email?: string | null;
+  phone?: string | null;
   type: BusinessType;
   status: BusinessStatus;
   role: BusinessMembershipRole;
   plan: BusinessPlanKey | null;
 };
 
-type ApiMembership = { userId: string; role: string };
+type ApiMembership = Pick<Schemas['BusinessMembership'], 'userId'> & { role: string };
 type ApiActiveSubscription = {
   status?: string;
   plan?: { key?: string; name?: string } | null;
 } | null;
-type ApiBusiness = {
+type ApiBusiness = Partial<Omit<Schemas['Business'], 'type' | 'status' | 'memberships'>> & {
   id: string;
   name: string;
-  slug?: string;
   type: string;
   status?: string;
   role?: string;
@@ -85,6 +86,8 @@ export async function listBusinesses(
       id: business.id,
       name: business.name,
       ...(business.slug ? { slug: business.slug } : {}),
+      ...(business.email !== undefined ? { email: business.email } : {}),
+      ...(business.phone !== undefined ? { phone: business.phone } : {}),
       type: normalizeType(business.type),
       status: normalizeStatus(business.status),
       role: normalizeRole(membership?.role ?? business.role),

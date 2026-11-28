@@ -11,6 +11,7 @@ describe('workspace API error presentation', () => {
     ['ACCOUNT_UNAVAILABLE', 'access', false],
     ['BUSINESS_SUSPENDED', 'access', false],
     ['SUPPLIER_NOT_APPROVED', 'access', false],
+    ['DEFAULT_WAREHOUSE_REQUIRED', 'validation', false],
     ['NOT_FOUND', 'missing', false],
     [ENDPOINT_NOT_IMPLEMENTED_CODE, 'missing', false],
     ['VALIDATION_ERROR', 'validation', true],

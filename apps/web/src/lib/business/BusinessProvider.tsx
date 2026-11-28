@@ -35,6 +35,8 @@ export const BUSINESS_SCOPED_CACHE_PREFIXES = [
   ['products'],
   ['product-summary'],
   ['product-categories'],
+  ['inventory'],
+  ['inventory-summary'],
   ['supplier-dashboard'],
   ['supplier-profile'],
   ['workspace'],
@@ -95,12 +97,20 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const can = useCallback(
     (permission: BusinessPermission) => {
       // TODO(BE-005): replace with server-resolved permission grants once exposed.
-      // Mirrors backend `requireOwnedBusiness` (`OWNER | MANAGER`) for management
-      // actions, restricts destructive deletes to `OWNER`, and keeps `STAFF` read-only.
+      // Mirrors PR #18 `seed-roles-permissions.ts` (`OWNER` is granted
+      // `product:read`, `product:write`, `pricing:set`) while `/supplier/profile`
+      // uses `requireOwnedBusiness` (`OWNER | MANAGER`) and `STAFF` remains read-only
+      // on non-catalogue views.
       const role = activeBusiness?.role;
       if (role === 'OWNER') return true;
-      if (role === 'MANAGER') return permission !== 'product:delete';
-      if (role === 'STAFF') return permission === 'product:read';
+      if (role === 'MANAGER') {
+        return (
+          permission === 'supplier_profile:write' ||
+          permission === 'inventory:read' ||
+          permission === 'inventory:write'
+        );
+      }
+      if (role === 'STAFF') return permission === 'inventory:read';
       return false;
     },
     [activeBusiness?.role],

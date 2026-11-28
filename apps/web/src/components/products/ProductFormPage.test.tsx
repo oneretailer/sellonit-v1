@@ -5,7 +5,11 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProductFormPage } from './ProductFormPage';
 import { navMocks, polyfillProductsEnv, renderProducts, resetProductsMocks } from './testSupport';
-import { productsApi } from '@/lib/products/productsApi';
+import {
+  FULL_CATALOGUE_CAPABILITIES,
+  LIVE_CATALOGUE_CAPABILITIES,
+  productsApi,
+} from '@/lib/products/productsApi';
 import { ApiError, ENDPOINT_NOT_IMPLEMENTED_CODE } from '@/lib/api-client';
 import type { Product } from '@/lib/products/types';
 
@@ -31,9 +35,9 @@ function savedProduct(overrides: Partial<Product> = {}): Product {
     name: 'Cotton polo shirt',
     description: '',
     category: 'tops',
-    sku: 'POLO-CTN-001',
-    wholesalePrice: 250000,
-    stockQuantity: 25,
+    sku: 'SF-PS-022',
+    wholesalePrice: 750000,
+    stockQuantity: 60,
     status: 'draft',
     images: [],
     createdAt: '2026-10-26T00:00:00.000Z',
@@ -46,6 +50,7 @@ beforeEach(() => {
   resetProductsMocks();
   polyfillProductsEnv();
   navMocks.pathname = '/dashboard/products/new';
+  vi.spyOn(productsApi, 'getCapabilities').mockReturnValue(FULL_CATALOGUE_CAPABILITIES);
   vi.spyOn(productsApi, 'getCategories').mockResolvedValue([{ id: 'tops', name: 'Tops' }]);
 });
 afterEach(() => {
@@ -56,12 +61,29 @@ afterEach(() => {
 async function fillRequired(userEventSession: ReturnType<typeof userEvent.setup>) {
   await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
   await userEventSession.selectOptions(screen.getByLabelText(/Category/), 'tops');
-  await userEventSession.type(screen.getByLabelText(/^SKU/), 'POLO-CTN-001');
-  await userEventSession.type(screen.getByLabelText(/Wholesale price/), '2500');
-  await userEventSession.type(screen.getByLabelText(/Stock quantity/), '25');
+  await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
+  await userEventSession.type(screen.getByLabelText(/Wholesale price/), '7500');
+  await userEventSession.type(screen.getByLabelText(/Stock quantity/), '60');
 }
 
 describe('add product form', () => {
+  it('updates the sticky Preview card live as fields are typed', async () => {
+    const userEventSession = userEvent.setup();
+    renderProducts(<ProductFormPage />);
+
+    // Empty preview defaults
+    expect(screen.getByText('No photo yet')).toBeTruthy();
+    expect(screen.getByText('₦ –')).toBeTruthy();
+    expect(screen.getByText('– in stock')).toBeTruthy();
+    expect(screen.getByText('Category · SKU')).toBeTruthy();
+    expect(screen.getByText('Draft')).toBeTruthy();
+
+    await fillRequired(userEventSession);
+    expect(screen.getByText('Tops · SF-PS-022')).toBeTruthy();
+    expect(screen.getByText('₦7,500')).toBeTruthy();
+    expect(screen.getByText('60 in stock')).toBeTruthy();
+  });
+
   it('blocks publish with the alert, exact field errors and focus on the first invalid field', async () => {
     const userEventSession = userEvent.setup();
     const create = vi.spyOn(productsApi, 'create');
@@ -94,18 +116,19 @@ describe('add product form', () => {
     expect(screen.getByText('Fix the 5 highlighted fields and try again.')).toBeTruthy();
   });
 
-  it('saves a name-only draft, shows the toast and redirects (assumption D)', async () => {
+  it('saves a partial draft (even without name), shows the Draft saved toast, and redirects', async () => {
     const userEventSession = userEvent.setup();
     const create = vi
       .spyOn(productsApi, 'create')
-      .mockResolvedValue(savedProduct({ name: 'Half entered' }));
+      .mockResolvedValue(savedProduct({ name: 'Untitled product' }));
     renderProducts(<ProductFormPage />);
-    await userEventSession.type(screen.getByLabelText(/Product name/), 'Half entered');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
     await userEventSession.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() =>
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'Half entered',
+          name: 'Untitled product',
+          sku: 'SF-PS-022',
           wholesalePrice: 0,
           stockQuantity: 0,
           imageIds: [],
@@ -113,7 +136,8 @@ describe('add product form', () => {
       ),
     );
     await waitFor(() => expect(navMocks.push).toHaveBeenCalledWith('/dashboard/products'));
-    expect(await screen.findByText('Draft saved.')).toBeTruthy();
+    expect(await screen.findByText('Draft saved')).toBeTruthy();
+    expect(screen.getByText('Untitled product is saved as a draft.')).toBeTruthy();
   });
 
   it('asks to confirm publish, then creates + publishes and shows the success dialog', async () => {
@@ -133,29 +157,27 @@ describe('add product form', () => {
     await waitFor(() => expect(screen.getByText('Main photo')).toBeTruthy());
     await userEventSession.click(screen.getByRole('button', { name: 'Publish product' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Publish this product?')).toBeTruthy();
+    expect(within(dialog).getByText('Confirm publish')).toBeTruthy();
     expect(
       within(dialog).getByText(/"Cotton polo shirt" will be visible to retailers/),
     ).toBeTruthy();
     expect(create).not.toHaveBeenCalled();
-    // Initial focus is the safe action.
-    expect(document.activeElement).toBe(
-      within(dialog).getByRole('button', { name: 'Review again' }),
-    );
-    await userEventSession.click(within(dialog).getByRole('button', { name: 'Publish product' }));
+    // Initial focus is the safe Cancel action.
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await userEventSession.click(within(dialog).getByRole('button', { name: 'Publish' }));
     await waitFor(() =>
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Cotton polo shirt',
-          wholesalePrice: 250000,
-          stockQuantity: 25,
+          wholesalePrice: 750000,
+          stockQuantity: 60,
           imageIds: ['img-1'],
         }),
       ),
     );
     await waitFor(() => expect(publish).toHaveBeenCalledWith('prod-1'));
     const success = await screen.findByRole('dialog');
-    expect(within(success).getByText('Product published')).toBeTruthy();
+    expect(within(success).getByRole('heading', { name: 'Product published' })).toBeTruthy();
     await userEventSession.click(within(success).getByRole('button', { name: 'Back to products' }));
     expect(navMocks.push).toHaveBeenCalledWith('/dashboard/products');
   });
@@ -169,7 +191,7 @@ describe('add product form', () => {
     );
     renderProducts(<ProductFormPage />);
     await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
-    await userEventSession.type(screen.getByLabelText(/^SKU/), 'POLO-CTN-001');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
     await userEventSession.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() =>
       expect(screen.getAllByText('A product with this SKU already exists.').length).toBeGreaterThan(
@@ -243,5 +265,93 @@ describe('add product form', () => {
       true,
     );
     expect(screen.getByRole('button', { name: 'Save draft' })).toHaveProperty('disabled', true);
+  });
+});
+
+describe('product form (PR #18 strict live contract)', () => {
+  beforeEach(() => {
+    vi.spyOn(productsApi, 'getCapabilities').mockReturnValue(LIVE_CATALOGUE_CAPABILITIES);
+  });
+
+  it('uses text Category input without calling /categories, disables stock & photos, requires SKU+price on draft, and publishes without photos', async () => {
+    const userEventSession = userEvent.setup();
+    const categoriesSpy = vi.spyOn(productsApi, 'getCategories');
+    const create = vi
+      .spyOn(productsApi, 'create')
+      .mockResolvedValue(savedProduct({ stockQuantity: null, category: 'Tops' }));
+    const publish = vi
+      .spyOn(productsApi, 'publish')
+      .mockResolvedValue(savedProduct({ status: 'published', stockQuantity: null }));
+
+    renderProducts(<ProductFormPage />);
+    expect(categoriesSpy).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/Stock quantity/)).toHaveProperty('disabled', true);
+    expect(screen.getByLabelText('Upload product photos')).toHaveProperty('disabled', true);
+
+    // Draft requires SKU and positive price on PR #18.
+    await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
+    await userEventSession.click(screen.getByRole('button', { name: 'Save draft' }));
+    expect(screen.getByText('Enter a SKU.')).toBeTruthy();
+    expect(screen.getByText('Enter a wholesale price.')).toBeTruthy();
+    expect(create).not.toHaveBeenCalled();
+
+    // Fill category text, SKU, and price, then publish without photos/stock.
+    await userEventSession.type(screen.getByLabelText(/Category/), 'Tops');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
+    await userEventSession.type(screen.getByLabelText(/Wholesale price/), '7500');
+    await userEventSession.click(screen.getByRole('button', { name: 'Publish product' }));
+    const confirmDialog = await screen.findByRole('dialog');
+    await userEventSession.click(within(confirmDialog).getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Cotton polo shirt',
+          category: 'Tops',
+          sku: 'SF-PS-022',
+          wholesalePrice: 750000,
+        }),
+      ),
+    );
+    await waitFor(() => expect(publish).toHaveBeenCalledWith('prod-1'));
+  });
+
+  it('preserves saved draft state and surfaces actionable alert when publish fails with SUPPLIER_NOT_APPROVED', async () => {
+    const userEventSession = userEvent.setup();
+    vi.spyOn(productsApi, 'create').mockResolvedValue(savedProduct({ stockQuantity: null }));
+    vi.spyOn(productsApi, 'publish').mockRejectedValue(
+      new ApiError(
+        403,
+        'SUPPLIER_NOT_APPROVED',
+        'Your supplier account must be approved before publishing.',
+      ),
+    );
+
+    renderProducts(<ProductFormPage />);
+    await userEventSession.type(screen.getByLabelText(/Product name/), 'Cotton polo shirt');
+    await userEventSession.type(screen.getByLabelText(/Category/), 'Tops');
+    await userEventSession.type(screen.getByLabelText(/^SKU/), 'SF-PS-022');
+    await userEventSession.type(screen.getByLabelText(/Wholesale price/), '7500');
+    await userEventSession.click(screen.getByRole('button', { name: 'Publish product' }));
+    const confirmDialog = await screen.findByRole('dialog');
+    await userEventSession.click(within(confirmDialog).getByRole('button', { name: 'Publish' }));
+
+    expect(
+      await screen.findByText(
+        /Saved as a draft, but could not publish: Your supplier account must be approved before publishing\./,
+      ),
+    ).toBeTruthy();
+  });
+
+  it('renders archived products as read-only and disables editing', async () => {
+    vi.spyOn(productsApi, 'get').mockResolvedValue(
+      savedProduct({ status: 'archived', stockQuantity: null }),
+    );
+    renderProducts(<ProductFormPage productId="prod-1" />);
+    expect(
+      await screen.findByText('This product is archived and can no longer be edited.'),
+    ).toBeTruthy();
+    expect(screen.getByLabelText(/Product name/)).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Save changes' })).toHaveProperty('disabled', true);
   });
 });

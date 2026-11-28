@@ -5,10 +5,6 @@
  * `uploadFn` adapter as soon as they are selected; per-file progress, cancel,
  * retry and replace are tracked here. Tiles flow and wrap; nothing has a fixed
  * page width. The first uploaded photo is the main photo.
- *
- * Tile ids ARE the server image ids once uploaded, so the form can build
- * `imageIds` directly from `value`. While uploading, a temporary local id is
- * used and swapped for the server id on success.
  */
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { cn } from '@/lib/cn';
@@ -73,9 +69,6 @@ export function ProductImageUploader({
   const [dragOver, setDragOver] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
 
-  // Mirror the latest value/callback into refs so async uploads never patch
-  // stale state. `commit` also advances valueRef synchronously, so an upload
-  // that resolves before React re-renders still sees the freshly added tile.
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
@@ -110,7 +103,6 @@ export function ProductImageUploader({
       URL.revokeObjectURL(previewUrl);
       filesRef.current.delete(localId);
       filesRef.current.set(uploaded.id, file);
-      // Swap the temporary id for the server id in a single update.
       commit(
         valueRef.current.map((image) =>
           image.id === localId
@@ -269,34 +261,34 @@ export function ProductImageUploader({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           className={cn(
-            'flex cursor-pointer flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-10 text-center transition-colors',
+            'flex cursor-pointer flex-col items-center gap-2.5 rounded-ws-card border border-dashed px-6 py-10 text-center transition-colors',
             error
               ? 'border-danger'
               : dragOver
-                ? 'border-primary bg-orange-50'
-                : 'border-line bg-white hover:border-primary/60',
+                ? 'border-primary bg-primary-tint'
+                : 'border-line bg-surface hover:border-primary/60',
             disabled && 'cursor-not-allowed opacity-60',
           )}
         >
           <span
             aria-hidden="true"
-            className="flex size-12 items-center justify-center rounded-full bg-orange-50 text-primary"
+            className="flex size-12 items-center justify-center rounded-full bg-canvas text-caption"
           >
-            <DashboardIcon name="upload" className="size-6" />
+            <DashboardIcon name="image" className="size-6" />
           </span>
-          <p className="text-sm font-semibold text-ink">
+          <p className="text-[length:var(--text-ws-body)] font-medium text-ink">
             {dragOver ? 'Drop your photos to upload' : 'Drag and drop photos here'}
           </p>
           {!dragOver ? (
-            <p className="text-sm text-subtle">
+            <p className="text-[length:var(--text-ws-label)] text-subtle">
               or{' '}
               <span className="font-semibold text-primary underline underline-offset-2">
                 Browse files
               </span>
             </p>
           ) : null}
-          <p className="text-xs text-subtle">
-            JPG or PNG. Use clear, well-lit photos of your product.
+          <p className="text-[length:var(--text-ws-caption)] text-caption">
+            Photo previews appear here as soon as they finish uploading.
           </p>
         </div>
       ) : (
@@ -308,48 +300,42 @@ export function ProductImageUploader({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           className={cn(
-            'flex flex-wrap gap-3 rounded-2xl p-1',
-            dragOver && 'bg-orange-50 outline-2 outline-dashed outline-primary',
+            'flex flex-wrap gap-3 rounded-ws-card border border-dashed p-3.5 transition-colors',
+            error
+              ? 'border-danger'
+              : dragOver
+                ? 'border-primary bg-primary-tint'
+                : 'border-line bg-surface',
           )}
         >
           {value.map((image, index) => (
-            <div key={image.id} className="relative flex w-28 flex-col gap-1 sm:w-32">
+            <div key={image.id} className="relative flex w-36 flex-col gap-1 sm:w-[170px]">
               <div
                 className={cn(
-                  'relative aspect-square w-full overflow-hidden rounded-xl border bg-canvas',
-                  image.status === 'failed' ? 'border-danger bg-red-50' : 'border-line',
+                  'relative aspect-square w-full overflow-hidden rounded-ws-card border',
+                  image.status === 'failed'
+                    ? 'border-danger bg-danger-tint'
+                    : image.status === 'uploading'
+                      ? 'border-line bg-surface'
+                      : 'border-line bg-canvas',
                 )}
               >
                 {image.status === 'uploading' ? (
                   <>
-                    <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-orange-100">
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 top-0 h-1 bg-primary-tint"
+                    >
                       <span
                         className="block h-full bg-primary transition-[width]"
-                        style={{ width: `${image.progress}%` }}
+                        style={{ width: `${Math.max(image.progress, 12)}%` }}
                       />
                     </span>
-                    {image.previewUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- local blob preview before upload completes.
-                      <img
-                        src={image.previewUrl}
-                        alt=""
-                        className="size-full object-cover opacity-60"
-                      />
-                    ) : null}
                     <span
                       role="status"
-                      className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs font-medium text-subtle"
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface px-3 text-[length:var(--text-ws-caption)] font-medium text-subtle"
                     >
-                      Uploading…
-                      <span
-                        aria-hidden="true"
-                        className="h-1 w-3/4 overflow-hidden rounded-full bg-orange-100"
-                      >
-                        <span
-                          className="block h-full bg-primary"
-                          style={{ width: `${image.progress}%` }}
-                        />
-                      </span>
+                      <span>Uploading…</span>
                       <button
                         type="button"
                         onClick={() => remove(image.id)}
@@ -360,7 +346,7 @@ export function ProductImageUploader({
                     </span>
                   </>
                 ) : image.status === 'failed' ? (
-                  <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-2 text-center text-xs text-danger">
+                  <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-2 text-center text-[length:var(--text-ws-caption)] text-danger">
                     <DashboardIcon name="alert" className="size-5" />
                     Upload failed
                     <button
@@ -380,11 +366,11 @@ export function ProductImageUploader({
                       className="size-full object-cover"
                     />
                     {index === 0 ? (
-                      <span className="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                      <span className="absolute bottom-2 left-2 rounded-full bg-backdrop px-2.5 py-0.5 text-[11px] font-medium text-on-primary">
                         Main photo
                       </span>
                     ) : null}
-                    <span className="absolute right-1 top-1 flex gap-1">
+                    <span className="absolute right-2 top-2 flex gap-1.5">
                       <button
                         type="button"
                         aria-label={`Replace photo ${index + 1}`}
@@ -393,16 +379,16 @@ export function ProductImageUploader({
                           replaceTargetRef.current = image.id;
                           replaceRef.current?.click();
                         }}
-                        className="flex size-6 items-center justify-center rounded-md bg-white/90 text-ink shadow hover:bg-white"
+                        className="flex size-7 items-center justify-center rounded-full border border-line bg-surface/95 text-ink shadow-ws-card transition-colors hover:bg-surface"
                       >
-                        <DashboardIcon name="upload" className="size-3.5" />
+                        <DashboardIcon name="refresh" className="size-3.5" />
                       </button>
                       <button
                         type="button"
                         aria-label={`Remove photo ${index + 1}`}
                         disabled={disabled}
                         onClick={() => remove(image.id)}
-                        className="flex size-6 items-center justify-center rounded-md bg-white/90 text-danger shadow hover:bg-white"
+                        className="flex size-7 items-center justify-center rounded-full border border-line bg-surface/95 text-danger shadow-ws-card transition-colors hover:bg-surface"
                       >
                         <DashboardIcon name="trash" className="size-3.5" />
                       </button>
@@ -417,10 +403,10 @@ export function ProductImageUploader({
               type="button"
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
-              className="flex aspect-square w-28 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line text-subtle transition-colors hover:border-primary hover:text-primary sm:w-32"
+              className="flex aspect-square w-36 flex-col items-center justify-center gap-1.5 rounded-ws-card border border-dashed border-line text-subtle transition-colors hover:border-primary hover:text-primary sm:w-[170px]"
             >
               <DashboardIcon name="plus" className="size-5" />
-              <span className="text-xs font-medium">Add photo</span>
+              <span className="text-[length:var(--text-ws-caption)] font-medium">Add photo</span>
             </button>
           ) : null}
         </div>
@@ -435,10 +421,8 @@ export function ProductImageUploader({
         </div>
       ) : null}
 
-      <p className="text-xs leading-5 text-subtle">
-        {hasImages
-          ? 'The first photo is used as the main photo. Use Replace or Remove to change a photo.'
-          : 'Photo previews appear here as soon as they finish uploading.'}
+      <p className="text-[length:var(--text-ws-caption)] leading-5 text-caption">
+        The first photo is used as the main photo. Use Replace or Remove to change a photo.
       </p>
     </div>
   );

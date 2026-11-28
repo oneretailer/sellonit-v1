@@ -9,7 +9,14 @@ export type Product = components['schemas']['WorkspaceProduct'];
 export type ProductStatus = components['schemas']['ProductStatus'];
 export type CreateProductRequest = components['schemas']['CreateWorkspaceProductRequest'];
 export type UpdateProductRequest = components['schemas']['UpdateWorkspaceProductRequest'];
+export type SetMaximumMarkupRequest = components['schemas']['SetMaximumMarkupRequest'];
 export type SupplierSummary = components['schemas']['AdminSupplierSummary'];
 export type SupplierDetail = components['schemas']['AdminSupplierDetail'];
+export type BusinessSubscription = components['schemas']['ApiResponseBusinessSubscription']['data'];
+export type ChangeBusinessSubscriptionInput = {
+  targetPlan: SupplierPlan;
+  confirm?: true;
+  choices?: Record<string, unknown>;
+};
 export type Pagination = components['schemas']['PaginationMeta'];
 export type SupplierAction = 'approve' | 'reject' | 'suspend' | 'reinstate';
