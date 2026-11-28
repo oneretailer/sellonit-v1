@@ -51,7 +51,13 @@ function formatRetailerAccess(access: SupplierDetail['profile']['retailerAccess'
 function formatOriginLocation(profile: SupplierDetail['profile'] | undefined): string {
   const origin = profile?.originLocation as Record<string, unknown> | null | undefined;
   if (!origin || typeof origin !== 'object') return 'Not provided';
-  const parts = [origin.addressLine1, origin.addressLine2, origin.city, origin.state, origin.country]
+  const parts = [
+    origin.addressLine1,
+    origin.addressLine2,
+    origin.city,
+    origin.state,
+    origin.country,
+  ]
     .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
     .map((item) => item.trim());
   return parts.length > 0 ? parts.join(', ') : 'Not provided';
@@ -159,7 +165,9 @@ export function SupplierReview({ id }: { id: string }) {
         return;
       }
       if (note.trim().length > MAX_REASON_LENGTH) {
-        setFieldError(`Note must be ${MAX_REASON_LENGTH.toLocaleString('en-US')} characters or fewer.`);
+        setFieldError(
+          `Note must be ${MAX_REASON_LENGTH.toLocaleString('en-US')} characters or fewer.`,
+        );
         return;
       }
     }

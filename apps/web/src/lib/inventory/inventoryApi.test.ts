@@ -5,11 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ENDPOINT_NOT_IMPLEMENTED_CODE } from '@/lib/api-client';
 import { setActiveBusinessId } from '@/lib/business/activeBusiness';
 import { productKeys } from '@/lib/products/queries';
-import {
-  inventoryApi,
-  normalizeInventoryItem,
-  normalizeInventorySummary,
-} from './inventoryApi';
+import { inventoryApi, normalizeInventoryItem, normalizeInventorySummary } from './inventoryApi';
 import { invalidateInventoryAndProducts, inventoryKeys } from './queries';
 
 beforeEach(() => {

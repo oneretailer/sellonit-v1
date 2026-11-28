@@ -324,11 +324,7 @@ describe('products list (PR #18 strict live contract)', () => {
       page([product({ id: 'draft-1', name: 'Draft Tee', status: 'draft', stockQuantity: null })]),
     );
     vi.spyOn(productsApi, 'publish').mockRejectedValue(
-      new ApiError(
-        422,
-        'DEFAULT_WAREHOUSE_REQUIRED',
-        'A default warehouse is required to publish',
-      ),
+      new ApiError(422, 'DEFAULT_WAREHOUSE_REQUIRED', 'A default warehouse is required to publish'),
     );
     renderProducts(<ProductsListPage />);
     const menus = await screen.findAllByRole('button', { name: 'More actions for Draft Tee' });

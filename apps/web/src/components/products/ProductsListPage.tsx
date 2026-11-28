@@ -268,8 +268,7 @@ export function ProductsListPage() {
         >
           {TABS.map((tab) => {
             const active = filters.tab === tab.id;
-            const tabDisabled =
-              tab.id !== 'all' && !capabilities.serverStatusAndCategoryFilters;
+            const tabDisabled = tab.id !== 'all' && !capabilities.serverStatusAndCategoryFilters;
             return (
               <button
                 key={tab.id}

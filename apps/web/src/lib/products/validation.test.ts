@@ -135,7 +135,9 @@ describe('server field errors', () => {
   });
 
   it('maps PR #18 DUPLICATE_SKU and message-only VALIDATION_ERROR onto form fields', () => {
-    expect(serverErrorToFieldErrors(new ApiError(409, 'DUPLICATE_SKU', 'SKU already exists'))).toEqual({
+    expect(
+      serverErrorToFieldErrors(new ApiError(409, 'DUPLICATE_SKU', 'SKU already exists')),
+    ).toEqual({
       sku: 'A product with this SKU already exists. Use a unique SKU.',
     });
     expect(
@@ -180,7 +182,12 @@ describe('PR #18 live catalogue validation (no photos/stock, variant required on
     });
     expect(
       validateProduct(
-        { ...EMPTY_PRODUCT_VALUES, name: 'Draft with variant', sku: 'DRF-1', wholesalePrice: '500' },
+        {
+          ...EMPTY_PRODUCT_VALUES,
+          name: 'Draft with variant',
+          sku: 'DRF-1',
+          wholesalePrice: '500',
+        },
         0,
         'draft',
         liveOptions,

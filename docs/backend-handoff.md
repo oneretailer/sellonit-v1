@@ -9,24 +9,24 @@
 
 ## Priority Summary
 
-| ID       | Priority | Area                   | Summary                                                                                                  |
-| -------- | -------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
-| `BE-001` | **P0**   | Auth / Session         | Implement `POST /api/v1/auth/logout` to revoke session and clear `HttpOnly` cookie                       |
-| `BE-002` | **P0**   | Supplier Products      | Implement Supplier Products CRUD, publish/unpublish, categories, image uploads, and summary              |
-| `BE-003` | **P1**   | Supplier Dashboard     | Implement `GET /api/v1/supplier/:businessId/dashboard` metrics + setup step completion                   |
-| `BE-004` | **P1**   | Tenancy & Businesses   | Expose `activeSubscription`/`plan`, enforce `OWNER \| MANAGER` & `SUSPENDED` checks, unify tenancy       |
-| `BE-005` | **P1**   | RBAC / Session Context | Implement `GET /api/v1/session/context` (admin routes currently fall back to probing `/admin/suppliers`)  |
+| ID       | Priority | Area                   | Summary                                                                                                     |
+| -------- | -------- | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `BE-001` | **P0**   | Auth / Session         | Implement `POST /api/v1/auth/logout` to revoke session and clear `HttpOnly` cookie                          |
+| `BE-002` | **P0**   | Supplier Products      | Implement Supplier Products CRUD, publish/unpublish, categories, image uploads, and summary                 |
+| `BE-003` | **P1**   | Supplier Dashboard     | Implement `GET /api/v1/supplier/:businessId/dashboard` metrics + setup step completion                      |
+| `BE-004` | **P1**   | Tenancy & Businesses   | Expose `activeSubscription`/`plan`, enforce `OWNER \| MANAGER` & `SUSPENDED` checks, unify tenancy          |
+| `BE-005` | **P1**   | RBAC / Session Context | Implement `GET /api/v1/session/context` (admin routes currently fall back to probing `/admin/suppliers`)    |
 | `BE-006` | **DONE** | Admin Moderation       | Implemented in PR #17 (`8e46870`) & synced in `apps/web` (`/admin/suppliers*` + `SupplierStatusTransition`) |
-| `BE-007` | **P1**   | API & OpenAPI Hygiene  | Add JSON 404 catch-all, standardize `requestId` + field validation details, fix `openapi.yaml` drift     |
-| `BE-008` | **P2**   | Auth Verification      | Implement `POST /api/v1/auth/resend-verification` and `POST /api/v1/auth/refresh`                        |
-| `BE-009` | **P2**   | Team Onboarding        | Implement business member invitations & "Join an existing business" acceptance                           |
-| `BE-010` | **P2**   | Notifications          | Implement `GET /api/v1/notifications` and `POST /api/v1/notifications/:id/read`                          |
-| `BE-011` | **P2**   | Seed Fixtures          | Expand `apps/api/scripts/seed.ts` with dev accounts covering supplier/multi-business/role states         |
-| `BE-012` | **P3**   | Retailer & Commerce    | Implement Retailer onboarding and Supplier Pricing / Website / Orders / Wallet modules                   |
-| `BE-013` | **P3**   | OAuth & Phone Auth     | Implement Google/Apple OAuth and phone-identifier login / password reset (or remove from v1 spec)        |
-| `BE-014` | **P0**   | Supplier Inventory     | Implement `GET /supplier/inventory`, `GET /supplier/inventory/summary`, and atomic delta adjustments      |
-| `BE-015` | **P1**   | Warehouses & Stock     | Implement Warehouse CRUD, auto-created default warehouse (+ backfill), and per-variant/warehouse levels   |
-| `BE-016` | **P2**   | Inventory CSV Import   | Implement `POST /api/v1/supplier/inventory/import` for bulk CSV stock updates                             |
+| `BE-007` | **P1**   | API & OpenAPI Hygiene  | Add JSON 404 catch-all, standardize `requestId` + field validation details, fix `openapi.yaml` drift        |
+| `BE-008` | **P2**   | Auth Verification      | Implement `POST /api/v1/auth/resend-verification` and `POST /api/v1/auth/refresh`                           |
+| `BE-009` | **P2**   | Team Onboarding        | Implement business member invitations & "Join an existing business" acceptance                              |
+| `BE-010` | **P2**   | Notifications          | Implement `GET /api/v1/notifications` and `POST /api/v1/notifications/:id/read`                             |
+| `BE-011` | **P2**   | Seed Fixtures          | Expand `apps/api/scripts/seed.ts` with dev accounts covering supplier/multi-business/role states            |
+| `BE-012` | **P3**   | Retailer & Commerce    | Implement Retailer onboarding and Supplier Pricing / Website / Orders / Wallet modules                      |
+| `BE-013` | **P3**   | OAuth & Phone Auth     | Implement Google/Apple OAuth and phone-identifier login / password reset (or remove from v1 spec)           |
+| `BE-014` | **P0**   | Supplier Inventory     | Implement `GET /supplier/inventory`, `GET /supplier/inventory/summary`, and atomic delta adjustments        |
+| `BE-015` | **P1**   | Warehouses & Stock     | Implement Warehouse CRUD, auto-created default warehouse (+ backfill), and per-variant/warehouse levels     |
+| `BE-016` | **P2**   | Inventory CSV Import   | Implement `POST /api/v1/supplier/inventory/import` for bulk CSV stock updates                               |
 
 ---
 
@@ -200,7 +200,7 @@
 
 ---
 
-### `BE-006` — Admin Supplier Review Queue & Moderation Actions *(Implemented in PR #17 · Synced)*
+### `BE-006` — Admin Supplier Review Queue & Moderation Actions _(Implemented in PR #17 · Synced)_
 
 - **Status:** **RESOLVED on `main` (`8e46870`) & synced on frontend**
 - **Implemented Backend Surface:**
@@ -318,7 +318,7 @@
            "meta": { "page": 1, "pageSize": 10, "total": 124, "totalPages": 13 }
          }
          ```
-         *(Note: `reservedQuantity` is system-managed and nullable; if reservations are not yet computed for a row, return `null` rather than a misleading `0`.)*
+         _(Note: `reservedQuantity` is system-managed and nullable; if reservations are not yet computed for a row, return `null` rather than a misleading `0`.)_
     2. `GET /api/v1/supplier/inventory/summary`
        - Response `200`: `{ "data": { "total": 124, "low": 3, "out": 1, "inStock": 120 } }`
     3. `POST /api/v1/supplier/inventory/:productId/adjustments`
@@ -361,4 +361,3 @@
   - **Method & Path:** `POST /api/v1/supplier/inventory/import` (`multipart/form-data`, field `file`, `.csv` ≤ 5 MB).
   - **CSV Columns:** `sku`, `direction` (`increase | decrease`) or signed `delta`, `quantity`, optional `warehouseCode`, optional `reason`.
   - **Response `200`:** `{ "data": { "processed": 50, "updated": 48, "failed": 2, "errors": [{ "row": 14, "sku": "SF-LS-014", "message": "..." }] } }`.
-

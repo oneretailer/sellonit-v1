@@ -531,9 +531,7 @@ function ProductForm({
         guard.registerGuard(null);
         reset(getValues());
         setAlertCount(null);
-        setAlertMessage(
-          `Saved as a draft, but could not publish: ${presentError(caught).message}`,
-        );
+        setAlertMessage(`Saved as a draft, but could not publish: ${presentError(caught).message}`);
         return;
       }
       surfaceSubmitError(caught, 'publish');

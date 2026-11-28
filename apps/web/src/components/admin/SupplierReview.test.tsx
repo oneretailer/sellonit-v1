@@ -100,9 +100,7 @@ describe('supplier review (spied API, no mocks server)', () => {
     vi.spyOn(adminApi, 'getSupplier')
       .mockResolvedValueOnce(supplier())
       .mockResolvedValue(approvedSupplier);
-    const transition = vi
-      .spyOn(adminApi, 'transitionSupplier')
-      .mockResolvedValue(approvedSupplier);
+    const transition = vi.spyOn(adminApi, 'transitionSupplier').mockResolvedValue(approvedSupplier);
 
     renderWorkspace(<SupplierReview id="sup-1" />);
     await userEventSession.click(await screen.findByRole('button', { name: 'Approve supplier' }));

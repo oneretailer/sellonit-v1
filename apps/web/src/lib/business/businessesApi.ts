@@ -35,9 +35,7 @@ type ApiActiveSubscription = {
   status?: string;
   plan?: { key?: string; name?: string } | null;
 } | null;
-type ApiBusiness = Partial<
-  Omit<Schemas['Business'], 'type' | 'status' | 'memberships'>
-> & {
+type ApiBusiness = Partial<Omit<Schemas['Business'], 'type' | 'status' | 'memberships'>> & {
   id: string;
   name: string;
   type: string;

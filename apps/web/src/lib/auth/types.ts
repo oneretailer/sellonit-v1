@@ -89,8 +89,7 @@ export type ForgotPasswordResponse = {
  * Narrowed explicitly because OpenAPI `anyOf` generates `{ ... } | unknown` in `api.d.ts`.
  */
 export type VerifyPasswordResetCodeRequest =
-  | { identifier: string; code: string }
-  | { email: string; code: string };
+  { identifier: string; code: string } | { email: string; code: string };
 
 /** POST /auth/verification-codes/verify — 200 response (`VerificationStatusResponse`). */
 export type VerifyPasswordResetCodeResponse = Schemas['VerificationStatusResponse'];

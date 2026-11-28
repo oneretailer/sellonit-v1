@@ -71,17 +71,9 @@ export function StockStatusPill({
   );
 }
 
-export function StockText({
-  quantity,
-  lowStock,
-}: {
-  quantity: number | null;
-  lowStock?: boolean;
-}) {
+export function StockText({ quantity, lowStock }: { quantity: number | null; lowStock?: boolean }) {
   if (quantity === null) {
-    return (
-      <span className="text-[length:var(--text-ws-body)] text-caption">Not tracked</span>
-    );
+    return <span className="text-[length:var(--text-ws-body)] text-caption">Not tracked</span>;
   }
   const level = stockLevel(quantity, lowStock);
   return (

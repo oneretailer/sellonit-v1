@@ -12,8 +12,7 @@ export type UpdateProductRequest = components['schemas']['UpdateWorkspaceProduct
 export type SetMaximumMarkupRequest = components['schemas']['SetMaximumMarkupRequest'];
 export type SupplierSummary = components['schemas']['AdminSupplierSummary'];
 export type SupplierDetail = components['schemas']['AdminSupplierDetail'];
-export type BusinessSubscription =
-  components['schemas']['ApiResponseBusinessSubscription']['data'];
+export type BusinessSubscription = components['schemas']['ApiResponseBusinessSubscription']['data'];
 export type ChangeBusinessSubscriptionInput = {
   targetPlan: SupplierPlan;
   confirm?: true;

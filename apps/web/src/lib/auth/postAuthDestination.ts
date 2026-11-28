@@ -1,9 +1,5 @@
 import type { Route } from 'next';
-import {
-  AUTH_ROUTE,
-  resolveAuthDestination,
-  type AuthWorkspaceSnapshot,
-} from './authDestination';
+import { AUTH_ROUTE, resolveAuthDestination, type AuthWorkspaceSnapshot } from './authDestination';
 import type { AuthUser } from './types';
 
 /** The user fields the destination needs. */
